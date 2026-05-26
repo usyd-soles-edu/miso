@@ -1,0 +1,54 @@
+---
+title: Multivariate Abundance Workflows
+name: tofu
+version: 0.1.0
+jms: '1.0'
+authors:
+  - Januar Harianto
+maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
+date: '2026-05-23'
+type: R
+description: >-
+  Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, and nMDS workflows for
+  multivariate abundance and community-style data using the vegan R package.
+analyses:
+  - title: PERMANOVA
+    name: permanova
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuSubgroup: Compare groups
+    menuTitle: PERMANOVA
+  - title: ANOSIM
+    name: anosim
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuSubgroup: Compare groups
+    menuTitle: ANOSIM
+    menuSubtitle: Rank-based alternative
+  - title: PERMDISP
+    name: permdisp
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuSubgroup: Check dispersion
+    menuTitle: PERMDISP
+  - title: nMDS
+    name: nmds
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuSubgroup: Ordinate samples
+    menuTitle: nMDS
+  - title: SIMPER
+    name: simper
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuSubgroup: Explore feature contributions
+    menuTitle: SIMPER
+usesNative: true
+minApp: 1.0.8
+
+...

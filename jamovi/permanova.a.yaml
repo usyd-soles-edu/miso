@@ -1,0 +1,157 @@
+---
+name: permanova
+title: PERMANOVA
+menuGroup: tofu
+menuSubgroup: Compare groups
+menuTitle: PERMANOVA
+version: '0.1.0'
+jas: '1.2'
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: Feature variables
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: factor
+    title: Grouping variable
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+
+  - name: permFactors
+    title: Additional factors
+    type: Variables
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+    default: null
+
+  - name: strata
+    title: Strata / blocking factor
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+    default: null
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+    default: bray
+
+  - name: seed
+    title: Random seed
+    type: Number
+    default: 0
+    min: 0
+
+  - name: permInteractions
+    title: Include group × additional factor interactions
+    type: Bool
+    default: false
+
+  - name: permN
+    title: Permutations
+    type: Number
+    default: 999
+    min: 1
+
+  - name: permBy
+    title: Test type
+    type: List
+    options:
+      - title: Omnibus
+        name: omnibus
+      - title: Sequential terms
+        name: terms
+      - title: Marginal terms
+        name: margin
+    default: terms
+
+  - name: permPairwise
+    title: Pairwise comparisons
+    type: Bool
+    default: false
+
+  - name: permAdjust
+    title: P-value adjustment
+    type: List
+    options:
+      - title: Holm
+        name: holm
+      - title: Bonferroni
+        name: bonferroni
+      - title: Benjamini-Hochberg
+        name: BH
+      - title: Benjamini-Yekutieli
+        name: BY
+      - title: None
+        name: none
+    default: holm
+
+...

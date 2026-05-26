@@ -1,0 +1,72 @@
+---
+name: permanova
+title: PERMANOVA
+jrs: '1.1'
+
+items:
+  - name: warnings
+    title: Notes and Warnings
+    type: Preformatted
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+  - name: table
+    title: PERMANOVA Table
+    type: Table
+    rows: 0
+    columns:
+      - name: source
+        title: Source
+        type: text
+      - name: df
+        title: df
+        type: integer
+      - name: sumsqs
+        title: Sum Sq
+        type: number
+      - name: r2
+        title: R²
+        type: number
+      - name: f
+        title: F
+        type: number
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+
+  - name: pairwise
+    title: Pairwise PERMANOVA
+    type: Table
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: f
+        title: F
+        type: number
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+      - name: padj
+        title: p-adj
+        type: number
+        format: zto,pvalue
+
+  - name: note
+    title: Notes
+    type: Preformatted
+
+...

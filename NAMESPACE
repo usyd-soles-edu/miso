@@ -1,0 +1,7 @@
+export(anosim)
+export(nmds)
+export(permanova)
+export(permdisp)
+export(simper)
+import(R6)
+import(vegan)

@@ -1,0 +1,71 @@
+---
+name: permdisp
+title: PERMDISP
+jrs: '1.1'
+
+items:
+  - name: warnings
+    title: Notes and Warnings
+    type: Preformatted
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+  - name: distances
+    title: Group Distances to Centre
+    type: Table
+    rows: 0
+    columns:
+      - name: group
+        title: Group
+        type: text
+      - name: distance
+        title: Mean Distance
+        type: number
+
+  - name: anova
+    title: Dispersion Test
+    type: Table
+    rows: 0
+    columns:
+      - name: source
+        title: Source
+        type: text
+      - name: df
+        title: df
+        type: integer
+      - name: sumsqs
+        title: Sum Sq
+        type: number
+      - name: meansq
+        title: Mean Sq
+        type: number
+      - name: f
+        title: F
+        type: number
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+
+  - name: plot
+    title: Distances to Centre
+    type: Image
+    width: 600
+    height: 450
+    renderFun: .plotDistances
+
+  - name: note
+    title: Notes
+    type: Preformatted
+
+...

@@ -1,0 +1,62 @@
+---
+name: anosim
+title: ANOSIM
+jrs: '1.1'
+
+items:
+  - name: warnings
+    title: Notes and Warnings
+    type: Preformatted
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+  - name: global
+    title: Global Test
+    type: Table
+    rows: 0
+    columns:
+      - name: statistic
+        title: Statistic
+        type: text
+      - name: value
+        title: Value
+        type: number
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+      - name: permutations
+        title: Permutations
+        type: integer
+
+  - name: pairwise
+    title: Pairwise ANOSIM
+    type: Table
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: r
+        title: R
+        type: number
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+
+  - name: note
+    title: Notes
+    type: Preformatted
+
+...

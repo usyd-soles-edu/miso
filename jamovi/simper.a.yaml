@@ -1,0 +1,112 @@
+---
+name: simper
+title: SIMPER
+menuGroup: tofu
+menuSubgroup: Explore feature contributions
+menuTitle: SIMPER
+version: '0.1.0'
+jas: '1.2'
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: Feature variables
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: factor
+    title: Grouping variable
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+    default: bray
+
+  - name: seed
+    title: Random seed
+    type: Number
+    default: 0
+    min: 0
+
+  - name: simperN
+    title: Permutations
+    type: Number
+    default: 999
+    min: 1
+
+  - name: simperTop
+    title: Top N features
+    type: Number
+    default: 10
+    min: 1
+
+  - name: simperCum
+    title: Cumulative contribution threshold (%)
+    type: Number
+    default: 70
+    min: 1
+    max: 100
+
+...

@@ -1,0 +1,58 @@
+---
+title: nMDS
+name: nmds
+jus: '3.0'
+stage: 0
+compilerMode: tame
+children:
+  - type: VariableSupplier
+    persistentItems: false
+    stretchFactor: 1
+    children:
+      - type: TargetLayoutBox
+        label: Feature variables
+        children:
+          - type: VariablesListBox
+            name: vars
+            isTarget: true
+      - type: TargetLayoutBox
+        label: Grouping variable
+        children:
+          - type: VariablesListBox
+            name: factor
+            maxItemCount: 1
+            isTarget: true
+
+  - type: CollapseBox
+    label: Resemblance
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: transform
+      - type: ComboBox
+        name: distance
+      - type: TextBox
+        name: seed
+        format: number
+
+  - type: CollapseBox
+    label: nMDS
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: TextBox
+        name: nmdsK
+        format: number
+      - type: TextBox
+        name: nmdsTrymax
+        format: number
+      - type: TextBox
+        name: nmdsMaxit
+        format: number
+      - type: CheckBox
+        name: nmdsShepard
+      - type: CheckBox
+        name: nmdsOverlay
+
+...

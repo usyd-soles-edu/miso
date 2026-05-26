@@ -1,0 +1,123 @@
+---
+name: nmds
+title: nMDS
+menuGroup: tofu
+menuSubgroup: Ordinate samples
+menuTitle: nMDS
+version: '0.1.0'
+jas: '1.2'
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: Feature variables
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: factor
+    title: Grouping variable
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+    default: null
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+    default: bray
+
+  - name: seed
+    title: Random seed
+    type: Number
+    default: 0
+    min: 0
+
+  - name: nmdsK
+    title: Dimensions
+    type: Number
+    default: 2
+    min: 2
+    max: 3
+
+  - name: nmdsTrymax
+    title: Random starts
+    type: Number
+    default: 20
+    min: 1
+
+  - name: nmdsMaxit
+    title: Max iterations per run
+    type: Number
+    default: 200
+    min: 1
+
+  - name: nmdsShepard
+    title: Show Shepard diagram
+    type: Bool
+    default: true
+
+  - name: nmdsOverlay
+    title: Colour by group
+    type: Bool
+    default: true
+
+...

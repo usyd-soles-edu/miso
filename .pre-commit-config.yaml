@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+  - repo: local
+    hooks:
+      - id: r-syntax-check
+        name: R syntax check
+        entry: Rscript -e 'args <- commandArgs(trailingOnly=TRUE); invisible(lapply(args, function(f) parse(file=f)))'
+        language: system
+        types: [file]
+        files: '\.R$'

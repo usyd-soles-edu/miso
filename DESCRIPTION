@@ -1,0 +1,16 @@
+Package: tofu
+Type: Package
+Title: Multivariate Abundance Workflows for jamovi
+Version: 0.1.0
+Author: Januar Harianto
+Maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
+Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, and nMDS workflows
+    for multivariate abundance and community-style data. The module uses a
+    shared transformation and dissimilarity workflow powered by the vegan R
+    package.
+License: GPL (>= 2)
+Encoding: UTF-8
+Imports: jmvcore (>= 0.8.5), R6, vegan
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.3
