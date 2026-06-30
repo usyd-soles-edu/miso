@@ -47,7 +47,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 strata <- droplevels(as.factor(prep$data[[prep$strata[[1]]]]))
 
             fit <- tryCatch(
-                vegan::anosim(prep$dist, prep$group, permutations=as.integer(self$options$anosimN), strata=strata),
+                vegan::anosim(prep$dist, prep$group, permutations=tofu_permutation(self$options$anosimN, self$options$permScheme, strata)),
                 error=function(e) e)
             if (inherits(fit, "error")) {
                 self$results$note$setContent(paste0("ANOSIM failed: ", fit$message))

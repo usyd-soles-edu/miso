@@ -401,3 +401,35 @@ test_that("PERMDISP pairwise comparisons report permutation p and t-statistic", 
     expect_true(all(c("contrast", "statistic", "p", "padj") %in% names(pw)))
     expect_true(all(is.finite(pw$statistic)))
 })
+
+test_that("permutation schemes run in PERMANOVA", {
+    for (sc in c("free", "stratified", "series")) {
+        res <- suppressMessages(permanova(
+            data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+            permScheme = sc, permN = 19, seed = 123))
+        expect_true(nrow(res$table$asDF) >= 1L, info = sc)
+    }
+})
+
+test_that("permutation schemes run in ANOSIM and PERMDISP", {
+    for (sc in c("free", "stratified", "series")) {
+        ra <- suppressMessages(anosim(
+            data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+            permScheme = sc, anosimN = 19, seed = 123))
+        expect_true(nrow(ra$global$asDF) >= 1L, info = paste0("anosim-", sc))
+
+        rp <- suppressWarnings(suppressMessages(permdisp(
+            data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+            permScheme = sc, permN = 19, seed = 123)))
+        expect_true(nrow(rp$anova$asDF) >= 2L, info = paste0("permdisp-", sc))
+    }
+})
+
+test_that("stratified scheme with a strata factor runs in PERMANOVA", {
+    d <- workflow_data()
+    d$block <- factor(c("x", "x", "x", "y", "y", "y"))
+    res <- suppressMessages(permanova(
+        data = d, vars = c("sp1", "sp2", "sp3"), factor = "group",
+        strata = "block", permScheme = "stratified", permN = 19, seed = 123))
+    expect_true(nrow(res$table$asDF) >= 1L)
+})

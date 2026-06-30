@@ -48,6 +48,8 @@ children:
         name: permN
         format: number
       - type: ComboBox
+        name: permScheme
+      - type: ComboBox
         name: dispType
       - type: CheckBox
         name: dispBias

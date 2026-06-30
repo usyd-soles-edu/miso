@@ -18,6 +18,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             seed = 0,
             permInteractions = FALSE,
             permN = 999,
+            permScheme = "stratified",
             permBy = "terms",
             permPairwise = FALSE,
             permAdjust = "holm", ...) {
@@ -133,6 +134,14 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 permN,
                 default=999,
                 min=1)
+            private$..permScheme <- jmvcore::OptionList$new(
+                "permScheme",
+                permScheme,
+                options=list(
+                    "free",
+                    "stratified",
+                    "series"),
+                default="stratified")
             private$..permBy <- jmvcore::OptionList$new(
                 "permBy",
                 permBy,
@@ -168,6 +177,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..seed)
             self$.addOption(private$..permInteractions)
             self$.addOption(private$..permN)
+            self$.addOption(private$..permScheme)
             self$.addOption(private$..permBy)
             self$.addOption(private$..permPairwise)
             self$.addOption(private$..permAdjust)
@@ -185,6 +195,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         seed = function() private$..seed$value,
         permInteractions = function() private$..permInteractions$value,
         permN = function() private$..permN$value,
+        permScheme = function() private$..permScheme$value,
         permBy = function() private$..permBy$value,
         permPairwise = function() private$..permPairwise$value,
         permAdjust = function() private$..permAdjust$value),
@@ -201,6 +212,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..seed = NA,
         ..permInteractions = NA,
         ..permN = NA,
+        ..permScheme = NA,
         ..permBy = NA,
         ..permPairwise = NA,
         ..permAdjust = NA)
@@ -337,6 +349,7 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param seed .
 #' @param permInteractions .
 #' @param permN .
+#' @param permScheme .
 #' @param permBy .
 #' @param permPairwise .
 #' @param permAdjust .
@@ -370,6 +383,7 @@ permanova <- function(
     seed = 0,
     permInteractions = FALSE,
     permN = 999,
+    permScheme = "stratified",
     permBy = "terms",
     permPairwise = FALSE,
     permAdjust = "holm") {
@@ -406,6 +420,7 @@ permanova <- function(
         seed = seed,
         permInteractions = permInteractions,
         permN = permN,
+        permScheme = permScheme,
         permBy = permBy,
         permPairwise = permPairwise,
         permAdjust = permAdjust)

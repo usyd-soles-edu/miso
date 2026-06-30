@@ -14,6 +14,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             distBinary = FALSE,
             seed = 0,
             anosimN = 999,
+            permScheme = "stratified",
             anosimAdjust = "holm", ...) {
 
             super$initialize(
@@ -102,6 +103,14 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 anosimN,
                 default=999,
                 min=1)
+            private$..permScheme <- jmvcore::OptionList$new(
+                "permScheme",
+                permScheme,
+                options=list(
+                    "free",
+                    "stratified",
+                    "series"),
+                default="stratified")
             private$..anosimAdjust <- jmvcore::OptionList$new(
                 "anosimAdjust",
                 anosimAdjust,
@@ -121,6 +130,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..anosimN)
+            self$.addOption(private$..permScheme)
             self$.addOption(private$..anosimAdjust)
         }),
     active = list(
@@ -132,6 +142,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
         anosimN = function() private$..anosimN$value,
+        permScheme = function() private$..permScheme$value,
         anosimAdjust = function() private$..anosimAdjust$value),
     private = list(
         ..vars = NA,
@@ -142,6 +153,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..distBinary = NA,
         ..seed = NA,
         ..anosimN = NA,
+        ..permScheme = NA,
         ..anosimAdjust = NA)
 )
 
@@ -264,6 +276,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param distBinary .
 #' @param seed .
 #' @param anosimN .
+#' @param permScheme .
 #' @param anosimAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
@@ -291,6 +304,7 @@ anosim <- function(
     distBinary = FALSE,
     seed = 0,
     anosimN = 999,
+    permScheme = "stratified",
     anosimAdjust = "holm") {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
@@ -318,6 +332,7 @@ anosim <- function(
         distBinary = distBinary,
         seed = seed,
         anosimN = anosimN,
+        permScheme = permScheme,
         anosimAdjust = anosimAdjust)
 
     analysis <- anosimClass$new(

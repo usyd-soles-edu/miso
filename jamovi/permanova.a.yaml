@@ -163,6 +163,18 @@ options:
     default: 999
     min: 1
 
+  - name: permScheme
+    title: Permutation scheme
+    type: List
+    options:
+      - title: Free
+        name: free
+      - title: Stratified (within blocks)
+        name: stratified
+      - title: Series (ordered)
+        name: series
+    default: stratified
+
   - name: permBy
     title: Test type
     type: List

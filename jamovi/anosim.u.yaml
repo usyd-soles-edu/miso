@@ -54,6 +54,8 @@ children:
         name: anosimN
         format: number
       - type: ComboBox
+        name: permScheme
+      - type: ComboBox
         name: anosimAdjust
 
 ...

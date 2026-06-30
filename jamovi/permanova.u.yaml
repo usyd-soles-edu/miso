@@ -61,6 +61,8 @@ children:
         name: permN
         format: number
       - type: ComboBox
+        name: permScheme
+      - type: ComboBox
         name: permBy
       - type: CheckBox
         name: permInteractions

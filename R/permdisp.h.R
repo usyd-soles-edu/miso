@@ -15,6 +15,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             distAdd = "none",
             seed = 0,
             permN = 999,
+            permScheme = "stratified",
             dispType = "median",
             dispBias = FALSE,
             dispPairwise = FALSE,
@@ -109,6 +110,14 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 permN,
                 default=999,
                 min=1)
+            private$..permScheme <- jmvcore::OptionList$new(
+                "permScheme",
+                permScheme,
+                options=list(
+                    "free",
+                    "stratified",
+                    "series"),
+                default="stratified")
             private$..dispType <- jmvcore::OptionList$new(
                 "dispType",
                 dispType,
@@ -144,6 +153,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..distAdd)
             self$.addOption(private$..seed)
             self$.addOption(private$..permN)
+            self$.addOption(private$..permScheme)
             self$.addOption(private$..dispType)
             self$.addOption(private$..dispBias)
             self$.addOption(private$..dispPairwise)
@@ -159,6 +169,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         distAdd = function() private$..distAdd$value,
         seed = function() private$..seed$value,
         permN = function() private$..permN$value,
+        permScheme = function() private$..permScheme$value,
         dispType = function() private$..dispType$value,
         dispBias = function() private$..dispBias$value,
         dispPairwise = function() private$..dispPairwise$value,
@@ -173,6 +184,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..distAdd = NA,
         ..seed = NA,
         ..permN = NA,
+        ..permScheme = NA,
         ..dispType = NA,
         ..dispBias = NA,
         ..dispPairwise = NA,
@@ -330,6 +342,7 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param distAdd .
 #' @param seed .
 #' @param permN .
+#' @param permScheme .
 #' @param dispType .
 #' @param dispBias .
 #' @param dispPairwise .
@@ -363,6 +376,7 @@ permdisp <- function(
     distAdd = "none",
     seed = 0,
     permN = 999,
+    permScheme = "stratified",
     dispType = "median",
     dispBias = FALSE,
     dispPairwise = FALSE,
@@ -391,6 +405,7 @@ permdisp <- function(
         distAdd = distAdd,
         seed = seed,
         permN = permN,
+        permScheme = permScheme,
         dispType = dispType,
         dispBias = dispBias,
         dispPairwise = dispPairwise,
