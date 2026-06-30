@@ -19,10 +19,17 @@ tofu_transform_community <- function(x, transform) {
         wisconsin = vegan::wisconsin(x),
         hellinger = vegan::decostand(x, method="hellinger"),
         total = vegan::decostand(x, method="total"),
+        max = vegan::decostand(x, method="max"),
+        frequency = vegan::decostand(x, method="frequency"),
+        normalize = vegan::decostand(x, method="normalize"),
+        range = vegan::decostand(x, method="range"),
+        standardize = vegan::decostand(x, method="standardize"),
+        chi.square = vegan::decostand(x, method="chi.square"),
+        rclr = vegan::decostand(x, method="rclr"),
         x)
 }
 
-tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE) {
+tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
     warnings <- character()
 
     if (length(vars) == 0)
@@ -36,10 +43,12 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     extra <- setdiff(extra, c(primary, species))
     strata <- tofu_clean_vars(strata)
     strata <- setdiff(strata, c(species, primary, extra))
-    selected <- unique(c(species, primary, extra, strata))
+    covs <- tofu_clean_vars(covariates)
+    covs <- setdiff(covs, c(species, primary, extra, strata))
+    selected <- unique(c(species, primary, extra, strata, covs))
     selected <- selected[selected %in% names(data)]
 
-    missingCols <- setdiff(unique(c(species, primary, extra, strata)), names(data))
+    missingCols <- setdiff(unique(c(species, primary, extra, strata, covs)), names(data))
     if (length(missingCols) > 0)
         return(list(error=TRUE, message=paste0("Selected variable(s) not found in the data: ", paste(missingCols, collapse=", "))))
 
@@ -48,6 +57,12 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     nonNumeric <- names(comm)[! vapply(comm, is.numeric, logical(1))]
     if (length(nonNumeric) > 0)
         return(list(error=TRUE, message=paste0("Feature variables must be numeric. Non-numeric: ", paste(nonNumeric, collapse=", "))))
+    if (length(covs) > 0) {
+        covRaw <- data[, covs, drop=FALSE]
+        covNonNumeric <- names(covRaw)[! vapply(covRaw, is.numeric, logical(1))]
+        if (length(covNonNumeric) > 0)
+            return(list(error=TRUE, message=paste0("Covariates must be numeric. Non-numeric: ", paste(covNonNumeric, collapse=", "))))
+    }
 
     commMat <- as.matrix(comm)
     storage.mode(commMat) <- "double"
@@ -81,6 +96,9 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     if (nrow(commMat) < 3)
         return(list(error=TRUE, message=sprintf("Too few samples (%d) for multivariate analysis.", nrow(commMat))))
 
+    if (identical(distance, "mahalanobis") && nrow(commMat) <= ncol(commMat))
+        return(list(error=TRUE, message=sprintf("mahalanobis requires more samples than features; got n=%d p=%d. Choose another index or reduce features.", nrow(commMat), ncol(commMat))))
+
     group <- NULL
     if (! is.null(primary)) {
         group <- droplevels(as.factor(dat[[primary]]))
@@ -96,7 +114,7 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
 
     distObj <- tryCatch(
         withCallingHandlers(
-            vegan::vegdist(transformed, method=distance),
+            vegan::vegdist(transformed, method=distance, binary=isTRUE(distBinary)),
             warning=function(w) {
                 warnings <<- c(warnings, paste0("Dissimilarity warning: ", conditionMessage(w)))
                 invokeRestart("muffleWarning")
@@ -116,6 +134,11 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     if (distance %in% countMethods && any(abs(commMat - round(commMat)) > .Machine$double.eps^0.5, na.rm=TRUE))
         warnings <- c(warnings, sprintf("'%s' is designed for count data. Non-integer values detected.", distance))
 
+    if (isTRUE(distBinary))
+        warnings <- c(warnings, "Binary (presence/absence) dissimilarity requested: abundance magnitudes ignored.")
+
+    covDF <- if (length(covs) > 0) dat[, covs, drop=FALSE] else NULL
+
     list(
         error=FALSE,
         data=dat,
@@ -126,6 +149,8 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         primary=primary,
         extra=extra,
         strata=strata,
+        covariates=covDF,
+        covariateNames=covs,
         warnings=warnings,
         rowsUsed=nrow(commMat),
         varsUsed=ncol(commMat),
@@ -173,10 +198,38 @@ tofu_display_term <- function(term, prep) {
         for (i in seq_along(prep$extra))
             labels[paste0(".f", i + 1)] <- prep$extra[[i]]
     }
+    if (length(prep$covariateNames) > 0) {
+        for (i in seq_along(prep$covariateNames))
+            labels[paste0(".c", i)] <- prep$covariateNames[[i]]
+    }
 
     out <- term
     keys <- names(labels)[order(nchar(names(labels)), decreasing=TRUE)]
     for (key in keys)
         out <- gsub(key, labels[[key]], out, fixed=TRUE)
     out
+}
+
+# Parallel cluster lifecycle. enabled=FALSE or cluster creation fails -> NULL (vegan runs serial).
+tofu_parallel <- function(enabled, n=NULL) {
+    if (! isTRUE(enabled)) return(NULL)
+    cores <- if (is.null(n) || n < 2) max(2, parallel::detectCores() - 1L) else as.integer(n)
+    tryCatch(parallel::makeCluster(cores), error=function(e) NULL)
+}
+
+tofu_parallel_stop <- function(cl) {
+    if (! is.null(cl)) try(parallel::stopCluster(cl), silent=TRUE)
+}
+
+# Build a permute::how() from a tofu scheme preset. strata is the blocking factor
+# VECTOR (not a name); 'free' ignores it. 'series' assumes sample order = sequence order.
+tofu_permutation <- function(permN, scheme=c("free","stratified","series"), strata=NULL) {
+    scheme <- match.arg(scheme)
+    nperm <- as.integer(permN)
+    blocks <- if (is.null(strata) || length(strata) == 0) NULL else as.factor(strata)
+    switch(scheme,
+        free       = permute::how(nperm=nperm),
+        stratified = permute::how(nperm=nperm, blocks=blocks),
+        series     = permute::how(nperm=nperm, blocks=blocks,
+                       within=permute::Within(type="series", mirror=FALSE)))
 }
