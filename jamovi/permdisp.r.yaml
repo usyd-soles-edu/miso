@@ -57,6 +57,26 @@ items:
         type: number
         format: zto,pvalue
 
+  - name: pairwise
+    title: Pairwise Dispersion
+    type: Table
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: statistic
+        title: t
+        type: number
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+      - name: padj
+        title: p-adj
+        type: number
+        format: zto,pvalue
+
   - name: plot
     title: Distances to Centre
     type: Image

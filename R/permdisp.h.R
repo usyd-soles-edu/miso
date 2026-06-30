@@ -16,7 +16,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             seed = 0,
             permN = 999,
             dispType = "median",
-            dispBias = FALSE, ...) {
+            dispBias = FALSE,
+            dispPairwise = FALSE,
+            dispAdjust = "holm", ...) {
 
             super$initialize(
                 package="tofu",
@@ -118,6 +120,20 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "dispBias",
                 dispBias,
                 default=FALSE)
+            private$..dispPairwise <- jmvcore::OptionBool$new(
+                "dispPairwise",
+                dispPairwise,
+                default=FALSE)
+            private$..dispAdjust <- jmvcore::OptionList$new(
+                "dispAdjust",
+                dispAdjust,
+                options=list(
+                    "holm",
+                    "bonferroni",
+                    "BH",
+                    "BY",
+                    "none"),
+                default="holm")
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -130,6 +146,8 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..permN)
             self$.addOption(private$..dispType)
             self$.addOption(private$..dispBias)
+            self$.addOption(private$..dispPairwise)
+            self$.addOption(private$..dispAdjust)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -142,7 +160,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         seed = function() private$..seed$value,
         permN = function() private$..permN$value,
         dispType = function() private$..dispType$value,
-        dispBias = function() private$..dispBias$value),
+        dispBias = function() private$..dispBias$value,
+        dispPairwise = function() private$..dispPairwise$value,
+        dispAdjust = function() private$..dispAdjust$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -154,7 +174,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..seed = NA,
         ..permN = NA,
         ..dispType = NA,
-        ..dispBias = NA)
+        ..dispBias = NA,
+        ..dispPairwise = NA,
+        ..dispAdjust = NA)
 )
 
 permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -165,6 +187,7 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         summary = function() private$.items[["summary"]],
         distances = function() private$.items[["distances"]],
         anova = function() private$.items[["anova"]],
+        pairwise = function() private$.items[["pairwise"]],
         plot = function() private$.items[["plot"]],
         note = function() private$.items[["note"]]),
     private = list(),
@@ -237,6 +260,30 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `title`="p",
                         `type`="number",
                         `format`="zto,pvalue"))))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="pairwise",
+                title="Pairwise Dispersion",
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="contrast",
+                        `title`="Contrast",
+                        `type`="text"),
+                    list(
+                        `name`="statistic",
+                        `title`="t",
+                        `type`="number"),
+                    list(
+                        `name`="p",
+                        `title`="p",
+                        `type`="number",
+                        `format`="zto,pvalue"),
+                    list(
+                        `name`="padj",
+                        `title`="p-adj",
+                        `type`="number",
+                        `format`="zto,pvalue"))))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="plot",
@@ -285,12 +332,15 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param permN .
 #' @param dispType .
 #' @param dispBias .
+#' @param dispPairwise .
+#' @param dispAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
 #' }
@@ -314,7 +364,9 @@ permdisp <- function(
     seed = 0,
     permN = 999,
     dispType = "median",
-    dispBias = FALSE) {
+    dispBias = FALSE,
+    dispPairwise = FALSE,
+    dispAdjust = "holm") {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("permdisp requires jmvcore to be installed (restart may be required)")
@@ -340,7 +392,9 @@ permdisp <- function(
         seed = seed,
         permN = permN,
         dispType = dispType,
-        dispBias = dispBias)
+        dispBias = dispBias,
+        dispPairwise = dispPairwise,
+        dispAdjust = dispAdjust)
 
     analysis <- permdispClass$new(
         options = options,

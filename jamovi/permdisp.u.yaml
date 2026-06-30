@@ -51,3 +51,7 @@ children:
         name: dispType
       - type: CheckBox
         name: dispBias
+      - type: CheckBox
+        name: dispPairwise
+      - type: ComboBox
+        name: dispAdjust

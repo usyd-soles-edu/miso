@@ -153,4 +153,25 @@ options:
     type: Bool
     default: false
 
+  - name: dispPairwise
+    title: Pairwise comparisons
+    type: Bool
+    default: false
+
+  - name: dispAdjust
+    title: P-value adjustment
+    type: List
+    options:
+      - title: Holm
+        name: holm
+      - title: Bonferroni
+        name: bonferroni
+      - title: Benjamini-Hochberg
+        name: BH
+      - title: Benjamini-Yekutieli
+        name: BY
+      - title: None
+        name: none
+    default: holm
+
 ...

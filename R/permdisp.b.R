@@ -36,6 +36,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$summary)
             tofu_clear_table(self$results$distances)
             tofu_clear_table(self$results$anova)
+            tofu_clear_table(self$results$pairwise)
             self$results$note$setContent("")
         },
 
@@ -70,6 +71,24 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     meansq=tofu_num_or_na(atab[i, "Mean Sq"]),
                     f=tofu_num_or_na(atab[i, "F"]),
                     p=tofu_num_or_na(atab[i, "Pr(>F)"])))
+            }
+
+            if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) >= 3) {
+                pt <- tryCatch(
+                    vegan::permutest(fit, permutations=as.integer(self$options$permN), pairwise=TRUE),
+                    error=function(e) e)
+                if (! inherits(pt, "error") && ! is.null(pt$pairwise) && length(pt$pairwise$permuted) > 0) {
+                    labels <- names(pt$pairwise$permuted)
+                    tstat <- pt$statistic[-1]
+                    pperm <- as.numeric(pt$pairwise$permuted)
+                    padj <- if (identical(self$options$dispAdjust, "none")) pperm else stats::p.adjust(pperm, method=self$options$dispAdjust)
+                    for (i in seq_along(labels))
+                        self$results$pairwise$addRow(rowKey=as.character(i), values=list(
+                            contrast=gsub("-", " vs ", labels[i], fixed=TRUE),
+                            statistic=tofu_num_or_na(tstat[i]),
+                            p=tofu_num_or_na(pperm[i]),
+                            padj=tofu_num_or_na(padj[i])))
+                }
             }
 
             self$results$note$setContent(sprintf("PERMDISP tests whether groups differ in multivariate dispersion. Use it to check whether a group-comparison result may be driven by spread rather than location.\nCentre: %s\nBias adjustment: %s\nPermutations: %s\nSeed: %s",

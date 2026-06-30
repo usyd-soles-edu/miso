@@ -391,3 +391,13 @@ test_that("ANOSIM pairwise comparisons are p-adjusted", {
     expect_true("padj" %in% names(pw))
     expect_equal(pw$padj, stats::p.adjust(pw$p, method = "holm"))
 })
+
+test_that("PERMDISP pairwise comparisons report permutation p and t-statistic", {
+    res <- suppressWarnings(suppressMessages(permdisp(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        dispPairwise = TRUE, permN = 19, seed = 123)))
+    pw <- res$pairwise$asDF
+    expect_true(nrow(pw) >= 1L)
+    expect_true(all(c("contrast", "statistic", "p", "padj") %in% names(pw)))
+    expect_true(all(is.finite(pw$statistic)))
+})
