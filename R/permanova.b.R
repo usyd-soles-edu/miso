@@ -21,7 +21,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance=self$options$distance,
                 seed=self$options$seed,
                 extraVars=self$options$permFactors,
-                strata=self$options$strata, distBinary=self$options$distBinary)
+                strata=self$options$strata, covariates=self$options$covariates, distBinary=self$options$distBinary)
             if (prep$error) {
                 self$results$warnings$setContent(prep$message)
                 return()
@@ -118,6 +118,16 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             strata <- NULL
             if (length(prep$strata) > 0)
                 strata <- droplevels(as.factor(prep$data[[prep$strata[[1]]]]))
+
+            covNames <- character()
+            if (! is.null(prep$covariates) && ncol(prep$covariates) > 0) {
+                for (i in seq_len(ncol(prep$covariates))) {
+                    nm <- paste0(".c", i)
+                    data[[nm]] <- as.numeric(prep$covariates[[i]])
+                    covNames <- c(covNames, nm)
+                }
+                terms <- paste(c(terms, covNames), collapse=" + ")
+            }
 
             list(terms=terms, data=data, strata=strata)
         },

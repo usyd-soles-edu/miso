@@ -443,3 +443,24 @@ test_that("parallel PERMANOVA reproduces serial results under the same seed", {
         useParallel = TRUE, permN = 19, seed = 123))
     expect_equal(par$table$asDF$p, serial$table$asDF$p, tolerance = 1e-6)
 })
+
+test_that("continuous covariates are included as model terms", {
+    d <- workflow_data()
+    d$depth <- c(1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
+    res <- suppressMessages(permanova(
+        data = d, vars = c("sp1", "sp2", "sp3"), factor = "group",
+        covariates = "depth", permN = 19, seed = 123))
+    tab <- res$table$asDF
+    expect_true("depth" %in% tab$source)
+})
+
+test_that("covariates that saturate the model return a note", {
+    d <- workflow_data()
+    d$depth <- c(0, 1, 0, 1, 0, 1)
+    d$temp <- c(0, 1, 0, 2, 0, 3)
+    d$sal <- c(0, 1, 0, 3, 0, 2)
+    res <- suppressMessages(permanova(
+        data = d, vars = c("sp1", "sp2", "sp3"), factor = "group",
+        covariates = c("depth", "temp", "sal"), permN = 9, seed = 123))
+    expect_match(as.character(res$note$asString()), "PERMANOVA failed: PERMANOVA model is saturated")
+})

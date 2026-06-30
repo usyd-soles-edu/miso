@@ -34,6 +34,12 @@ children:
             name: strata
             maxItemCount: 1
             isTarget: true
+      - type: TargetLayoutBox
+        label: Covariates (continuous)
+        children:
+          - type: VariablesListBox
+            name: covariates
+            isTarget: true
   - type: CollapseBox
     label: Resemblance
     collapsed: false

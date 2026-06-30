@@ -48,6 +48,15 @@ options:
       - factor
     default: null
 
+  - name: covariates
+    title: Covariates (continuous)
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+    default: null
+
   - name: transform
     title: Transformation
     type: List

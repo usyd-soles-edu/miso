@@ -10,6 +10,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             factor = NULL,
             permFactors = NULL,
             strata = NULL,
+            covariates = NULL,
             transform = "none",
             distance = "bray",
             distBinary = FALSE,
@@ -62,6 +63,14 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "ordinal"),
                 permitted=list(
                     "factor"),
+                default=NULL)
+            private$..covariates <- jmvcore::OptionVariables$new(
+                "covariates",
+                covariates,
+                suggested=list(
+                    "continuous"),
+                permitted=list(
+                    "numeric"),
                 default=NULL)
             private$..transform <- jmvcore::OptionList$new(
                 "transform",
@@ -174,6 +183,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..factor)
             self$.addOption(private$..permFactors)
             self$.addOption(private$..strata)
+            self$.addOption(private$..covariates)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
             self$.addOption(private$..distBinary)
@@ -193,6 +203,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         factor = function() private$..factor$value,
         permFactors = function() private$..permFactors$value,
         strata = function() private$..strata$value,
+        covariates = function() private$..covariates$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
         distBinary = function() private$..distBinary$value,
@@ -211,6 +222,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..factor = NA,
         ..permFactors = NA,
         ..strata = NA,
+        ..covariates = NA,
         ..transform = NA,
         ..distance = NA,
         ..distBinary = NA,
@@ -349,6 +361,7 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param factor .
 #' @param permFactors .
 #' @param strata .
+#' @param covariates .
 #' @param transform .
 #' @param distance .
 #' @param distBinary .
@@ -384,6 +397,7 @@ permanova <- function(
     factor,
     permFactors = NULL,
     strata = NULL,
+    covariates = NULL,
     transform = "none",
     distance = "bray",
     distBinary = FALSE,
@@ -405,13 +419,15 @@ permanova <- function(
     if ( ! missing(factor)) factor <- jmvcore::resolveQuo(jmvcore::enquo(factor))
     if ( ! missing(permFactors)) permFactors <- jmvcore::resolveQuo(jmvcore::enquo(permFactors))
     if ( ! missing(strata)) strata <- jmvcore::resolveQuo(jmvcore::enquo(strata))
+    if ( ! missing(covariates)) covariates <- jmvcore::resolveQuo(jmvcore::enquo(covariates))
     if (missing(data))
         data <- jmvcore::marshalData(
             parent.frame(),
             `if`( ! missing(vars), vars, NULL),
             `if`( ! missing(factor), factor, NULL),
             `if`( ! missing(permFactors), permFactors, NULL),
-            `if`( ! missing(strata), strata, NULL))
+            `if`( ! missing(strata), strata, NULL),
+            `if`( ! missing(covariates), covariates, NULL))
 
     for (v in factor) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
     for (v in permFactors) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
@@ -422,6 +438,7 @@ permanova <- function(
         factor = factor,
         permFactors = permFactors,
         strata = strata,
+        covariates = covariates,
         transform = transform,
         distance = distance,
         distBinary = distBinary,
