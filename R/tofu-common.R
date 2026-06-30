@@ -217,7 +217,13 @@ tofu_display_term <- function(term, prep) {
 tofu_parallel <- function(enabled, n=NULL) {
     if (! isTRUE(enabled)) return(NULL)
     cores <- if (is.null(n) || n < 2) max(2, parallel::detectCores() - 1L) else as.integer(n)
-    tryCatch(parallel::makeCluster(cores), error=function(e) NULL)
+    cl <- tryCatch(parallel::makeCluster(cores), error=function(e) NULL)
+    if (is.null(cl)) return(NULL)
+    # adonis2/anosim/permutest dispatch vegan internals (e.g. do_getF) to the
+    # workers; a fresh PSOCK worker has no vegan namespace, so load vegan+permute.
+    ok <- tryCatch({ parallel::clusterEvalQ(cl, { library(vegan); library(permute) }); TRUE }, error=function(e) FALSE)
+    if (! ok) { try(parallel::stopCluster(cl), silent=TRUE); return(NULL) }
+    cl
 }
 
 tofu_parallel_stop <- function(cl) {
