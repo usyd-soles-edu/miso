@@ -22,6 +22,12 @@ children:
             name: factor
             maxItemCount: 1
             isTarget: true
+      - type: TargetLayoutBox
+        label: Environmental variables
+        children:
+          - type: VariablesListBox
+            name: nmdsEnv
+            isTarget: true
 
   - type: CollapseBox
     label: Resemblance
@@ -56,5 +62,13 @@ children:
         name: nmdsShepard
       - type: CheckBox
         name: nmdsOverlay
+      - type: CheckBox
+        name: nmdsSpecies
+      - type: CheckBox
+        name: nmdsHull
+      - type: CheckBox
+        name: nmdsEllipse
+      - type: CheckBox
+        name: nmdsSpider
 
 ...

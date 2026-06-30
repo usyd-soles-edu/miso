@@ -16,7 +16,12 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             nmdsTrymax = 20,
             nmdsMaxit = 200,
             nmdsShepard = TRUE,
-            nmdsOverlay = TRUE, ...) {
+            nmdsOverlay = TRUE,
+            nmdsEnv = NULL,
+            nmdsSpecies = FALSE,
+            nmdsHull = FALSE,
+            nmdsEllipse = FALSE,
+            nmdsSpider = FALSE, ...) {
 
             super$initialize(
                 package="tofu",
@@ -115,6 +120,30 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "nmdsOverlay",
                 nmdsOverlay,
                 default=TRUE)
+            private$..nmdsEnv <- jmvcore::OptionVariables$new(
+                "nmdsEnv",
+                nmdsEnv,
+                suggested=list(
+                    "continuous"),
+                permitted=list(
+                    "numeric"),
+                default=NULL)
+            private$..nmdsSpecies <- jmvcore::OptionBool$new(
+                "nmdsSpecies",
+                nmdsSpecies,
+                default=FALSE)
+            private$..nmdsHull <- jmvcore::OptionBool$new(
+                "nmdsHull",
+                nmdsHull,
+                default=FALSE)
+            private$..nmdsEllipse <- jmvcore::OptionBool$new(
+                "nmdsEllipse",
+                nmdsEllipse,
+                default=FALSE)
+            private$..nmdsSpider <- jmvcore::OptionBool$new(
+                "nmdsSpider",
+                nmdsSpider,
+                default=FALSE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -127,6 +156,11 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..nmdsMaxit)
             self$.addOption(private$..nmdsShepard)
             self$.addOption(private$..nmdsOverlay)
+            self$.addOption(private$..nmdsEnv)
+            self$.addOption(private$..nmdsSpecies)
+            self$.addOption(private$..nmdsHull)
+            self$.addOption(private$..nmdsEllipse)
+            self$.addOption(private$..nmdsSpider)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -139,7 +173,12 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         nmdsTrymax = function() private$..nmdsTrymax$value,
         nmdsMaxit = function() private$..nmdsMaxit$value,
         nmdsShepard = function() private$..nmdsShepard$value,
-        nmdsOverlay = function() private$..nmdsOverlay$value),
+        nmdsOverlay = function() private$..nmdsOverlay$value,
+        nmdsEnv = function() private$..nmdsEnv$value,
+        nmdsSpecies = function() private$..nmdsSpecies$value,
+        nmdsHull = function() private$..nmdsHull$value,
+        nmdsEllipse = function() private$..nmdsEllipse$value,
+        nmdsSpider = function() private$..nmdsSpider$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -151,7 +190,12 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..nmdsTrymax = NA,
         ..nmdsMaxit = NA,
         ..nmdsShepard = NA,
-        ..nmdsOverlay = NA)
+        ..nmdsOverlay = NA,
+        ..nmdsEnv = NA,
+        ..nmdsSpecies = NA,
+        ..nmdsHull = NA,
+        ..nmdsEllipse = NA,
+        ..nmdsSpider = NA)
 )
 
 nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -161,6 +205,7 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         warnings = function() private$.items[["warnings"]],
         summary = function() private$.items[["summary"]],
         ordination = function() private$.items[["ordination"]],
+        envfit = function() private$.items[["envfit"]],
         stress = function() private$.items[["stress"]],
         shepard = function() private$.items[["shepard"]],
         note = function() private$.items[["note"]]),
@@ -196,6 +241,34 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 width=600,
                 height=450,
                 renderFun=".plotNmds"))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="envfit",
+                title="Environmental Fit",
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="variable",
+                        `title`="Variable",
+                        `type`="text"),
+                    list(
+                        `name`="r2",
+                        `title`="r\u00B2",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="p",
+                        `title`="p",
+                        `type`="number",
+                        `format`="zto,pvalue"),
+                    list(
+                        `name`="NMDS1",
+                        `title`="NMDS1",
+                        `type`="number"),
+                    list(
+                        `name`="NMDS2",
+                        `title`="NMDS2",
+                        `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="stress",
@@ -258,11 +331,17 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param nmdsMaxit .
 #' @param nmdsShepard .
 #' @param nmdsOverlay .
+#' @param nmdsEnv .
+#' @param nmdsSpecies .
+#' @param nmdsHull .
+#' @param nmdsEllipse .
+#' @param nmdsSpider .
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
@@ -287,18 +366,25 @@ nmds <- function(
     nmdsTrymax = 20,
     nmdsMaxit = 200,
     nmdsShepard = TRUE,
-    nmdsOverlay = TRUE) {
+    nmdsOverlay = TRUE,
+    nmdsEnv = NULL,
+    nmdsSpecies = FALSE,
+    nmdsHull = FALSE,
+    nmdsEllipse = FALSE,
+    nmdsSpider = FALSE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("nmds requires jmvcore to be installed (restart may be required)")
 
     if ( ! missing(vars)) vars <- jmvcore::resolveQuo(jmvcore::enquo(vars))
     if ( ! missing(factor)) factor <- jmvcore::resolveQuo(jmvcore::enquo(factor))
+    if ( ! missing(nmdsEnv)) nmdsEnv <- jmvcore::resolveQuo(jmvcore::enquo(nmdsEnv))
     if (missing(data))
         data <- jmvcore::marshalData(
             parent.frame(),
             `if`( ! missing(vars), vars, NULL),
-            `if`( ! missing(factor), factor, NULL))
+            `if`( ! missing(factor), factor, NULL),
+            `if`( ! missing(nmdsEnv), nmdsEnv, NULL))
 
     for (v in factor) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
 
@@ -313,7 +399,12 @@ nmds <- function(
         nmdsTrymax = nmdsTrymax,
         nmdsMaxit = nmdsMaxit,
         nmdsShepard = nmdsShepard,
-        nmdsOverlay = nmdsOverlay)
+        nmdsOverlay = nmdsOverlay,
+        nmdsEnv = nmdsEnv,
+        nmdsSpecies = nmdsSpecies,
+        nmdsHull = nmdsHull,
+        nmdsEllipse = nmdsEllipse,
+        nmdsSpider = nmdsSpider)
 
     analysis <- nmdsClass$new(
         options = options,

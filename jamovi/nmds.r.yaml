@@ -27,6 +27,29 @@ items:
     height: 450
     renderFun: .plotNmds
 
+  - name: envfit
+    title: Environmental Fit
+    type: Table
+    rows: 0
+    columns:
+      - name: variable
+        title: Variable
+        type: text
+      - name: r2
+        title: r²
+        type: number
+        format: zto
+      - name: p
+        title: p
+        type: number
+        format: zto,pvalue
+      - name: NMDS1
+        title: NMDS1
+        type: number
+      - name: NMDS2
+        title: NMDS2
+        type: number
+
   - name: stress
     title: Stress and Convergence
     type: Table

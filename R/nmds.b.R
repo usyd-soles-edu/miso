@@ -8,7 +8,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .state = list(),
 
         .run = function() {
-            private$.state <- list(warnings=character(), nmds=NULL, group=NULL)
+            private$.state <- list(warnings=character(), nmds=NULL, group=NULL, envfit=NULL)
             private$.resetResults()
 
             prep <- tofu_prepare_resemblance(
@@ -18,7 +18,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 transform=self$options$transform,
                 distance=self$options$distance,
                 seed=self$options$seed,
-                requireFactor=FALSE, distBinary=self$options$distBinary)
+                requireFactor=FALSE, covariates=self$options$nmdsEnv, distBinary=self$options$distBinary)
             if (prep$error) {
                 self$results$warnings$setContent(prep$message)
                 return()
@@ -36,6 +36,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             tofu_clear_table(self$results$summary)
             tofu_clear_table(self$results$stress)
+            tofu_clear_table(self$results$envfit)
             self$results$note$setContent("")
         },
 
@@ -54,6 +55,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         k=k,
                         trymax=as.integer(self$options$nmdsTrymax),
                         maxit=as.integer(self$options$nmdsMaxit),
+                        wascores=isTRUE(self$options$nmdsSpecies),
                         autotransform=FALSE,
                         trace=FALSE),
                     warning=function(w) {
@@ -68,6 +70,27 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             private$.state$nmds <- fit
             private$.state$group <- prep$group
+
+            if (! is.null(prep$covariates) && ncol(prep$covariates) > 0) {
+                ef <- tryCatch(
+                    vegan::envfit(fit, prep$covariates, permutations=99L),
+                    error=function(e) e)
+                if (! inherits(ef, "error") && ! is.null(ef$vectors) && length(ef$vectors$r) > 0) {
+                    private$.state$envfit <- ef
+                    vsc <- vegan::scores(ef, display="vectors")
+                    r2 <- ef$vectors$r
+                    pv <- ef$vectors$pvals
+                    for (nm in rownames(vsc))
+                        self$results$envfit$addRow(rowKey=nm, values=list(
+                            variable=nm,
+                            r2=tofu_num_or_na(r2[nm]),
+                            p=tofu_num_or_na(pv[nm]),
+                            NMDS1=tofu_num_or_na(vsc[nm, 1]),
+                            NMDS2=tofu_num_or_na(vsc[nm, 2])))
+                } else if (inherits(ef, "error")) {
+                    note <- c(note, paste0("envfit failed: ", ef$message))
+                }
+            }
 
             self$results$stress$addRow(rowKey="stress", values=list(item="Stress", value=sprintf("%.4f", fit$stress)))
             self$results$stress$addRow(rowKey="dimensions", values=list(item="Dimensions", value=as.character(k)))
@@ -90,6 +113,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(fit))
                 return()
             group <- private$.state$group
+            ef <- private$.state$envfit
             scores <- vegan::scores(fit, display="sites")
             graphics::plot(scores[, 1], scores[, 2], type="n", xlab="nMDS1", ylab="nMDS2", main="nMDS Ordination")
             if (self$options$nmdsOverlay && ! is.null(group)) {
@@ -99,6 +123,22 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             else {
                 graphics::points(scores[, 1], scores[, 2], pch=19)
+            }
+            if (isTRUE(self$options$nmdsSpecies)) {
+                sp <- tryCatch(vegan::scores(fit, display="species"), error=function(e) NULL)
+                if (! is.null(sp) && nrow(sp) > 0)
+                    graphics::text(sp[, 1], sp[, 2], labels=rownames(sp), cex=0.7, col="grey40")
+            }
+            if (! is.null(ef) && ! is.null(ef$vectors)) {
+                vsc <- vegan::scores(ef, display="vectors")
+                graphics::arrows(0, 0, vsc[, 1], vsc[, 2], length=0.05, col="darkred")
+                graphics::text(vsc[, 1] * 1.12, vsc[, 2] * 1.12, labels=rownames(vsc), col="darkred", cex=0.75)
+            }
+            if (! is.null(group)) {
+                gp <- seq_along(levels(group))
+                if (isTRUE(self$options$nmdsHull))    try(vegan::ordihull(fit, group, col=gp, label=FALSE), silent=TRUE)
+                if (isTRUE(self$options$nmdsEllipse)) try(vegan::ordiellipse(fit, group, col=gp, kind="se", label=FALSE), silent=TRUE)
+                if (isTRUE(self$options$nmdsSpider))  try(vegan::ordispider(fit, group, col=gp, label=FALSE), silent=TRUE)
             }
             graphics::mtext(sprintf("Stress = %.3f", fit$stress), side=3, adj=1, line=0.2)
         },

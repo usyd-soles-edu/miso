@@ -464,3 +464,25 @@ test_that("covariates that saturate the model return a note", {
         covariates = c("depth", "temp", "sal"), permN = 9, seed = 123))
     expect_match(as.character(res$note$asString()), "PERMANOVA failed: PERMANOVA model is saturated")
 })
+
+test_that("envfit populates the environmental fit table", {
+    d <- workflow_data()
+    d$temp <- c(10, 12, 14, 16, 18, 20)
+    d$depth <- c(1, 2, 3, 4, 5, 6)
+    res <- suppressWarnings(suppressMessages(nmds(
+        data = d, vars = c("sp1", "sp2", "sp3"), factor = "group",
+        nmdsEnv = c("temp", "depth"), nmdsTrymax = 5, seed = 123)))
+    ef <- res$envfit$asDF
+    expect_true(nrow(ef) >= 1L)
+    expect_true(all(c("temp", "depth") %in% ef$variable))
+    expect_true(all(is.finite(ef$r2)))
+})
+
+test_that("nMDS ordination ornaments run without error", {
+    res <- suppressWarnings(suppressMessages(nmds(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        nmdsSpecies = TRUE, nmdsHull = TRUE, nmdsEllipse = TRUE, nmdsSpider = TRUE,
+        nmdsTrymax = 5, seed = 123)))
+    expect_false(is.null(res$ordination))
+    expect_false(is.null(res$envfit))
+})

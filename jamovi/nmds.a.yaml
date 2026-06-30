@@ -145,4 +145,33 @@ options:
     type: Bool
     default: true
 
+  - name: nmdsEnv
+    title: Environmental variables
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+    default: null
+
+  - name: nmdsSpecies
+    title: Show species scores
+    type: Bool
+    default: false
+
+  - name: nmdsHull
+    title: Group hulls
+    type: Bool
+    default: false
+
+  - name: nmdsEllipse
+    title: Group ellipses
+    type: Bool
+    default: false
+
+  - name: nmdsSpider
+    title: Group spiders
+    type: Bool
+    default: false
+
 ...
