@@ -55,6 +55,11 @@ items:
         type: number
         format: zto,pvalue
 
+      - name: padj
+        title: p-adj
+        type: number
+        format: zto,pvalue
+
   - name: note
     title: Notes
     type: Preformatted

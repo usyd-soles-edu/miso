@@ -13,7 +13,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             distance = "bray",
             distBinary = FALSE,
             seed = 0,
-            anosimN = 999, ...) {
+            anosimN = 999,
+            anosimAdjust = "holm", ...) {
 
             super$initialize(
                 package="tofu",
@@ -101,6 +102,16 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 anosimN,
                 default=999,
                 min=1)
+            private$..anosimAdjust <- jmvcore::OptionList$new(
+                "anosimAdjust",
+                anosimAdjust,
+                options=list(
+                    "holm",
+                    "bonferroni",
+                    "BH",
+                    "BY",
+                    "none"),
+                default="holm")
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -110,6 +121,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..anosimN)
+            self$.addOption(private$..anosimAdjust)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -119,7 +131,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         distance = function() private$..distance$value,
         distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
-        anosimN = function() private$..anosimN$value),
+        anosimN = function() private$..anosimN$value,
+        anosimAdjust = function() private$..anosimAdjust$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -128,7 +141,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..distance = NA,
         ..distBinary = NA,
         ..seed = NA,
-        ..anosimN = NA)
+        ..anosimN = NA,
+        ..anosimAdjust = NA)
 )
 
 anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -206,6 +220,11 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="p",
                         `title`="p",
                         `type`="number",
+                        `format`="zto,pvalue"),
+                    list(
+                        `name`="padj",
+                        `title`="p-adj",
+                        `type`="number",
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Preformatted$new(
                 options=options,
@@ -245,6 +264,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param distBinary .
 #' @param seed .
 #' @param anosimN .
+#' @param anosimAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
@@ -270,7 +290,8 @@ anosim <- function(
     distance = "bray",
     distBinary = FALSE,
     seed = 0,
-    anosimN = 999) {
+    anosimN = 999,
+    anosimAdjust = "holm") {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("anosim requires jmvcore to be installed (restart may be required)")
@@ -296,7 +317,8 @@ anosim <- function(
         distance = distance,
         distBinary = distBinary,
         seed = seed,
-        anosimN = anosimN)
+        anosimN = anosimN,
+        anosimAdjust = anosimAdjust)
 
     analysis <- anosimClass$new(
         options = options,

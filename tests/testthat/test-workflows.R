@@ -381,3 +381,13 @@ test_that("sqrt.dist and additive constant run in PERMDISP", {
         distSqrt = TRUE, distAdd = "cailliez", permN = 19, seed = 123)))
     expect_true(nrow(res$anova$asDF) >= 2L)
 })
+
+test_that("ANOSIM pairwise comparisons are p-adjusted", {
+    res <- suppressMessages(anosim(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        anosimN = 19, seed = 123))
+    pw <- res$pairwise$asDF
+    expect_true(nrow(pw) >= 1L)
+    expect_true("padj" %in% names(pw))
+    expect_equal(pw$padj, stats::p.adjust(pw$p, method = "holm"))
+})

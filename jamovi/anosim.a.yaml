@@ -132,4 +132,20 @@ options:
     default: 999
     min: 1
 
+  - name: anosimAdjust
+    title: P-value adjustment
+    type: List
+    options:
+      - title: Holm
+        name: holm
+      - title: Bonferroni
+        name: bonferroni
+      - title: Benjamini-Hochberg
+        name: BH
+      - title: Benjamini-Yekutieli
+        name: BY
+      - title: None
+        name: none
+    default: holm
+
 ...

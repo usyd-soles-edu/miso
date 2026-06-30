@@ -53,5 +53,7 @@ children:
       - type: TextBox
         name: anosimN
         format: number
+      - type: ComboBox
+        name: anosimAdjust
 
 ...

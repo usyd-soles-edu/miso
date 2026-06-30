@@ -73,25 +73,33 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             distMat <- as.matrix(prep$dist)
             pairs <- utils::combn(groups, 2, simplify=FALSE)
+            rows <- vector("list", length(pairs))
             for (i in seq_along(pairs)) {
                 pair <- pairs[[i]]
                 idx <- prep$group %in% pair
                 subGroup <- droplevels(prep$group[idx])
                 contrast <- paste(pair, collapse=" vs ")
-                if (any(table(subGroup) < 2)) {
-                    self$results$pairwise$addRow(rowKey=as.character(i), values=list(contrast=contrast, r=NA_real_, p=NA_real_))
-                    next
+                r <- NA_real_; p <- NA_real_
+                if (! any(table(subGroup) < 2)) {
+                    subDist <- stats::as.dist(distMat[idx, idx, drop=FALSE])
+                    tofu_set_seed(prep)
+                    fit <- tryCatch(
+                        vegan::anosim(subDist, subGroup, permutations=as.integer(self$options$anosimN)),
+                        error=function(e) e)
+                    if (! inherits(fit, "error")) {
+                        r <- as.numeric(fit$statistic)
+                        p <- as.numeric(fit$signif)
+                    }
                 }
+                rows[[i]] <- list(contrast=contrast, r=r, p=p)
+            }
 
-                subDist <- stats::as.dist(distMat[idx, idx, drop=FALSE])
-                tofu_set_seed(prep)
-                fit <- tryCatch(
-                    vegan::anosim(subDist, subGroup, permutations=as.integer(self$options$anosimN)),
-                    error=function(e) e)
-                if (inherits(fit, "error"))
-                    self$results$pairwise$addRow(rowKey=as.character(i), values=list(contrast=contrast, r=NA_real_, p=NA_real_))
-                else
-                    self$results$pairwise$addRow(rowKey=as.character(i), values=list(contrast=contrast, r=as.numeric(fit$statistic), p=as.numeric(fit$signif)))
+            pvals <- vapply(rows, function(x) x$p, NA_real_)
+            method <- self$options$anosimAdjust
+            padj <- if (identical(method, "none")) pvals else stats::p.adjust(pvals, method=method)
+            for (i in seq_along(rows)) {
+                rows[[i]]$padj <- padj[i]
+                self$results$pairwise$addRow(rowKey=as.character(i), values=rows[[i]])
             }
         }
     )
