@@ -9,6 +9,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             private$.state <- list(warnings=character())
+            private$.state$cl <- tofu_parallel(self$options$useParallel)
+            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
             private$.resetResults()
 
             prep <- tofu_prepare_resemblance(
@@ -47,7 +49,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 strata <- droplevels(as.factor(prep$data[[prep$strata[[1]]]]))
 
             fit <- tryCatch(
-                vegan::anosim(prep$dist, prep$group, permutations=tofu_permutation(self$options$anosimN, self$options$permScheme, strata)),
+                vegan::anosim(prep$dist, prep$group, permutations=tofu_permutation(self$options$anosimN, self$options$permScheme, strata), parallel=private$.state$cl),
                 error=function(e) e)
             if (inherits(fit, "error")) {
                 self$results$note$setContent(paste0("ANOSIM failed: ", fit$message))

@@ -175,6 +175,11 @@ options:
         name: series
     default: stratified
 
+  - name: useParallel
+    title: Parallel processing
+    type: Bool
+    default: false
+
   - name: permBy
     title: Test type
     type: List

@@ -16,6 +16,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             seed = 0,
             permN = 999,
             permScheme = "stratified",
+            useParallel = FALSE,
             dispType = "median",
             dispBias = FALSE,
             dispPairwise = FALSE,
@@ -118,6 +119,10 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "stratified",
                     "series"),
                 default="stratified")
+            private$..useParallel <- jmvcore::OptionBool$new(
+                "useParallel",
+                useParallel,
+                default=FALSE)
             private$..dispType <- jmvcore::OptionList$new(
                 "dispType",
                 dispType,
@@ -154,6 +159,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..seed)
             self$.addOption(private$..permN)
             self$.addOption(private$..permScheme)
+            self$.addOption(private$..useParallel)
             self$.addOption(private$..dispType)
             self$.addOption(private$..dispBias)
             self$.addOption(private$..dispPairwise)
@@ -170,6 +176,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         seed = function() private$..seed$value,
         permN = function() private$..permN$value,
         permScheme = function() private$..permScheme$value,
+        useParallel = function() private$..useParallel$value,
         dispType = function() private$..dispType$value,
         dispBias = function() private$..dispBias$value,
         dispPairwise = function() private$..dispPairwise$value,
@@ -185,6 +192,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..seed = NA,
         ..permN = NA,
         ..permScheme = NA,
+        ..useParallel = NA,
         ..dispType = NA,
         ..dispBias = NA,
         ..dispPairwise = NA,
@@ -343,6 +351,7 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param seed .
 #' @param permN .
 #' @param permScheme .
+#' @param useParallel .
 #' @param dispType .
 #' @param dispBias .
 #' @param dispPairwise .
@@ -377,6 +386,7 @@ permdisp <- function(
     seed = 0,
     permN = 999,
     permScheme = "stratified",
+    useParallel = FALSE,
     dispType = "median",
     dispBias = FALSE,
     dispPairwise = FALSE,
@@ -406,6 +416,7 @@ permdisp <- function(
         seed = seed,
         permN = permN,
         permScheme = permScheme,
+        useParallel = useParallel,
         dispType = dispType,
         dispBias = dispBias,
         dispPairwise = dispPairwise,

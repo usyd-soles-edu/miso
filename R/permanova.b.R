@@ -9,6 +9,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             private$.state <- list(warnings=character())
+            private$.state$cl <- tofu_parallel(self$options$useParallel)
+            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
             private$.resetResults()
 
             prep <- tofu_prepare_resemblance(
@@ -88,7 +90,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 formula,
                 data=model$data,
                 permutations=tofu_permutation(self$options$permN, self$options$permScheme, model$strata),
-                by=by, sqrt.dist=isTRUE(self$options$distSqrt), add=if (identical(self$options$distAdd, "none")) FALSE else self$options$distAdd)
+                by=by, parallel=private$.state$cl, sqrt.dist=isTRUE(self$options$distSqrt), add=if (identical(self$options$distAdd, "none")) FALSE else self$options$distAdd)
         },
 
         .makeModelData = function(prep) {

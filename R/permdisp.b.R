@@ -9,6 +9,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             private$.state <- list(warnings=character(), distances=NULL)
+            private$.state$cl <- tofu_parallel(self$options$useParallel)
+            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
             private$.resetResults()
 
             prep <- tofu_prepare_resemblance(
@@ -55,7 +57,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             for (i in seq_along(means))
                 self$results$distances$addRow(rowKey=names(means)[i], values=list(group=names(means)[i], distance=means[[i]]))
 
-            perm <- tryCatch(vegan::permutest(fit, permutations=tofu_permutation(self$options$permN, self$options$permScheme, NULL)), error=function(e) e)
+            perm <- tryCatch(vegan::permutest(fit, permutations=tofu_permutation(self$options$permN, self$options$permScheme, NULL), parallel=private$.state$cl), error=function(e) e)
             if (inherits(perm, "error")) {
                 self$results$note$setContent(paste0("PERMDISP permutation test failed: ", perm$message))
                 return()
@@ -75,7 +77,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) >= 3) {
                 pt <- tryCatch(
-                    vegan::permutest(fit, permutations=tofu_permutation(self$options$permN, self$options$permScheme, NULL), pairwise=TRUE),
+                    vegan::permutest(fit, permutations=tofu_permutation(self$options$permN, self$options$permScheme, NULL), pairwise=TRUE, parallel=private$.state$cl),
                     error=function(e) e)
                 if (! inherits(pt, "error") && ! is.null(pt$pairwise) && length(pt$pairwise$permuted) > 0) {
                     labels <- names(pt$pairwise$permuted)

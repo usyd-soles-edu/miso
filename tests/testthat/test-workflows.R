@@ -433,3 +433,13 @@ test_that("stratified scheme with a strata factor runs in PERMANOVA", {
         strata = "block", permScheme = "stratified", permN = 19, seed = 123))
     expect_true(nrow(res$table$asDF) >= 1L)
 })
+
+test_that("parallel PERMANOVA reproduces serial results under the same seed", {
+    serial <- suppressMessages(permanova(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        useParallel = FALSE, permN = 19, seed = 123))
+    par <- suppressMessages(permanova(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        useParallel = TRUE, permN = 19, seed = 123))
+    expect_equal(par$table$asDF$p, serial$table$asDF$p, tolerance = 1e-6)
+})

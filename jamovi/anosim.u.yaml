@@ -55,6 +55,8 @@ children:
         format: number
       - type: ComboBox
         name: permScheme
+      - type: CheckBox
+        name: useParallel
       - type: ComboBox
         name: anosimAdjust
 

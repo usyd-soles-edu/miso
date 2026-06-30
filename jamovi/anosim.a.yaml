@@ -144,6 +144,11 @@ options:
         name: series
     default: stratified
 
+  - name: useParallel
+    title: Parallel processing
+    type: Bool
+    default: false
+
   - name: anosimAdjust
     title: P-value adjustment
     type: List

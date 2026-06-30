@@ -15,6 +15,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             seed = 0,
             anosimN = 999,
             permScheme = "stratified",
+            useParallel = FALSE,
             anosimAdjust = "holm", ...) {
 
             super$initialize(
@@ -111,6 +112,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "stratified",
                     "series"),
                 default="stratified")
+            private$..useParallel <- jmvcore::OptionBool$new(
+                "useParallel",
+                useParallel,
+                default=FALSE)
             private$..anosimAdjust <- jmvcore::OptionList$new(
                 "anosimAdjust",
                 anosimAdjust,
@@ -131,6 +136,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..seed)
             self$.addOption(private$..anosimN)
             self$.addOption(private$..permScheme)
+            self$.addOption(private$..useParallel)
             self$.addOption(private$..anosimAdjust)
         }),
     active = list(
@@ -143,6 +149,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         seed = function() private$..seed$value,
         anosimN = function() private$..anosimN$value,
         permScheme = function() private$..permScheme$value,
+        useParallel = function() private$..useParallel$value,
         anosimAdjust = function() private$..anosimAdjust$value),
     private = list(
         ..vars = NA,
@@ -154,6 +161,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..seed = NA,
         ..anosimN = NA,
         ..permScheme = NA,
+        ..useParallel = NA,
         ..anosimAdjust = NA)
 )
 
@@ -277,6 +285,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param seed .
 #' @param anosimN .
 #' @param permScheme .
+#' @param useParallel .
 #' @param anosimAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
@@ -305,6 +314,7 @@ anosim <- function(
     seed = 0,
     anosimN = 999,
     permScheme = "stratified",
+    useParallel = FALSE,
     anosimAdjust = "holm") {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
@@ -333,6 +343,7 @@ anosim <- function(
         seed = seed,
         anosimN = anosimN,
         permScheme = permScheme,
+        useParallel = useParallel,
         anosimAdjust = anosimAdjust)
 
     analysis <- anosimClass$new(
