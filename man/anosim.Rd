@@ -11,8 +11,12 @@ anosim(
   strata = NULL,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
   seed = 0,
-  anosimN = 999
+  anosimN = 999,
+  permScheme = "stratified",
+  useParallel = FALSE,
+  anosimAdjust = "holm"
 )
 }
 \arguments{
@@ -28,9 +32,17 @@ anosim(
 
 \item{distance}{.}
 
+\item{distBinary}{.}
+
 \item{seed}{.}
 
 \item{anosimN}{.}
+
+\item{permScheme}{.}
+
+\item{useParallel}{.}
+
+\item{anosimAdjust}{.}
 }
 \value{
 A results object containing:

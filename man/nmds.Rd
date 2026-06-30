@@ -10,12 +10,18 @@ nmds(
   factor = NULL,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
   seed = 0,
   nmdsK = 2,
   nmdsTrymax = 20,
   nmdsMaxit = 200,
   nmdsShepard = TRUE,
-  nmdsOverlay = TRUE
+  nmdsOverlay = TRUE,
+  nmdsEnv = NULL,
+  nmdsSpecies = FALSE,
+  nmdsHull = FALSE,
+  nmdsEllipse = FALSE,
+  nmdsSpider = FALSE
 )
 }
 \arguments{
@@ -29,6 +35,8 @@ nmds(
 
 \item{distance}{.}
 
+\item{distBinary}{.}
+
 \item{seed}{.}
 
 \item{nmdsK}{.}
@@ -40,6 +48,16 @@ nmds(
 \item{nmdsShepard}{.}
 
 \item{nmdsOverlay}{.}
+
+\item{nmdsEnv}{.}
+
+\item{nmdsSpecies}{.}
+
+\item{nmdsHull}{.}
+
+\item{nmdsEllipse}{.}
+
+\item{nmdsSpider}{.}
 }
 \value{
 A results object containing:
@@ -47,6 +65,7 @@ A results object containing:
   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
+  \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr

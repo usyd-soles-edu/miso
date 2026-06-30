@@ -10,11 +10,17 @@ permanova(
   factor,
   permFactors = NULL,
   strata = NULL,
+  covariates = NULL,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
+  distSqrt = FALSE,
+  distAdd = "none",
   seed = 0,
   permInteractions = FALSE,
   permN = 999,
+  permScheme = "stratified",
+  useParallel = FALSE,
   permBy = "terms",
   permPairwise = FALSE,
   permAdjust = "holm"
@@ -31,15 +37,27 @@ permanova(
 
 \item{strata}{.}
 
+\item{covariates}{.}
+
 \item{transform}{.}
 
 \item{distance}{.}
+
+\item{distBinary}{.}
+
+\item{distSqrt}{.}
+
+\item{distAdd}{.}
 
 \item{seed}{.}
 
 \item{permInteractions}{.}
 
 \item{permN}{.}
+
+\item{permScheme}{.}
+
+\item{useParallel}{.}
 
 \item{permBy}{.}
 

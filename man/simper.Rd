@@ -10,6 +10,7 @@ simper(
   factor,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
   seed = 0,
   simperN = 999,
   simperTop = 10,
@@ -26,6 +27,8 @@ simper(
 \item{transform}{.}
 
 \item{distance}{.}
+
+\item{distBinary}{.}
 
 \item{seed}{.}
 

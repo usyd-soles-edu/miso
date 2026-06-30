@@ -1,12 +1,12 @@
 ---
 title: Multivariate Abundance Workflows
 name: tofu
-version: 0.1.0
+version: 0.2.0
 jms: '1.0'
 authors:
   - Januar Harianto
 maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
-date: '2026-05-23'
+date: '2026-06-30'
 type: R
 description: >-
   Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, and nMDS workflows for

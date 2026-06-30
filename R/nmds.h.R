@@ -303,7 +303,7 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             super$initialize(
                 package = "tofu",
                 name = "nmds",
-                version = c(0,1,0),
+                version = c(0,2,0),
                 options = options,
                 results = nmdsResults$new(options=options),
                 data = data,

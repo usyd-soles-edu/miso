@@ -4,7 +4,7 @@ title: PERMANOVA
 menuGroup: tofu
 menuSubgroup: Compare groups
 menuTitle: PERMANOVA
-version: '0.1.0'
+version: '0.2.0'
 jas: '1.2'
 
 options:

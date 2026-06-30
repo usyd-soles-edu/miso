@@ -10,10 +10,17 @@ permdisp(
   factor,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
+  distSqrt = FALSE,
+  distAdd = "none",
   seed = 0,
   permN = 999,
+  permScheme = "stratified",
+  useParallel = FALSE,
   dispType = "median",
-  dispBias = FALSE
+  dispBias = FALSE,
+  dispPairwise = FALSE,
+  dispAdjust = "holm"
 )
 }
 \arguments{
@@ -27,13 +34,27 @@ permdisp(
 
 \item{distance}{.}
 
+\item{distBinary}{.}
+
+\item{distSqrt}{.}
+
+\item{distAdd}{.}
+
 \item{seed}{.}
 
 \item{permN}{.}
 
+\item{permScheme}{.}
+
+\item{useParallel}{.}
+
 \item{dispType}{.}
 
 \item{dispBias}{.}
+
+\item{dispPairwise}{.}
+
+\item{dispAdjust}{.}
 }
 \value{
 A results object containing:
@@ -42,6 +63,7 @@ A results object containing:
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
+  \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
 }
