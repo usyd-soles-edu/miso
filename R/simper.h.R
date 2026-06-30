@@ -10,6 +10,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             factor = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
             seed = 0,
             simperN = 999,
             simperTop = 10,
@@ -47,7 +48,14 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -66,8 +74,15 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE)
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -94,6 +109,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..factor)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..simperN)
             self$.addOption(private$..simperTop)
@@ -104,6 +120,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         factor = function() private$..factor$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
         simperN = function() private$..simperN$value,
         simperTop = function() private$..simperTop$value,
@@ -113,6 +130,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..factor = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
         ..seed = NA,
         ..simperN = NA,
         ..simperTop = NA,
@@ -228,6 +246,7 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param factor .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
 #' @param seed .
 #' @param simperN .
 #' @param simperTop .
@@ -254,6 +273,7 @@ simper <- function(
     factor,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
     seed = 0,
     simperN = 999,
     simperTop = 10,
@@ -277,6 +297,7 @@ simper <- function(
         factor = factor,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
         seed = seed,
         simperN = simperN,
         simperTop = simperTop,

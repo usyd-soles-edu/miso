@@ -17,7 +17,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 factor=self$options$factor,
                 transform=self$options$transform,
                 distance=self$options$distance,
-                seed=self$options$seed)
+                seed=self$options$seed, distBinary=self$options$distBinary)
             if (prep$error) {
                 self$results$warnings$setContent(prep$message)
                 return()
@@ -42,7 +42,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .runDispersion = function(prep) {
             tofu_set_seed(prep)
             fit <- tryCatch(
-                vegan::betadisper(prep$dist, prep$group, type=self$options$dispType, bias.adjust=self$options$dispBias),
+                vegan::betadisper(prep$dist, prep$group, type=self$options$dispType, bias.adjust=self$options$dispBias, sqrt.dist=isTRUE(self$options$distSqrt), add=if (identical(self$options$distAdd, "none")) FALSE else self$options$distAdd),
                 error=function(e) e)
             if (inherits(fit, "error")) {
                 self$results$note$setContent(paste0("PERMDISP failed: ", fit$message))

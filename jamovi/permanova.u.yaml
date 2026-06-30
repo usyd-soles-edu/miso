@@ -1,4 +1,3 @@
----
 title: PERMANOVA
 name: permanova
 jus: '3.0'
@@ -35,7 +34,6 @@ children:
             name: strata
             maxItemCount: 1
             isTarget: true
-
   - type: CollapseBox
     label: Resemblance
     collapsed: false
@@ -45,10 +43,15 @@ children:
         name: transform
       - type: ComboBox
         name: distance
+      - type: CheckBox
+        name: distBinary
+      - type: CheckBox
+        name: distSqrt
+      - type: ComboBox
+        name: distAdd
       - type: TextBox
         name: seed
         format: number
-
   - type: CollapseBox
     label: PERMANOVA
     collapsed: false
@@ -65,5 +68,3 @@ children:
         name: permPairwise
       - type: ComboBox
         name: permAdjust
-
-...

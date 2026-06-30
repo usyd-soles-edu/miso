@@ -10,6 +10,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             factor = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
+            distSqrt = FALSE,
+            distAdd = "none",
             seed = 0,
             permN = 999,
             dispType = "median",
@@ -47,7 +50,14 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -66,8 +76,27 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE)
+            private$..distSqrt <- jmvcore::OptionBool$new(
+                "distSqrt",
+                distSqrt,
+                default=FALSE)
+            private$..distAdd <- jmvcore::OptionList$new(
+                "distAdd",
+                distAdd,
+                options=list(
+                    "none",
+                    "cailliez",
+                    "lingoes"),
+                default="none")
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -94,6 +123,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..factor)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
+            self$.addOption(private$..distSqrt)
+            self$.addOption(private$..distAdd)
             self$.addOption(private$..seed)
             self$.addOption(private$..permN)
             self$.addOption(private$..dispType)
@@ -104,6 +136,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         factor = function() private$..factor$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
+        distSqrt = function() private$..distSqrt$value,
+        distAdd = function() private$..distAdd$value,
         seed = function() private$..seed$value,
         permN = function() private$..permN$value,
         dispType = function() private$..dispType$value,
@@ -113,6 +148,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..factor = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
+        ..distSqrt = NA,
+        ..distAdd = NA,
         ..seed = NA,
         ..permN = NA,
         ..dispType = NA,
@@ -240,6 +278,9 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param factor .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
+#' @param distSqrt .
+#' @param distAdd .
 #' @param seed .
 #' @param permN .
 #' @param dispType .
@@ -267,6 +308,9 @@ permdisp <- function(
     factor,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
+    distSqrt = FALSE,
+    distAdd = "none",
     seed = 0,
     permN = 999,
     dispType = "median",
@@ -290,6 +334,9 @@ permdisp <- function(
         factor = factor,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
+        distSqrt = distSqrt,
+        distAdd = distAdd,
         seed = seed,
         permN = permN,
         dispType = dispType,

@@ -10,6 +10,7 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             factor = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
             seed = 0,
             nmdsK = 2,
             nmdsTrymax = 20,
@@ -50,7 +51,14 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -69,8 +77,15 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE)
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -105,6 +120,7 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..factor)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..nmdsK)
             self$.addOption(private$..nmdsTrymax)
@@ -117,6 +133,7 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         factor = function() private$..factor$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
         nmdsK = function() private$..nmdsK$value,
         nmdsTrymax = function() private$..nmdsTrymax$value,
@@ -128,6 +145,7 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..factor = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
         ..seed = NA,
         ..nmdsK = NA,
         ..nmdsTrymax = NA,
@@ -233,6 +251,7 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param factor .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
 #' @param seed .
 #' @param nmdsK .
 #' @param nmdsTrymax .
@@ -262,6 +281,7 @@ nmds <- function(
     factor = NULL,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
     seed = 0,
     nmdsK = 2,
     nmdsTrymax = 20,
@@ -287,6 +307,7 @@ nmds <- function(
         factor = factor,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
         seed = seed,
         nmdsK = nmdsK,
         nmdsTrymax = nmdsTrymax,

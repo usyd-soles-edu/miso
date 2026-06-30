@@ -12,6 +12,9 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             strata = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
+            distSqrt = FALSE,
+            distAdd = "none",
             seed = 0,
             permInteractions = FALSE,
             permN = 999,
@@ -69,7 +72,14 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -88,8 +98,27 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE)
+            private$..distSqrt <- jmvcore::OptionBool$new(
+                "distSqrt",
+                distSqrt,
+                default=FALSE)
+            private$..distAdd <- jmvcore::OptionList$new(
+                "distAdd",
+                distAdd,
+                options=list(
+                    "none",
+                    "cailliez",
+                    "lingoes"),
+                default="none")
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -133,6 +162,9 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..strata)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
+            self$.addOption(private$..distSqrt)
+            self$.addOption(private$..distAdd)
             self$.addOption(private$..seed)
             self$.addOption(private$..permInteractions)
             self$.addOption(private$..permN)
@@ -147,6 +179,9 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         strata = function() private$..strata$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
+        distSqrt = function() private$..distSqrt$value,
+        distAdd = function() private$..distAdd$value,
         seed = function() private$..seed$value,
         permInteractions = function() private$..permInteractions$value,
         permN = function() private$..permN$value,
@@ -160,6 +195,9 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..strata = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
+        ..distSqrt = NA,
+        ..distAdd = NA,
         ..seed = NA,
         ..permInteractions = NA,
         ..permN = NA,
@@ -293,6 +331,9 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param strata .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
+#' @param distSqrt .
+#' @param distAdd .
 #' @param seed .
 #' @param permInteractions .
 #' @param permN .
@@ -323,6 +364,9 @@ permanova <- function(
     strata = NULL,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
+    distSqrt = FALSE,
+    distAdd = "none",
     seed = 0,
     permInteractions = FALSE,
     permN = 999,
@@ -356,6 +400,9 @@ permanova <- function(
         strata = strata,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
+        distSqrt = distSqrt,
+        distAdd = distAdd,
         seed = seed,
         permInteractions = permInteractions,
         permN = permN,

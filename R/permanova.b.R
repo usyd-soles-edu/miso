@@ -19,7 +19,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance=self$options$distance,
                 seed=self$options$seed,
                 extraVars=self$options$permFactors,
-                strata=self$options$strata)
+                strata=self$options$strata, distBinary=self$options$distBinary)
             if (prep$error) {
                 self$results$warnings$setContent(prep$message)
                 return()
@@ -89,7 +89,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 data=model$data,
                 permutations=as.integer(self$options$permN),
                 by=by,
-                strata=model$strata)
+                strata=model$strata, sqrt.dist=isTRUE(self$options$distSqrt), add=if (identical(self$options$distAdd, "none")) FALSE else self$options$distAdd)
         },
 
         .makeModelData = function(prep) {

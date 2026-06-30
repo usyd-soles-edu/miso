@@ -39,6 +39,8 @@ children:
         name: transform
       - type: ComboBox
         name: distance
+      - type: CheckBox
+        name: distBinary
       - type: TextBox
         name: seed
         format: number

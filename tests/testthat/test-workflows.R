@@ -326,3 +326,58 @@ test_that("nMDS can run without an overlay grouping variable", {
     expect_equal(as.character(res$summary$asDF$value[res$summary$asDF$item == "Grouping variable"]), "not selected")
 }
 )
+
+test_that("new distance indices run through PERMANOVA", {
+    for (dm in c("clark", "altGower")) {
+        res <- suppressMessages(permanova(
+            data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+            distance = dm, permN = 19, seed = 123))
+        expect_true(nrow(res$table$asDF) >= 1L, info = dm)
+    }
+})
+
+test_that("new transformations run through PERMANOVA", {
+    for (tr in c("rclr", "chi.square", "normalize", "range", "standardize", "max", "frequency")) {
+        res <- suppressMessages(permanova(
+            data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+            transform = tr, distance = "euclidean", permN = 9, seed = 123))
+        expect_true(nrow(res$table$asDF) >= 1L, info = tr)
+    }
+})
+
+test_that("binary dissimilarity toggles presence/absence and warns", {
+    res <- suppressMessages(permanova(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        distBinary = TRUE, permN = 19, seed = 123))
+    expect_match(as.character(res$warnings$asString()), "Binary \\(presence/absence\\) dissimilarity requested")
+    expect_true(nrow(res$table$asDF) >= 1L)
+})
+
+test_that("mahalanobis is rejected when n <= p", {
+    set.seed(1)
+    wide <- as.data.frame(matrix(rpois(6 * 8, 3), nrow = 6, dimnames = list(NULL, paste0("g", 1:8))))
+    wide$group <- factor(rep(c("A", "B", "C"), each = 2))
+    res <- suppressMessages(permanova(
+        data = wide, vars = paste0("g", 1:8), factor = "group",
+        distance = "mahalanobis", permN = 9, seed = 123))
+    expect_match(as.character(res$warnings$asString()), "mahalanobis requires more samples than features")
+})
+
+test_that("sqrt.dist and additive constant run in PERMANOVA", {
+    res <- suppressMessages(permanova(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        distSqrt = TRUE, distAdd = "cailliez", permN = 19, seed = 123))
+    expect_true(nrow(res$table$asDF) >= 1L)
+
+    res2 <- suppressMessages(permanova(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        distAdd = "lingoes", permN = 19, seed = 123))
+    expect_true(nrow(res2$table$asDF) >= 1L)
+})
+
+test_that("sqrt.dist and additive constant run in PERMDISP", {
+    res <- suppressWarnings(suppressMessages(permdisp(
+        data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
+        distSqrt = TRUE, distAdd = "cailliez", permN = 19, seed = 123)))
+    expect_true(nrow(res$anova$asDF) >= 2L)
+})

@@ -112,6 +112,9 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     if (any(! is.finite(transformed)))
         return(list(error=TRUE, message="Transformation produced non-finite values. Check for empty samples/features or incompatible data."))
 
+    if (any(transformed < 0, na.rm=TRUE))
+        warnings <- c(warnings, "Transformation produced negative values; abundance dissimilarity indices (e.g. Bray-Curtis) may be meaningless -- consider a Euclidean-type index for centered/log-ratio transforms.")
+
     distObj <- tryCatch(
         withCallingHandlers(
             vegan::vegdist(transformed, method=distance, binary=isTRUE(distBinary)),

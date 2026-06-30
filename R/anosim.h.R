@@ -11,6 +11,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             strata = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
             seed = 0,
             anosimN = 999, ...) {
 
@@ -55,7 +56,14 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -74,8 +82,15 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE)
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -92,6 +107,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..strata)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..anosimN)
         }),
@@ -101,6 +117,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         strata = function() private$..strata$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
         anosimN = function() private$..anosimN$value),
     private = list(
@@ -109,6 +126,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..strata = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
         ..seed = NA,
         ..anosimN = NA)
 )
@@ -224,6 +242,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param strata .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
 #' @param seed .
 #' @param anosimN .
 #' @return A results object containing:
@@ -249,6 +268,7 @@ anosim <- function(
     strata = NULL,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
     seed = 0,
     anosimN = 999) {
 
@@ -274,6 +294,7 @@ anosim <- function(
         strata = strata,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
         seed = seed,
         anosimN = anosimN)
 

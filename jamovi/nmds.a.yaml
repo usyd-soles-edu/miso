@@ -49,6 +49,20 @@ options:
         name: hellinger
       - title: Total
         name: total
+      - title: Max
+        name: max
+      - title: Frequency
+        name: frequency
+      - title: Normalize
+        name: normalize
+      - title: Range
+        name: range
+      - title: Standardize
+        name: standardize
+      - title: Chi-square
+        name: chi.square
+      - title: Reverse CLR
+        name: rclr
     default: none
 
   - name: distance
@@ -83,7 +97,18 @@ options:
         name: chao
       - title: Cao
         name: cao
+      - title: Clark
+        name: clark
+      - title: Alternative Gower
+        name: altGower
+      - title: Mahalanobis
+        name: mahalanobis
     default: bray
+
+  - name: distBinary
+    title: Binary (presence/absence)
+    type: Bool
+    default: false
 
   - name: seed
     title: Random seed

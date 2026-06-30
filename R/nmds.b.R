@@ -18,7 +18,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 transform=self$options$transform,
                 distance=self$options$distance,
                 seed=self$options$seed,
-                requireFactor=FALSE)
+                requireFactor=FALSE, distBinary=self$options$distBinary)
             if (prep$error) {
                 self$results$warnings$setContent(prep$message)
                 return()
