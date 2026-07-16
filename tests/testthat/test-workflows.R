@@ -235,6 +235,14 @@ test_that("PERMANOVA returns stable numeric results", {
     expect_equal(tab$r2[tab$source == "group"], 0.1788435, tolerance = 1e-6)
     expect_equal(tab$f[tab$source == "group"], 0.3266921, tolerance = 1e-6)
     expect_equal(tab$p[tab$source == "group"], 0.7, tolerance = 1e-6)
+
+    for (source in c("Residual", "Total")) {
+        rowKey <- res$table$rowKeys[[which(tab$source == source)]]
+        expect_true(is.na(tab$f[tab$source == source]))
+        expect_true(is.na(tab$p[tab$source == source]))
+        expect_identical(res$table$getCell(rowKey=rowKey, col="f")$value, "")
+        expect_identical(res$table$getCell(rowKey=rowKey, col="p")$value, "")
+    }
 })
 
 test_that("PERMDISP returns test table and plot output", {
@@ -252,6 +260,16 @@ test_that("PERMDISP returns test table and plot output", {
     expect_true(nrow(res$anova$asDF) >= 2L)
     expect_true(nrow(res$distances$asDF) >= 3L)
     expect_false(is.null(res$plot))
+
+    tab <- res$anova$asDF
+    residual <- which(tab$source %in% c("Residual", "Residuals"))
+    expect_length(residual, 1L)
+    expect_true(is.na(tab$f[residual]))
+    expect_true(is.na(tab$p[residual]))
+
+    rowKey <- res$anova$rowKeys[[residual]]
+    expect_identical(res$anova$getCell(rowKey=rowKey, col="f")$value, "")
+    expect_identical(res$anova$getCell(rowKey=rowKey, col="p")$value, "")
 })
 
 test_that("ANOSIM returns stable numeric results", {

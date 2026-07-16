@@ -6,3 +6,4 @@
 ^\.\.Rcheck$
 ^build$
 ^tofu_.*\.jmo$
+^tests/manual/workbooks$

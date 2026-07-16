@@ -54,13 +54,15 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tab <- as.data.frame(result)
             rn <- rownames(tab)
             for (i in seq_len(nrow(tab))) {
-                self$results$table$addRow(rowKey=as.character(i), values=list(
+                notApplicable <- rn[i] %in% c("Residual", "Total")
+                values <- list(
                     source=tofu_display_term(rn[i], prep),
                     df=tofu_num_or_na(tab[i, "Df"]),
                     sumsqs=tofu_num_or_na(tab[i, "SumOfSqs"]),
                     r2=tofu_num_or_na(tab[i, "R2"]),
-                    f=tofu_num_or_na(tab[i, "F"]),
-                    p=tofu_num_or_na(tab[i, "Pr(>F)"])))
+                    f=if (notApplicable) "" else tofu_num_or_na(tab[i, "F"]),
+                    p=if (notApplicable) "" else tofu_num_or_na(tab[i, "Pr(>F)"]))
+                self$results$table$addRow(rowKey=as.character(i), values=values)
             }
 
             self$results$note$setContent(sprintf("Transform: %s\nDissimilarity: %s\nPermutations: %s\nTest type: %s\nSeed: %s",

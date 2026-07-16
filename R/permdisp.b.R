@@ -66,13 +66,15 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             atab <- as.data.frame(perm$tab)
             rn <- rownames(atab)
             for (i in seq_len(nrow(atab))) {
-                self$results$anova$addRow(rowKey=as.character(i), values=list(
+                notApplicable <- rn[i] %in% c("Residual", "Residuals")
+                values <- list(
                     source=rn[i],
                     df=tofu_num_or_na(atab[i, "Df"]),
                     sumsqs=tofu_num_or_na(atab[i, "Sum Sq"]),
                     meansq=tofu_num_or_na(atab[i, "Mean Sq"]),
-                    f=tofu_num_or_na(atab[i, "F"]),
-                    p=tofu_num_or_na(atab[i, "Pr(>F)"])))
+                    f=if (notApplicable) "" else tofu_num_or_na(atab[i, "F"]),
+                    p=if (notApplicable) "" else tofu_num_or_na(atab[i, "Pr(>F)"]))
+                self$results$anova$addRow(rowKey=as.character(i), values=values)
             }
 
             if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) >= 3) {
