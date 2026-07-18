@@ -2,8 +2,8 @@
 name: permdisp
 title: PERMDISP
 menuGroup: tofu
-menuSubgroup: Check dispersion
 menuTitle: PERMDISP
+menuSubtitle: Check group dispersion
 version: '0.2.0'
 jas: '1.2'
 
@@ -12,7 +12,7 @@ options:
     type: Data
 
   - name: vars
-    title: Feature variables
+    title: Feature variables (required)
     type: Variables
     suggested:
       - continuous
@@ -20,7 +20,7 @@ options:
       - numeric
 
   - name: factor
-    title: Grouping variable
+    title: Grouping variable (required)
     type: Variable
     suggested:
       - nominal
@@ -138,8 +138,18 @@ options:
     default: 999
     min: 1
 
+  - name: permRestriction
+    title: Permutation restriction
+    type: List
+    options:
+      - title: Free
+        name: free
+      - title: Series (rows in order)
+        name: series
+    default: free
+
   - name: permScheme
-    title: Permutation scheme
+    title: Legacy permutation scheme
     type: List
     options:
       - title: Free
@@ -148,7 +158,8 @@ options:
         name: stratified
       - title: Series (ordered)
         name: series
-    default: stratified
+    default: free
+    hidden: true
 
   - name: useParallel
     title: Parallel processing
@@ -156,7 +167,7 @@ options:
     default: false
 
   - name: dispType
-    title: Dispersion centre
+    title: Group centre
     type: List
     options:
       - title: Median
@@ -171,7 +182,7 @@ options:
     default: false
 
   - name: dispPairwise
-    title: Pairwise comparisons
+    title: Pairwise dispersion comparisons
     type: Bool
     default: false
 

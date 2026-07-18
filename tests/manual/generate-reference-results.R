@@ -133,7 +133,7 @@ reference_permanova <- function(data, dataset, scenario_id, permutations, transf
     do.call(rbind, rows)
 }
 
-reference_anosim <- function(data, dataset, scenario_id, permutations, strata = NULL) {
+reference_anosim <- function(data, dataset, scenario_id, permutations, strata = NULL, pairwise = TRUE) {
     features <- data[feature_columns(data)]
     dissimilarity <- make_distance(features, "bray", FALSE)
     group <- factor(data$group)
@@ -145,30 +145,38 @@ reference_anosim <- function(data, dataset, scenario_id, permutations, strata = 
         permutations = make_permutation(permutations, scheme, strata)
     )
     rows <- list(
-        reference_row(dataset, scenario_id, "ANOSIM", "Global Test", "Global R", global$statistic, reference_function = "vegan::anosim"),
-        reference_row(dataset, scenario_id, "ANOSIM", "Global Test", "p", global$signif, display = display_p(global$signif), abs_tolerance = 0, reference_function = "vegan::anosim")
+        reference_row(dataset, scenario_id, "ANOSIM", "Global ANOSIM", "Global R", global$statistic, reference_function = "vegan::anosim"),
+        reference_row(dataset, scenario_id, "ANOSIM", "Global ANOSIM", "Permutation p", global$signif, display = display_p(global$signif), abs_tolerance = 0, reference_function = "vegan::anosim")
     )
 
-    contrasts <- combn(levels(group), 2L, simplify = FALSE)
-    pairwise <- lapply(contrasts, function(pair) {
-        keep <- group %in% pair
-        matrix_distance <- as.matrix(dissimilarity)
-        sub_distance <- stats::as.dist(matrix_distance[keep, keep, drop = FALSE])
-        sub_group <- droplevels(group[keep])
-        fit <- vegan::anosim(sub_distance, sub_group, permutations = as.integer(permutations))
-        data.frame(
-            contrast = paste(pair, collapse = " - "),
-            statistic = unname(fit$statistic),
-            p = fit$signif,
-            stringsAsFactors = FALSE
-        )
-    })
-    pairwise <- do.call(rbind, pairwise)
-    pairwise$padj <- stats::p.adjust(pairwise$p, method = "holm")
-    for (i in seq_len(nrow(pairwise))) {
-        label <- pairwise$contrast[[i]]
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "ANOSIM", "Pairwise ANOSIM", paste0(label, " R"), pairwise$statistic[[i]], reference_function = "vegan::anosim pairwise loop")
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "ANOSIM", "Pairwise ANOSIM", paste0(label, " adjusted p"), pairwise$padj[[i]], display = display_p(pairwise$padj[[i]]), abs_tolerance = 0, reference_function = "vegan::anosim pairwise loop")
+    if (isTRUE(pairwise)) {
+        contrasts <- combn(levels(group), 2L, simplify = FALSE)
+        pairwise_rows <- lapply(contrasts, function(pair) {
+            keep <- group %in% pair
+            matrix_distance <- as.matrix(dissimilarity)
+            sub_distance <- stats::as.dist(matrix_distance[keep, keep, drop = FALSE])
+            sub_group <- droplevels(group[keep])
+            sub_strata <- if (is.null(strata)) NULL else droplevels(factor(strata[keep]))
+            set_reference_rng(123)
+            fit <- vegan::anosim(
+                sub_distance,
+                sub_group,
+                permutations = make_permutation(permutations, scheme, sub_strata)
+            )
+            data.frame(
+                contrast = paste(pair, collapse = " vs "),
+                statistic = unname(fit$statistic),
+                p = fit$signif,
+                stringsAsFactors = FALSE
+            )
+        })
+        pairwise_rows <- do.call(rbind, pairwise_rows)
+        pairwise_rows$padj <- stats::p.adjust(pairwise_rows$p, method = "holm")
+        for (i in seq_len(nrow(pairwise_rows))) {
+            label <- pairwise_rows$contrast[[i]]
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "ANOSIM", "Pairwise ANOSIM", paste0(label, " R"), pairwise_rows$statistic[[i]], reference_function = "vegan::anosim pairwise loop")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "ANOSIM", "Pairwise ANOSIM", paste0(label, " adjusted p"), pairwise_rows$padj[[i]], display = display_p(pairwise_rows$padj[[i]]), abs_tolerance = 0, reference_function = "vegan::anosim pairwise loop")
+        }
     }
     do.call(rbind, rows)
 }
@@ -183,11 +191,17 @@ reference_permdisp <- function(data, dataset, scenario_id, permutations, scheme 
     tab <- as.data.frame(omnibus$tab)
     rows <- list(
         reference_row(dataset, scenario_id, "PERMDISP", "Dispersion Test", "F", tab$F[[1L]], reference_function = "vegan::betadisper + vegan::permutest"),
-        reference_row(dataset, scenario_id, "PERMDISP", "Dispersion Test", "p", tab$`Pr(>F)`[[1L]], display = display_p(tab$`Pr(>F)`[[1L]]), abs_tolerance = 0, reference_function = "vegan::betadisper + vegan::permutest")
+        reference_row(dataset, scenario_id, "PERMDISP", "Dispersion Test", "Permutation p", tab$`Pr(>F)`[[1L]], display = display_p(tab$`Pr(>F)`[[1L]]), abs_tolerance = 0, reference_function = "vegan::betadisper + vegan::permutest")
     )
-    means <- tapply(fit$distances, group, mean)
-    for (level in names(means)) {
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Group Distances to Centre", paste0(level, " mean distance"), means[[level]], reference_function = "vegan::betadisper")
+    distances <- split(fit$distances, group, drop = TRUE)
+    for (level in names(distances)) {
+        values <- distances[[level]]
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Distances to Group Centre", paste0(level, " n"), length(values), display = as.character(length(values)), abs_tolerance = 0, reference_function = "vegan::betadisper")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Distances to Group Centre", paste0(level, " mean distance"), mean(values), reference_function = "vegan::betadisper")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Distances to Group Centre", paste0(level, " median distance"), stats::median(values), reference_function = "vegan::betadisper")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Distances to Group Centre", paste0(level, " standard deviation"), stats::sd(values), reference_function = "vegan::betadisper")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Distances to Group Centre", paste0(level, " minimum"), min(values), reference_function = "vegan::betadisper")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Distances to Group Centre", paste0(level, " maximum"), max(values), reference_function = "vegan::betadisper")
     }
     if (isTRUE(pairwise)) {
         pair <- vegan::permutest(
@@ -200,8 +214,9 @@ reference_permdisp <- function(data, dataset, scenario_id, permutations, scheme 
         adjusted <- stats::p.adjust(permuted, method = "holm")
         for (i in seq_along(observed)) {
             label <- names(observed)[[i]]
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Pairwise Dispersion", paste0(label, " t"), observed[[i]], reference_function = "vegan::permutest pairwise")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Pairwise Dispersion", paste0(label, " adjusted p"), adjusted[[i]], display = display_p(adjusted[[i]]), abs_tolerance = 0, reference_function = "vegan::permutest pairwise")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Pairwise Dispersion Comparisons", paste0(label, " t"), observed[[i]], reference_function = "vegan::permutest pairwise")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Pairwise Dispersion Comparisons", paste0(label, " permutation p"), permuted[[i]], display = display_p(permuted[[i]]), abs_tolerance = 0, reference_function = "vegan::permutest pairwise")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "PERMDISP", "Pairwise Dispersion Comparisons", paste0(label, " adjusted p"), adjusted[[i]], display = display_p(adjusted[[i]]), abs_tolerance = 0, reference_function = "vegan::permutest pairwise")
         }
     }
     do.call(rbind, rows)
@@ -233,44 +248,94 @@ reference_nmds <- function(data, dataset, scenario_id, binary = FALSE) {
     do.call(rbind, rows)
 }
 
-simper_display <- function(data, transform = "none", permutations = 999L, top_n = 10L, threshold = 70) {
-    features <- transform_features(data[feature_columns(data)], transform)
-    set_reference_rng(123)
-    fit <- vegan::simper(features, factor(data$group), permutations = as.integer(permutations))
-    summaries <- summary(fit)
-    rows <- list()
-    for (contrast in names(summaries)) {
-        tab <- as.data.frame(summaries[[contrast]])
-        tab$feature <- rownames(tab)
-        tab$contribution <- tab$average / sum(tab$average, na.rm = TRUE)
-        tab$cumulative <- cumsum(tab$contribution)
-        keep <- seq_len(nrow(tab)) <= as.integer(top_n) & tab$cumulative <= threshold / 100
-        if (!any(keep)) keep[seq_len(min(top_n, nrow(tab)))] <- TRUE
-        tab <- tab[keep, , drop = FALSE]
-        tab$contrast <- contrast
-        rows[[length(rows) + 1L]] <- tab
-    }
-    do.call(rbind, rows)
+simper_contrast_label <- function(pair) {
+    if (any(grepl("\\bvs\\b", pair, ignore.case = TRUE)))
+        paste0("\u201c", pair[[1L]], "\u201d vs \u201c", pair[[2L]], "\u201d")
+    else
+        paste(pair, collapse = " vs ")
 }
 
-reference_simper <- function(data, dataset, scenario_id, permutations, transform = "none", selected_distance = "bray") {
-    displayed <- simper_display(data, transform, permutations, top_n = 10L, threshold = 70)
+simper_display <- function(data, transform = "none", top_n = 10L, threshold = 70) {
+    features <- transform_features(data[feature_columns(data)], transform)
+    group <- factor(data$group)
+    pairs <- combn(as.character(unique(group)), 2L, simplify = FALSE)
+    fit <- vegan::simper(features, group, permutations = 0L)
+    summaries <- summary(fit)
     rows <- list()
-    for (contrast in unique(displayed$contrast)) {
+    for (index in seq_along(pairs)) {
+        tab <- as.data.frame(summaries[[index]])
+        tab$feature <- rownames(tab)
+        tab <- tab[is.finite(tab$average) & tab$average >= 0, , drop = FALSE]
+        tab <- tab[order(-tab$average, tab$feature), , drop = FALSE]
+        tab$contribution <- tab$average / sum(tab$average, na.rm = TRUE)
+        tab$cumulative <- cumsum(tab$contribution)
+        crossing <- which(tab$cumulative >= threshold / 100)[1L]
+        if (is.na(crossing)) crossing <- nrow(tab)
+        display_n <- min(as.integer(top_n), crossing, nrow(tab))
+        tab <- tab[seq_len(display_n), , drop = FALSE]
+        tab$contrast_index <- index
+        tab$contrast <- simper_contrast_label(pairs[[index]])
+        rows[[length(rows) + 1L]] <- tab
+    }
+    list(
+        features = features,
+        group = group,
+        pairs = pairs,
+        fit = fit,
+        displayed = do.call(rbind, rows))
+}
+
+reference_simper <- function(
+    data, dataset, scenario_id, transform = "none",
+    selected_distance = "bray", binary = FALSE,
+    assessment = FALSE, permutations = 999L
+) {
+    reference <- simper_display(data, transform, top_n = 10L, threshold = 70)
+    displayed <- reference$displayed
+    rows <- list()
+    for (index in seq_along(reference$pairs)) {
+        pair <- reference$pairs[[index]]
+        contrast <- simper_contrast_label(pair)
         tab <- displayed[displayed$contrast == contrast, , drop = FALSE]
-        rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Feature Contributions", paste0(contrast, " rows"), as.character(nrow(tab)), "vegan::simper + independent display filter")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " average dissimilarity"), reference$fit[[index]]$overall, reference_function = "vegan::simper(permutations = 0)")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " n first group"), sum(as.character(reference$group) == pair[[1L]]), display = as.character(sum(as.character(reference$group) == pair[[1L]])), abs_tolerance = 0, reference_function = "group count")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " n second group"), sum(as.character(reference$group) == pair[[2L]]), display = as.character(sum(as.character(reference$group) == pair[[2L]])), abs_tolerance = 0, reference_function = "group count")
+        rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " rows"), as.character(nrow(tab)), "vegan::simper + independent crossing-feature filter")
         if (nrow(tab) > 0L) {
-            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Feature Contributions", paste0(contrast, " first feature"), tab$feature[[1L]], "vegan::simper")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Feature Contributions", paste0(contrast, " first contribution percent"), 100 * tab$contribution[[1L]], reference_function = "vegan::simper")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Feature Contributions", paste0(contrast, " displayed cumulative percent"), 100 * tail(tab$cumulative, 1L), reference_function = "vegan::simper + independent display filter")
+            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first feature"), tab$feature[[1L]], "vegan::simper(permutations = 0)")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first contribution percent"), 100 * tab$contribution[[1L]], reference_function = "vegan::simper(permutations = 0)")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " displayed cumulative percent"), 100 * tail(tab$cumulative, 1L), reference_function = "vegan::simper + independent crossing-feature filter")
         }
     }
-    note <- if (identical(selected_distance, "bray")) {
-        paste0("Permutations: ", permutations, "; SIMPER uses Bray-Curtis.")
-    } else {
-        paste0("Selected ", selected_distance, " is ignored; SIMPER uses Bray-Curtis. Permutations: ", permutations, ".")
+
+    if (isTRUE(assessment)) {
+        set_reference_rng(123)
+        assessed <- vegan::simper(
+            reference$features,
+            reference$group,
+            permutations = as.integer(permutations))
+        for (index in seq_along(reference$pairs)) {
+            contrast <- simper_contrast_label(reference$pairs[[index]])
+            tab <- displayed[displayed$contrast == contrast, , drop = FALSE]
+            adjusted <- stats::p.adjust(assessed[[index]]$p, method = "holm")
+            if (nrow(tab) > 0L) {
+                feature <- tab$feature[[1L]]
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Exploratory permutation assessment", paste0(contrast, " first displayed p"), assessed[[index]]$p[[feature]], display = display_p(assessed[[index]]$p[[feature]]), abs_tolerance = 0, reference_function = "vegan::simper permutation p")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Exploratory permutation assessment", paste0(contrast, " first displayed adjusted p"), adjusted[[feature]], display = display_p(adjusted[[feature]]), abs_tolerance = 0, reference_function = "p.adjust across full contrast")
+            }
+        }
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Analysis settings", "effective permutations", attr(assessed, "permutations"), display = as.character(attr(assessed, "permutations")), abs_tolerance = 0, reference_function = "attr(vegan::simper, permutations)")
     }
-    rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Notes", "current behaviour", note, "vegan::simper")
+
+    settings <- paste0(
+        "Permutation assessment: ", if (assessment) "Enabled" else "Disabled",
+        "; effective dissimilarity: Bray-Curtis",
+        if (!identical(selected_distance, "bray")) paste0("; ignored legacy distance: ", selected_distance) else "",
+        if (isTRUE(binary)) "; ignored legacy Binary request (separate from Presence/absence transformation)" else "")
+    rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Analysis settings", "effective choices", settings, "approved SIMPER contract")
     do.call(rbind, rows)
 }
 
@@ -291,7 +356,7 @@ generate_references <- function(output_dir) {
         rows[[length(rows) + 1L]] <- reference_anosim(current, dataset, paste0("anosim-", size, "-baseline"), permutations)
         rows[[length(rows) + 1L]] <- reference_permdisp(current, dataset, paste0("permdisp-", size, "-baseline"), permutations)
         rows[[length(rows) + 1L]] <- reference_nmds(current, dataset, paste0("nmds-", size, "-baseline"))
-        rows[[length(rows) + 1L]] <- reference_simper(current, dataset, paste0("simper-", size, "-baseline"), permutations)
+        rows[[length(rows) + 1L]] <- reference_simper(current, dataset, paste0("simper-", size, "-baseline"))
     }
 
     small <- data[["tofu-small.csv"]]
@@ -299,11 +364,11 @@ generate_references <- function(output_dir) {
     rows[[length(rows) + 1L]] <- reference_permanova(small, "tofu-small.csv", "permanova-small-pa", 999L, transform = "pa", distance = "jaccard", binary = TRUE)
     rows[[length(rows) + 1L]] <- reference_anosim(small, "tofu-small.csv", "anosim-small-blocked", 999L, strata = small$block)
     rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-centroid", 999L, centre = "centroid", bias = TRUE)
-    rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-stratified-noop", 999L, scheme = "stratified")
+    rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-legacy-stratified", 999L, scheme = "stratified")
     rows[[length(rows) + 1L]] <- reference_nmds(small, "tofu-small.csv", "nmds-small-binary-noop", binary = TRUE)
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-transform", 999L, transform = "sqrt")
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-distance-noop", 999L, selected_distance = "euclidean")
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-permutation-note", 19L)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-transform", transform = "sqrt")
+    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-distance-noop", selected_distance = "euclidean", binary = TRUE)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-assessment", assessment = TRUE, permutations = 19L)
 
     result <- do.call(rbind, rows)
     result <- result[order(result$dataset, result$analysis, result$scenario_id, result$result_slot, result$metric), ]

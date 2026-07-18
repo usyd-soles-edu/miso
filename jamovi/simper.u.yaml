@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables
+        label: Feature variables (required) — Numeric response columns, such as species abundances
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable
+        label: Grouping variable (required) — One categorical column containing at least two observed groups
         children:
           - type: VariablesListBox
             name: factor
@@ -24,33 +24,70 @@ children:
             isTarget: true
 
   - type: CollapseBox
-    label: Resemblance
+    name: analysisChoices
+    label: Analysis choices
     collapsed: false
     stretchFactor: 1
     children:
       - type: ComboBox
         name: transform
-      - type: ComboBox
-        name: distance
-      - type: CheckBox
-        name: distBinary
-      - type: TextBox
-        name: seed
-        format: number
-
-  - type: CollapseBox
-    label: SIMPER
-    collapsed: false
-    stretchFactor: 1
-    children:
-      - type: TextBox
-        name: simperN
-        format: number
+        options:
+          - title: None
+            name: none
+          - title: Square root
+            name: sqrt
+          - title: Fourth root
+            name: fourthroot
+          - title: Log(x + 1)
+            name: log
+          - title: Presence/absence
+            name: pa
+          - title: Wisconsin
+            name: wisconsin
+          - title: Hellinger
+            name: hellinger
+          - title: Total
+            name: total
+          - title: Max
+            name: max
+          - title: Frequency
+            name: frequency
+          - title: Normalize
+            name: normalize
+          - title: Range
+            name: range
+          - title: Chi-square
+            name: chi.square
+      - type: Label
+        label: "Dissimilarity: Bray-Curtis (fixed for SIMPER)"
       - type: TextBox
         name: simperTop
         format: number
       - type: TextBox
         name: simperCum
+        format: number
+      - type: Label
+        label: "Whichever limit is reached first; the feature that reaches the cumulative threshold is included."
+      - type: Label
+        label: "Transformations can change which features dominate Bray-Curtis dissimilarity; contributions and group means use the transformed scale."
+
+  - type: CollapseBox
+    name: permutationAssessment
+    label: Permutation assessment (advanced)
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: simperAssess
+        events:
+          change: update_control_states
+      - type: TextBox
+        name: simperN
+        format: number
+      - type: ComboBox
+        name: simperAdjust
+      - type: TextBox
+        name: seed
         format: number
 
 ...

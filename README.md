@@ -50,7 +50,7 @@ Do this before trusting any jamovi result:
    ```
 
 5. Relaunch jamovi. Open **Analyses → tofu** and confirm that the five analyses below are present.
-6. Open PERMANOVA and confirm that it includes **Covariates (continuous)**. Open nMDS and confirm that it includes **Environmental variables**.
+6. Open PERMANOVA, expand **Study design and model — use when part of your study design**, and confirm that it includes **Continuous covariates**. Open nMDS and confirm that it includes **Environmental variables**.
 
 Record the operating system plus the jamovi and tofu versions with your test notes. The version alone is not proof that the new build loaded: an older build may also say `0.2.0`. If the menu or controls do not match this guide, remove tofu, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
 
@@ -88,7 +88,7 @@ Before analysing either clean dataset, open each column's **Setup** and confirm:
 | `temperature`, `pH` | Decimal | Continuous |
 | `feature_01` through the final feature | Decimal | Continuous |
 
-To assign one variable, drag it into the named target box, or select it and use the right-arrow. To assign all abundance columns, select `feature_01`, Shift-click the final feature, then transfer the selected range into **Feature variables**. Click a panel's chevron to expand **Resemblance** or the analysis-specific options.
+To assign one variable, drag it into the named target box, or select it and use the right-arrow. To assign all abundance columns, select `feature_01`, Shift-click the final feature, then transfer the selected range into **Feature variables**. Click a panel's chevron to expand a collapsed section. In PERMANOVA and ANOSIM, the two required targets stay visible; study-design and reproducibility controls are grouped separately.
 
 jamovi recalculates automatically; there is no **Run** button. Wait until the spinner or progress message disappears and all named result sections have appeared. If you edit test data, reopen the clean CSV before starting another card.
 
@@ -101,53 +101,57 @@ This table describes current computation, including controls that are visible bu
 | Transformation | Yes | Yes | Yes | Yes | Yes |
 | Selectable dissimilarity | Yes | Yes | Yes | Yes | No—calculation stays Bray-Curtis |
 | Binary distance | Yes | Yes | Yes | Control currently has no effect | Not used by fixed Bray-Curtis SIMPER |
-| Blocking factor | Yes | Global test only | No blocking target | No | No |
-| Permutation scheme | Yes | Global test only | Free and Series; Stratified is currently a no-op | No | No |
-| Parallel option | Yes | Global test only | Yes | No | No |
-| Pairwise output | Optional | Always, using free serial permutations | Optional | No | Group contrasts |
-| Main plots | No | No | Distances to centre | Ordination and Shepard | Contributions |
+| Blocking factor | Yes | Yes; required for Within blocks | No blocking target | No | No |
+| Permutation scheme | Yes | Free, Within blocks, or Series for global and pairwise tests | Free and Series; legacy no-block Stratified values migrate to Free with disclosure | No | No |
+| Parallel option | Yes | Yes, for global and pairwise tests | Yes | No | No |
+| Pairwise output | Optional | Optional | Optional | No | Group contrasts |
+| Main plots | No | No | Distance distributions | Ordination and Shepard | Contributions |
 
 Enabling **Parallel processing** can show that the option does not alter results or cause an error. It cannot prove that worker processes ran, because tofu may silently fall back to serial execution.
 
 ### Test PERMANOVA
 
-**What this validates:** multivariate group comparison through `vegan::adonis2`, including the PERMANOVA table and shared preprocessing.
+**What this validates:** the student workflow, state-specific guidance, multivariate group comparison through `vegan::adonis2`, conditional Pairwise output, truthful permutation restrictions, and shared preprocessing.
 
 1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → Compare groups → PERMANOVA**.
-3. Move `feature_01`–`feature_08` to **Feature variables**.
-4. Move `group` to **Grouping variable**. Leave **Additional factors**, **Strata / blocking factor**, and **Covariates (continuous)** empty.
-5. Expand **Resemblance** and select:
+2. Select **Analyses → tofu → PERMANOVA — Test group differences**.
+3. Before assigning anything, confirm that **Getting started** says to add numeric Feature variables and one categorical Grouping variable. No empty result table should appear.
+4. Move `feature_01`–`feature_08` to **Required: Feature variables**. Confirm that **Action needed** now asks for a Grouping variable and that no result table appears.
+5. Move `group` to **Required: Grouping variable**.
+6. Under **Analysis choices**, select:
    - **Transformation:** None
    - **Dissimilarity index:** Bray-Curtis
    - **Binary (presence/absence):** cleared
    - **Square-root distances:** cleared
    - **Additive constant:** None
-   - **Random seed:** 123
-6. Expand **PERMANOVA** and select:
-   - **Permutations:** 999
-   - **Permutation scheme:** Free
-   - **Parallel processing:** cleared
-   - **Test type:** Sequential terms
    - **Pairwise comparisons:** cleared
+7. Leave **Study design and model — use when part of your study design** collapsed. Its default is **Sequential terms** with **Free** permutation restrictions and no block, factor, covariate, or interaction.
+8. Expand **Reproducibility and technical settings** and select:
+   - **Number of permutations:** 999
+   - **Random seed (0 = random):** 123
+   - **Parallel processing:** cleared
 
 Expected **PERMANOVA Table** values for `group`:
 
-| Pseudo-F | R² | p |
+| Pseudo-F | R² | Permutation p |
 |---:|---:|---:|
 | approximately 6.3747 | approximately 0.3778 | .001 |
 
-The **F** and **p** cells for the `Residual` and `Total` rows should be blank because those statistics are not applicable to those rows.
+The **Pseudo-F** and **Permutation p** cells for the `Residual` and `Total` rows should be blank and identified as not applicable by the table note or footnote. `NaN` must not appear.
 
-Pass when **Data Summary**, **PERMANOVA Table**, and **Notes** appear, the values match above to the displayed precision, the inapplicable cells are blank, and **Notes and Warnings** is blank.
+Pass when **Data Summary**, **PERMANOVA Table**, **Interpretation**, and **Analysis settings** appear; the values match above to the displayed precision; **Data handling warnings** and **Pairwise PERMANOVA** do not appear; and the settings report **Free**, no block, **Sequential terms**, seed 123, and serial execution.
 
 <details>
 <summary>PERMANOVA functionality regression checks</summary>
 
-- **Pairwise:** select **Pairwise comparisons** and leave **P-value adjustment** at **Holm**. A **Pairwise PERMANOVA** table should appear. Keep this as a single-factor model.
-- **Additional factor:** move `treatment` to **Additional factors**. Confirm both model terms appear. Then select **Include group × additional factor interactions** and confirm the interaction row appears.
-- **Covariates:** move `temperature` and `pH` to **Covariates (continuous)** and confirm both appear as model terms.
-- **Blocked permutations:** move `block` to **Strata / blocking factor** and select **Stratified (within blocks)**.
+- **Pairwise dependency:** confirm **P-value adjustment** is disabled while **Pairwise comparisons** is cleared. Select **Pairwise comparisons**, leave the adjustment at **Holm**, and confirm that a populated **Pairwise PERMANOVA** table appears. Clear Pairwise and confirm that the table disappears rather than leaving an empty heading.
+- **Additional factor and interactions:** expand **Study design and model — use when part of your study design**, move `treatment` to **Additional factors**, and confirm both model terms appear. Clear Pairwise, select **Include interactions**, and confirm the interaction row appears. Pairwise should be unavailable until interactions are cleared.
+- **Covariates:** move `temperature` and `pH` to **Continuous covariates** and confirm both appear as model terms. Change **Test type** between **Sequential terms** and **Marginal terms** and confirm the Interpretation explains the selected model-term test.
+- **Free with an assigned block:** move `block` to **Blocking variable** while leaving **Permutation restrictions: Free**. The main result should remain, **Data handling warnings** should say the block is unused, and **Analysis settings** should report **Block used: No**.
+- **Within blocks without a block:** remove `block`, select **Within blocks — requires a Blocking variable**, and confirm that only the actionable correction appears, with no inferential table.
+- **Blocked permutations:** assign `block` and keep **Within blocks — requires a Blocking variable**. The analysis should run and **Analysis settings** should report that the block is used.
+- **State clearing:** from a valid result, remove `group`, confirm that all old result tables disappear and the Grouping-variable correction appears, then restore `group` and confirm a fresh valid result.
+- **Active-section recovery:** close and reopen an analysis containing a block or non-default Test type, and confirm the study-design section opens so the active setting is not concealed.
 - **Hellinger + Euclidean:** select **Transformation: Hellinger** and **Dissimilarity: Euclidean**. The group pseudo-F should be approximately 7.4512.
 - **Presence/absence + Jaccard:** select **Transformation: Presence/absence**, **Dissimilarity: Jaccard**, and check **Binary**. The group pseudo-F should be approximately 1.0218 and p approximately .494.
 - **Parallel-toggle invariance:** return to the baseline, record the table, select **Parallel processing**, and confirm the displayed statistics and p-value do not change.
@@ -156,74 +160,82 @@ Pass when **Data Summary**, **PERMANOVA Table**, and **Notes** appear, the value
 
 For the large-data confirmation, open `tofu-large.csv`, assign `feature_01`–`feature_48`, repeat the baseline with **199 permutations**, and expect pseudo-F approximately **116.1245**, R² approximately **0.3941**, and p **.005**.
 
-If the analysis fails, first confirm the feature columns are numeric, `group` is nominal, **Free** was selected, and the newly built module is loaded.
+If the analysis fails, first confirm the feature columns are numeric, `group` is nominal, **Free** was selected unless a real block was assigned, and the newly built module is loaded.
 
 ### Test ANOSIM
 
-**What this validates:** the global rank-based group comparison and the separately calculated pairwise contrasts.
+**What this validates:** the student workflow, explicit incomplete states, global rank-based comparison, optional pairwise contrasts, and one truthful permutation design shared by both.
 
 1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → Compare groups → ANOSIM**.
-3. Move `feature_01`–`feature_08` to **Feature variables** and `group` to **Grouping variable**. Leave **Strata / blocking factor** empty.
-4. Under **Resemblance**, select **None**, **Bray-Curtis**, clear **Binary**, and enter seed **123**.
-5. Under **ANOSIM**, enter **999** permutations, select **Free**, clear **Parallel processing**, and select **P-value adjustment: Holm**.
+2. Select **Analyses → tofu → ANOSIM — Rank-based alternative**.
+3. Before assigning anything, confirm that **Getting started** explains ANOSIM and names both required steps. No empty result table should appear.
+4. Move `feature_01`–`feature_08` to **Feature variables (required)**. Confirm that **Action needed** asks for a Grouping variable and that no result table appears.
+5. Move `group` to **Grouping variable (required)**.
+6. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, clear **Binary (presence/absence)**, and leave **Pairwise ANOSIM comparisons** cleared. **P-value adjustment** should be disabled.
+7. Leave **Study design and permutation restrictions** collapsed. The default is **Free** with no Blocking variable.
+8. Expand **Reproducibility and computation**, enter **999** permutations and seed **123**, and clear **Parallel processing**.
 
-Expected results:
+Expected baseline result:
 
 | Result | Value |
 |---|---:|
 | Global R | approximately 0.4950 |
-| Global p | .001 |
-| A–B R / adjusted p | approximately 0.6780 / .003 |
-| A–C R / adjusted p | approximately 0.4314 / .003 |
-| B–C R / adjusted p | approximately 0.3970 / .003 |
+| Permutation p | .001 |
 
-Pass when **Data Summary**, **Global Test**, **Pairwise ANOSIM**, and **Notes** appear, the values match, and **Notes and Warnings** is blank.
+Pass when **Data Summary**, **Global ANOSIM**, **Interpretation**, and **Analysis settings** appear; the values match; **Data handling warnings** and **Pairwise ANOSIM** do not appear; and settings report Free permutations, no block, seed 123, Pairwise disabled, and serial execution.
 
 <details>
 <summary>ANOSIM functionality regression checks</summary>
 
-- Move `block` to **Strata / blocking factor** and select **Stratified (within blocks)**. The restriction applies to **Global Test** only.
-- Pairwise ANOSIM currently uses free serial permutations even when the global test is blocked or parallel. Confirm only that Holm-adjusted pairwise output appears and matches its reference.
-- For parallel-toggle invariance, compare **Global Test** with **Parallel processing** cleared and selected. Do not use pairwise output to judge the parallel control.
+- **Pairwise dependency:** select **Pairwise ANOSIM comparisons**, leave **P-value adjustment: Holm**, and confirm a populated **Pairwise ANOSIM** table appears. Expected R / adjusted p values are A vs B approximately 0.6780 / .003, A vs C approximately 0.4314 / .003, and B vs C approximately 0.3970 / .003. Clear Pairwise and confirm the heading and rows disappear.
+- **Free with an assigned block:** expand **Study design and permutation restrictions**, move `block` to **Blocking variable (optional)**, and leave **Permutation restriction: Free**. The global result should remain, **Data handling warnings** should say the block is not used, and **Analysis settings** should report **Block used: No**.
+- **Within blocks without a block:** remove `block`, select **Within blocks**, and confirm that only the Blocking-variable correction appears, with no inferential table.
+- **Blocked global and pairwise tests:** reassign `block`, keep **Within blocks**, and select Pairwise. Settings should report **Block used: Yes**. The R values stay as above for this fixture, but each Holm-adjusted pairwise p is .006 because the same within-block restriction now applies to every contrast.
+- **Series:** select **Series (rows in order)**. Settings should identify the current row order, and, when a block is assigned, the current row order within blocks. Do not sort the data between recording the design and running the test.
+- **Two groups:** filter or recode the data to retain two groups, request Pairwise, and confirm that no empty pairwise table appears. Interpretation should explain that Global ANOSIM is the only contrast.
+- **State clearing:** from a valid result, remove `group`, confirm that every old table disappears and the Grouping-variable correction appears, then restore `group` and confirm a fresh result.
+- **Negative R guidance:** use a dataset that produces a negative R and confirm Interpretation explains that within-group observations are ranked as more dissimilar on average; it should not present negative R as a software error.
+- **Parallel-toggle invariance:** compare the global and requested pairwise results with **Parallel processing** cleared and selected. Statistics and p values should not change; settings must disclose whether execution was effectively serial or parallel.
 
 </details>
 
-For `tofu-large.csv`, assign all 48 features, use **199 permutations**, and expect Global R approximately **0.8289**, global p **.005**, and adjusted pairwise p-values **.015**.
+For `tofu-large.csv`, assign all 48 features and use **199 permutations**. Expect Global R approximately **0.8289** and Permutation p **.005**. Then select Pairwise and expect adjusted p **.015** for all three contrasts, with R approximately 0.9852, 0.7891, and 0.8187 for A vs B, A vs C, and B vs C respectively.
 
 ### Test PERMDISP
 
-**What this validates:** distances to group centres, the dispersion permutation test, and its distance-to-centre plot.
+**What this validates:** the required-input guidance, distances to group centres, the dispersion permutation test, its accessible distribution summary and plot, and conditional pairwise output.
 
 1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → Check dispersion → PERMDISP**.
-3. Move `feature_01`–`feature_08` to **Feature variables** and `group` to **Grouping variable**.
-4. Under **Resemblance**, select **None**, **Bray-Curtis**, clear **Binary** and **Square-root distances**, select **Additive constant: None**, and enter seed **123**.
-5. Under **PERMDISP**, enter **999** permutations, select **Free**, clear **Parallel processing**, select **Dispersion centre: Median**, clear **Bias adjustment**, and clear **Pairwise comparisons**.
+2. Select **Analyses → tofu → PERMDISP — Check group dispersion**. Before assigning variables, only **Getting started** should appear in the report.
+3. Move `feature_01`–`feature_08` to **Feature variables (required)** and `group` to **Grouping variable (required)**.
+4. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, **Group centre: Median**, and clear **Pairwise dispersion comparisons**. **P-value adjustment** should be disabled.
+5. Leave **Advanced options** at its defaults: Binary off, Square-root distances off, Additive constant None, and Bias adjustment off.
+6. Under **Reproducibility and computation**, enter **999** permutations, select **Free**, enter seed **123**, and clear **Parallel processing**.
 
 Expected results:
 
 | Result | Value |
 |---|---:|
 | Dispersion F | approximately 1.6908 |
-| p | approximately .219 |
+| Permutation p | approximately .219 |
 | Mean distance A | approximately 0.1599 |
 | Mean distance B | approximately 0.1631 |
 | Mean distance C | approximately 0.2206 |
 
-The **F** and **p** cells for the `Residuals` row should be blank because those statistics are not applicable to that row.
+The **F** and **Permutation p** cells for the `Residuals` row should be blank because those statistics are not applicable to that row. Fail if `NaN` appears.
 
-Pass when **Data Summary**, **Group Distances to Centre**, **Dispersion Test**, **Distances to Centre**, and **Notes** appear, the plot contains all three groups, the inapplicable cells are blank, and **Notes and Warnings** is blank.
+Pass when **Data Summary**, **Distances to Group Centre**, **Dispersion Test**, **Distance Distributions**, **Interpretation**, and **Analysis settings** appear. The distance table should contain n, mean, median, standard deviation, minimum, and maximum for all three groups. The plot should contain all three groups. **Data handling warnings** and **Pairwise Dispersion Comparisons** should be absent, not blank.
 
 <details>
 <summary>PERMDISP functionality regression checks</summary>
 
-- Select **Pairwise comparisons** with **P-value adjustment: Holm**. **Pairwise Dispersion** should appear.
+- Select **Pairwise dispersion comparisons** with **P-value adjustment: Holm**. **Pairwise Dispersion Comparisons** should appear with t, Permutation p, and Adjusted p.
 - Change the centre to **Centroid** and select **Bias adjustment**. The dispersion F should be approximately **2.1561**.
-- **Stratified** is currently a no-op because PERMDISP has no blocking target. With the same seed it should reproduce the Free baseline; record this as a current limitation, not restricted-permutation support.
-- **Series** uses the current row order. Do not sort the fixture before an optional Series smoke check.
-- Check **Square-root distances** and select **Cailliez** to confirm the distance-correction path completes.
+- A copied legacy analysis containing **Stratified** should reproduce the Free baseline, show the compatibility conversion under **Data handling warnings**, and report requested/effective restrictions in **Analysis settings**. Stratified must not appear as a choice in a new analysis.
+- **Series (rows in order)** uses the current row order. Do not sort the fixture before an optional Series smoke check.
+- Under **Advanced options**, check **Square-root distances** and select **Cailliez** to confirm the distance-correction path completes.
 - For parallel-toggle invariance, compare the baseline table before and after selecting **Parallel processing**.
+- Remove the Grouping variable after a valid run. Only **Action needed** should remain; restoring it should recreate the results without stale pairwise rows.
 
 </details>
 
@@ -234,7 +246,7 @@ For `tofu-large.csv`, use all 48 features and **199 permutations**. Expect F app
 **What this validates:** ordination, stress reporting, environmental fitting, group overlays, and the Shepard diagram.
 
 1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → Ordinate samples → nMDS**.
+2. Select **Analyses → tofu → nMDS — Visualise sample patterns**.
 3. Move `feature_01`–`feature_08` to **Feature variables**, `group` to **Grouping variable**, and `temperature` plus `pH` to **Environmental variables**.
 4. Under **Resemblance**, select **None**, **Bray-Curtis**, clear **Binary**, and enter seed **123**.
 5. Under **nMDS**, enter **Dimensions: 2**, **Random starts: 20**, and **Max iterations per run: 200**. Select **Show Shepard diagram** and **Colour by group**. Clear **Show species scores**, **Group hulls**, **Group ellipses**, and **Group spiders**.
@@ -266,7 +278,7 @@ For `tofu-large.csv`, use all 48 features with the same nMDS settings. Expect st
 **What this validates:** Bray-Curtis feature contributions, top-N and cumulative filtering, the contribution plot, and notes explaining current behaviour.
 
 1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → Explore feature contributions → SIMPER**.
+2. Select **Analyses → tofu → SIMPER — Feature contributions**.
 3. Move `feature_01`–`feature_08` to **Feature variables** and `group` to **Grouping variable**.
 4. Under **Resemblance**, select **None**, **Bray-Curtis**, clear **Binary**, and enter seed **123**.
 5. Under **SIMPER**, enter **999** permutations, **Top N features: 10**, and **Cumulative contribution threshold (%): 70**.
@@ -299,14 +311,14 @@ Open `tofu-invalid.csv` and use PERMANOVA unless stated otherwise. Reopen the fi
 
 | Check | What to assign | Expected current behaviour |
 |---|---|---|
-| No features | `group` only | **Notes and Warnings:** “Select one or more feature variables.” |
-| No group | `valid_01`, `valid_02`; no grouping variable | **Notes and Warnings:** “Select a primary grouping factor.” |
+| No features | `group` only | **Getting started** shows both required steps; no empty result table |
+| No group | `valid_01`, `valid_02`; no grouping variable | **Action needed** asks for one categorical Grouping variable; no empty result table |
 | Text feature | Try to move `text_feature` to **Feature variables** | jamovi refuses the transfer because the target permits numeric variables only |
-| Negative abundance | `valid_01`, `negative_feature`; group `group` | warning identifies `negative_feature` |
+| Negative abundance | `valid_01`, `negative_feature`; group `group` | **Action needed** identifies `negative_feature`; no inferential table |
 | Missing abundance | `valid_01`, `missing_feature`; group `group` | warning reports one excluded row and the summary reports seven samples |
 | All-zero feature | `valid_01`, `all_zero_feature`; group `group` | warning reports that the zero feature was removed |
 | All-zero sample | `zero_case_01`, `zero_case_02`; group `group` | warning reports that one all-zero sample was removed |
-| One group | `valid_01`, `valid_02`; group `single_group` | warning says the primary factor has fewer than two groups |
+| One group | `valid_01`, `valid_02`; group `single_group` | **Action needed** says the Grouping variable has fewer than two groups; no inferential table |
 
 ### Full large-data robustness pass
 

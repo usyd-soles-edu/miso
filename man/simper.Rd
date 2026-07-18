@@ -14,7 +14,9 @@ simper(
   seed = 0,
   simperN = 999,
   simperTop = 10,
-  simperCum = 70
+  simperCum = 70,
+  simperAssess = FALSE,
+  simperAdjust = "holm"
 )
 }
 \arguments{
@@ -37,15 +39,24 @@ simper(
 \item{simperTop}{.}
 
 \item{simperCum}{.}
+
+\item{simperAssess}{.}
+
+\item{simperAdjust}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

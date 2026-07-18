@@ -2,8 +2,8 @@
 name: permanova
 title: PERMANOVA
 menuGroup: tofu
-menuSubgroup: Compare groups
 menuTitle: PERMANOVA
+menuSubtitle: Test group differences
 version: '0.2.0'
 jas: '1.2'
 
@@ -39,7 +39,7 @@ options:
     default: null
 
   - name: strata
-    title: Strata / blocking factor
+    title: Blocking variable
     type: Variable
     suggested:
       - nominal
@@ -49,7 +49,7 @@ options:
     default: null
 
   - name: covariates
-    title: Covariates (continuous)
+    title: Continuous covariates
     type: Variables
     suggested:
       - continuous
@@ -156,33 +156,33 @@ options:
     default: none
 
   - name: seed
-    title: Random seed
+    title: Random seed (0 = random)
     type: Number
     default: 0
     min: 0
 
   - name: permInteractions
-    title: Include group × additional factor interactions
+    title: Include interactions
     type: Bool
     default: false
 
   - name: permN
-    title: Permutations
+    title: Number of permutations
     type: Number
     default: 999
     min: 1
 
   - name: permScheme
-    title: Permutation scheme
+    title: Permutation restrictions
     type: List
     options:
       - title: Free
         name: free
-      - title: Stratified (within blocks)
+      - title: Within blocks — requires a Blocking variable
         name: stratified
-      - title: Series (ordered)
+      - title: Series — current row order
         name: series
-    default: stratified
+    default: free
 
   - name: useParallel
     title: Parallel processing

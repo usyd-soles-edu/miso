@@ -19,7 +19,7 @@ permanova(
   seed = 0,
   permInteractions = FALSE,
   permN = 999,
-  permScheme = "stratified",
+  permScheme = "free",
   useParallel = FALSE,
   permBy = "terms",
   permPairwise = FALSE,
@@ -68,11 +68,13 @@ permanova(
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a preformatted \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

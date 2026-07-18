@@ -2,8 +2,8 @@
 name: nmds
 title: nMDS
 menuGroup: tofu
-menuSubgroup: Ordinate samples
 menuTitle: nMDS
+menuSubtitle: Visualise sample patterns
 version: '0.2.0'
 jas: '1.2'
 

@@ -14,7 +14,7 @@ test_that("missing feature variables provide a clear note", {
         factor = "group"
     )
 
-    expect_match(trimws(as.character(res$warnings$asString())), "Select one or more feature variables.")
+    expect_match(trimws(as.character(res$guidance$asString())), "Add one or more numeric Feature variables.")
 })
 
 test_that("missing grouping variable is required for group workflows", {
@@ -28,7 +28,7 @@ test_that("missing grouping variable is required for group workflows", {
         factor = NULL
     )
 
-    expect_match(trimws(as.character(res$warnings$asString())), "Select a primary grouping factor.")
+    expect_match(trimws(as.character(res$guidance$asString())), "waiting for a Grouping variable")
 })
 
 test_that("missing selected columns are reported by option validation", {
@@ -73,7 +73,7 @@ test_that("negative feature values are rejected with a clear note", {
         factor = "group"
     )
 
-    expect_match(as.character(res$warnings$asString()), "Negative values detected in feature variables: a")
+    expect_match(as.character(res$guidance$asString()), "Negative values detected in feature variables: a")
 })
 
 test_that("missing rows are excluded and warning text is added", {
@@ -122,7 +122,7 @@ test_that("entirely empty datasets return a clear note instead of crashing", {
     )
 
     expect_match(
-        as.character(res$warnings$asString()),
+        as.character(res$guidance$asString()),
         "No feature variables with non-zero values remain after filtering\\."
     )
 })
@@ -139,7 +139,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        as.character(all_zero$warnings$asString()),
+        as.character(all_zero$guidance$asString()),
         "No feature variables with non-zero values remain after filtering\\.|Too few samples \\(0\\) for multivariate analysis\\."
     )
 
@@ -154,7 +154,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        as.character(one_group$warnings$asString()),
+        as.character(one_group$guidance$asString()),
         "Primary factor 'group' has fewer than 2 groups after filtering\\."
     )
 })
@@ -215,7 +215,7 @@ test_that("saturated PERMANOVA model reports a failure note instead of crashing"
         )
     )
 
-    expect_match(as.character(res$note$asString()), "PERMANOVA failed: PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
+    expect_match(as.character(res$guidance$asString()), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
     expect_equal(nrow(res$table$asDF), 0L)
 })
 
@@ -242,7 +242,14 @@ test_that("PERMANOVA returns stable numeric results", {
         expect_true(is.na(tab$p[tab$source == source]))
         expect_identical(res$table$getCell(rowKey=rowKey, col="f")$value, "")
         expect_identical(res$table$getCell(rowKey=rowKey, col="p")$value, "")
+        expect_match(
+            paste(unlist(res$table$getCell(rowKey=rowKey, col="f")$footnotes), collapse=" "),
+            "Not applicable")
+        expect_match(
+            paste(unlist(res$table$getCell(rowKey=rowKey, col="p")$footnotes), collapse=" "),
+            "Not applicable")
     }
+    expect_false(grepl("NaN", res$asString(), fixed=TRUE))
 })
 
 test_that("PERMDISP returns test table and plot output", {
@@ -256,7 +263,9 @@ test_that("PERMDISP returns test table and plot output", {
         )
     ))
 
-    expect_match(as.character(res$note$asString()), "PERMDISP tests whether groups differ in multivariate dispersion")
+    expect_match(
+        as.character(res$note$asString()),
+        "PERMDISP tests whether groups differ in[[:space:]]+multivariate dispersion")
     expect_true(nrow(res$anova$asDF) >= 2L)
     expect_true(nrow(res$distances$asDF) >= 3L)
     expect_false(is.null(res$plot))
@@ -284,7 +293,9 @@ test_that("ANOSIM returns stable numeric results", {
     )
 
     tab <- res$global$asDF
-    expect_match(as.character(res$note$asString()), "rank-based group comparison")
+    expect_match(
+        as.character(res$note$asString()),
+        "compares ranked between-group and within-group")
     expect_equal(nrow(tab), 1L)
     expect_equal(tab$value[tab$statistic == "Global R"], -0.4444444, tolerance = 1e-6)
     expect_equal(tab$p[tab$statistic == "Global R"], 1, tolerance = 1e-6)
@@ -302,10 +313,16 @@ test_that("SIMPER returns stable contribution results and plot output", {
     )
 
     tab <- res$table$asDF
-    expect_match(as.character(res$note$asString()), "exploratory follow-up")
+    expect_match(
+        as.character(res$note$asString()),
+        "SIMPER[[:space:]]+decomposes")
     expect_true(nrow(tab) >= 1L)
     expect_equal(tab$contribution[1], 48.47328, tolerance = 1e-5)
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
+    expect_equal(nrow(res$contrasts$asDF), 3L)
+    expect_false(res$assessment$visible)
+    settings <- setNames(res$settings$asDF$value, res$settings$asDF$setting)
+    expect_identical(settings[["Permutation assessment"]], "Disabled")
     expect_false(is.null(res$plot))
 })
 
@@ -378,7 +395,7 @@ test_that("mahalanobis is rejected when n <= p", {
     res <- suppressMessages(permanova(
         data = wide, vars = paste0("g", 1:8), factor = "group",
         distance = "mahalanobis", permN = 9, seed = 123))
-    expect_match(as.character(res$warnings$asString()), "mahalanobis requires more samples than features")
+    expect_match(as.character(res$guidance$asString()), "mahalanobis requires more samples than features")
 })
 
 test_that("sqrt.dist and additive constant run in PERMANOVA", {
@@ -403,7 +420,7 @@ test_that("sqrt.dist and additive constant run in PERMDISP", {
 test_that("ANOSIM pairwise comparisons are p-adjusted", {
     res <- suppressMessages(anosim(
         data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
-        anosimN = 19, seed = 123))
+        anosimPairwise = TRUE, anosimN = 19, seed = 123))
     pw <- res$pairwise$asDF
     expect_true(nrow(pw) >= 1L)
     expect_true("padj" %in% names(pw))
@@ -421,7 +438,7 @@ test_that("PERMDISP pairwise comparisons report permutation p and t-statistic", 
 })
 
 test_that("permutation schemes run in PERMANOVA", {
-    for (sc in c("free", "stratified", "series")) {
+    for (sc in c("free", "series")) {
         res <- suppressMessages(permanova(
             data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
             permScheme = sc, permN = 19, seed = 123))
@@ -480,7 +497,7 @@ test_that("covariates that saturate the model return a note", {
     res <- suppressMessages(permanova(
         data = d, vars = c("sp1", "sp2", "sp3"), factor = "group",
         covariates = c("depth", "temp", "sal"), permN = 9, seed = 123))
-    expect_match(as.character(res$note$asString()), "PERMANOVA failed: PERMANOVA model is saturated")
+    expect_match(as.character(res$guidance$asString()), "PERMANOVA model is saturated")
 })
 
 test_that("envfit populates the environmental fit table", {

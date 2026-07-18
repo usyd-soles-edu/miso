@@ -3,45 +3,72 @@ name: permanova
 jus: '3.0'
 stage: 0
 compilerMode: tame
+events:
+  loaded: view_loaded
 children:
   - type: VariableSupplier
     persistentItems: false
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables
+        label: "Required: Feature variables"
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable
+        label: "Required: Grouping variable"
         children:
           - type: VariablesListBox
             name: factor
             maxItemCount: 1
             isTarget: true
-      - type: TargetLayoutBox
-        label: Additional factors
+      - type: CollapseBox
+        name: studyDesign
+        label: Study design and model — use when part of your study design
+        collapsed: true
+        stretchFactor: 1
         children:
-          - type: VariablesListBox
-            name: permFactors
-            isTarget: true
-      - type: TargetLayoutBox
-        label: Strata / blocking factor
-        children:
-          - type: VariablesListBox
-            name: strata
-            maxItemCount: 1
-            isTarget: true
-      - type: TargetLayoutBox
-        label: Covariates (continuous)
-        children:
-          - type: VariablesListBox
-            name: covariates
-            isTarget: true
+          - type: VariableSupplier
+            name: studyVariables
+            label: Available variables for optional roles
+            persistentItems: false
+            stretchFactor: 1
+            children:
+              - type: TargetLayoutBox
+                label: Additional factors
+                children:
+                  - type: VariablesListBox
+                    name: permFactors
+                    isTarget: true
+                    events:
+                      change: update_control_states
+              - type: TargetLayoutBox
+                label: Blocking variable
+                children:
+                  - type: VariablesListBox
+                    name: strata
+                    maxItemCount: 1
+                    isTarget: true
+              - type: TargetLayoutBox
+                label: Continuous covariates
+                children:
+                  - type: VariablesListBox
+                    name: covariates
+                    isTarget: true
+          - type: CheckBox
+            name: permInteractions
+            events:
+              change: update_control_states
+          - type: ComboBox
+            name: permScheme
+          - type: ComboBox
+            name: permBy
+            events:
+              change: update_control_states
   - type: CollapseBox
-    label: Resemblance
+    name: analysisChoices
+    label: Analysis choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -55,26 +82,23 @@ children:
         name: distSqrt
       - type: ComboBox
         name: distAdd
-      - type: TextBox
-        name: seed
-        format: number
+      - type: CheckBox
+        name: permPairwise
+        events:
+          change: update_control_states
+      - type: ComboBox
+        name: permAdjust
   - type: CollapseBox
-    label: PERMANOVA
-    collapsed: false
+    name: reproducibility
+    label: Reproducibility and technical settings
+    collapsed: true
     stretchFactor: 1
     children:
       - type: TextBox
         name: permN
         format: number
-      - type: ComboBox
-        name: permScheme
+      - type: TextBox
+        name: seed
+        format: number
       - type: CheckBox
         name: useParallel
-      - type: ComboBox
-        name: permBy
-      - type: CheckBox
-        name: permInteractions
-      - type: CheckBox
-        name: permPairwise
-      - type: ComboBox
-        name: permAdjust

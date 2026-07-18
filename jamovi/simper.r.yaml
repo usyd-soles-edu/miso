@@ -4,13 +4,15 @@ title: SIMPER
 jrs: '1.1'
 
 items:
-  - name: warnings
-    title: Notes and Warnings
-    type: Preformatted
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
 
   - name: summary
     title: Data Summary
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: item
@@ -20,9 +22,34 @@ items:
         title: Value
         type: text
 
-  - name: table
-    title: Feature Contributions
+  - name: warnings
+    title: Data handling warnings
+    type: Preformatted
+    visible: false
+
+  - name: contrasts
+    title: Contrast summary
     type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: nFirst
+        title: n in first group
+        type: integer
+      - name: nSecond
+        title: n in second group
+        type: integer
+      - name: overall
+        title: Average Bray-Curtis dissimilarity
+        type: number
+
+  - name: table
+    title: Descriptive feature contributions
+    type: Table
+    visible: false
     rows: 0
     columns:
       - name: contrast
@@ -32,30 +59,77 @@ items:
         title: Feature
         type: text
       - name: average
-        title: Average
+        title: Average contribution
         type: number
       - name: sd
-        title: SD
+        title: Contribution SD
         type: number
       - name: ratio
-        title: Ratio
+        title: Average divided by SD
+        type: number
+      - name: meanFirst
+        title: Mean in first group
+        type: number
+      - name: meanSecond
+        title: Mean in second group
         type: number
       - name: contribution
-        title: Contribution %
+        title: Contribution (%)
         type: number
       - name: cumulative
-        title: Cumulative %
+        title: Cumulative contribution (%)
         type: number
 
   - name: plot
-    title: Contribution Plot
+    title: SIMPER contribution percentages by group contrast
     type: Image
-    width: 650
+    visible: false
+    width: 700
     height: 450
     renderFun: .plotContributions
 
+  - name: plotDescription
+    title: Plot details
+    type: Html
+    visible: false
+
+  - name: assessment
+    title: Exploratory permutation assessment
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: feature
+        title: Feature
+        type: text
+      - name: p
+        title: Permutation p
+        type: number
+        format: zto,pvalue
+      - name: padj
+        title: Adjusted p
+        type: number
+        format: zto,pvalue
+
   - name: note
-    title: Notes
-    type: Preformatted
+    title: Interpretation
+    type: Html
+    visible: false
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
 
 ...

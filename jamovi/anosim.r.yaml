@@ -4,13 +4,15 @@ title: ANOSIM
 jrs: '1.1'
 
 items:
-  - name: warnings
-    title: Notes and Warnings
-    type: Preformatted
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
 
   - name: summary
     title: Data Summary
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: item
@@ -20,28 +22,35 @@ items:
         title: Value
         type: text
 
+  - name: warnings
+    title: Data handling warnings
+    type: Preformatted
+    visible: false
+
   - name: global
-    title: Global Test
+    title: Global ANOSIM
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: statistic
         title: Statistic
         type: text
       - name: value
-        title: Value
+        title: R
         type: number
       - name: p
-        title: p
+        title: Permutation p
         type: number
         format: zto,pvalue
       - name: permutations
-        title: Permutations
+        title: Effective permutations
         type: integer
 
   - name: pairwise
     title: Pairwise ANOSIM
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: contrast
@@ -51,17 +60,31 @@ items:
         title: R
         type: number
       - name: p
-        title: p
+        title: Permutation p
         type: number
         format: zto,pvalue
 
       - name: padj
-        title: p-adj
+        title: Adjusted p
         type: number
         format: zto,pvalue
 
   - name: note
-    title: Notes
-    type: Preformatted
+    title: Interpretation
+    type: Html
+    visible: false
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
 
 ...

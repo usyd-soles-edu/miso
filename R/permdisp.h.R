@@ -15,7 +15,8 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             distAdd = "none",
             seed = 0,
             permN = 999,
-            permScheme = "stratified",
+            permRestriction = "free",
+            permScheme = "free",
             useParallel = FALSE,
             dispType = "median",
             dispBias = FALSE,
@@ -111,6 +112,13 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 permN,
                 default=999,
                 min=1)
+            private$..permRestriction <- jmvcore::OptionList$new(
+                "permRestriction",
+                permRestriction,
+                options=list(
+                    "free",
+                    "series"),
+                default="free")
             private$..permScheme <- jmvcore::OptionList$new(
                 "permScheme",
                 permScheme,
@@ -118,7 +126,8 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "free",
                     "stratified",
                     "series"),
-                default="stratified")
+                default="free",
+                hidden=TRUE)
             private$..useParallel <- jmvcore::OptionBool$new(
                 "useParallel",
                 useParallel,
@@ -158,6 +167,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..distAdd)
             self$.addOption(private$..seed)
             self$.addOption(private$..permN)
+            self$.addOption(private$..permRestriction)
             self$.addOption(private$..permScheme)
             self$.addOption(private$..useParallel)
             self$.addOption(private$..dispType)
@@ -175,6 +185,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         distAdd = function() private$..distAdd$value,
         seed = function() private$..seed$value,
         permN = function() private$..permN$value,
+        permRestriction = function() private$..permRestriction$value,
         permScheme = function() private$..permScheme$value,
         useParallel = function() private$..useParallel$value,
         dispType = function() private$..dispType$value,
@@ -191,6 +202,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..distAdd = NA,
         ..seed = NA,
         ..permN = NA,
+        ..permRestriction = NA,
         ..permScheme = NA,
         ..useParallel = NA,
         ..dispType = NA,
@@ -203,13 +215,15 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permdispResults",
     inherit = jmvcore::Group,
     active = list(
-        warnings = function() private$.items[["warnings"]],
+        guidance = function() private$.items[["guidance"]],
         summary = function() private$.items[["summary"]],
+        warnings = function() private$.items[["warnings"]],
         distances = function() private$.items[["distances"]],
         anova = function() private$.items[["anova"]],
         pairwise = function() private$.items[["pairwise"]],
         plot = function() private$.items[["plot"]],
-        note = function() private$.items[["note"]]),
+        note = function() private$.items[["note"]],
+        settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -219,12 +233,14 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 title="PERMDISP")
             self$add(jmvcore::Preformatted$new(
                 options=options,
-                name="warnings",
-                title="Notes and Warnings"))
+                name="guidance",
+                title="Getting started",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
                 title="Data Summary",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -235,10 +251,16 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="value",
                         `title`="Value",
                         `type`="text"))))
+            self$add(jmvcore::Preformatted$new(
+                options=options,
+                name="warnings",
+                title="Data handling warnings",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="distances",
-                title="Group Distances to Centre",
+                title="Distances to Group Centre",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -246,13 +268,34 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `title`="Group",
                         `type`="text"),
                     list(
+                        `name`="n",
+                        `title`="n",
+                        `type`="integer"),
+                    list(
                         `name`="distance",
-                        `title`="Mean Distance",
+                        `title`="Mean distance",
+                        `type`="number"),
+                    list(
+                        `name`="median",
+                        `title`="Median distance",
+                        `type`="number"),
+                    list(
+                        `name`="sd",
+                        `title`="Standard deviation",
+                        `type`="number"),
+                    list(
+                        `name`="min",
+                        `title`="Minimum",
+                        `type`="number"),
+                    list(
+                        `name`="max",
+                        `title`="Maximum",
                         `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="anova",
                 title="Dispersion Test",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -277,13 +320,14 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
-                title="Pairwise Dispersion",
+                title="Pairwise Dispersion Comparisons",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -296,25 +340,42 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"),
                     list(
                         `name`="padj",
-                        `title`="p-adj",
+                        `title`="Adjusted p",
                         `type`="number",
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="plot",
-                title="Distances to Centre",
+                title="Distance Distributions",
+                visible=FALSE,
                 width=600,
                 height=450,
                 renderFun=".plotDistances"))
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Notes"))}))
+                title="Interpretation",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="settings",
+                title="Analysis settings",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="setting",
+                        `title`="Setting",
+                        `type`="text"),
+                    list(
+                        `name`="value",
+                        `title`="Value",
+                        `type`="text"))))}))
 
 permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permdispBase",
@@ -350,6 +411,7 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param distAdd .
 #' @param seed .
 #' @param permN .
+#' @param permRestriction .
 #' @param permScheme .
 #' @param useParallel .
 #' @param dispType .
@@ -358,13 +420,15 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param dispAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
-#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$guidance} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
@@ -385,7 +449,8 @@ permdisp <- function(
     distAdd = "none",
     seed = 0,
     permN = 999,
-    permScheme = "stratified",
+    permRestriction = "free",
+    permScheme = "free",
     useParallel = FALSE,
     dispType = "median",
     dispBias = FALSE,
@@ -415,6 +480,7 @@ permdisp <- function(
         distAdd = distAdd,
         seed = seed,
         permN = permN,
+        permRestriction = permRestriction,
         permScheme = permScheme,
         useParallel = useParallel,
         dispType = dispType,

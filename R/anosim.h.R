@@ -14,8 +14,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             distBinary = FALSE,
             seed = 0,
             anosimN = 999,
-            permScheme = "stratified",
+            permRestriction = "free",
+            permScheme = "free",
             useParallel = FALSE,
+            anosimPairwise = FALSE,
             anosimAdjust = "holm", ...) {
 
             super$initialize(
@@ -104,6 +106,14 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 anosimN,
                 default=999,
                 min=1)
+            private$..permRestriction <- jmvcore::OptionList$new(
+                "permRestriction",
+                permRestriction,
+                options=list(
+                    "free",
+                    "stratified",
+                    "series"),
+                default="free")
             private$..permScheme <- jmvcore::OptionList$new(
                 "permScheme",
                 permScheme,
@@ -111,10 +121,15 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "free",
                     "stratified",
                     "series"),
-                default="stratified")
+                default="free",
+                hidden=TRUE)
             private$..useParallel <- jmvcore::OptionBool$new(
                 "useParallel",
                 useParallel,
+                default=FALSE)
+            private$..anosimPairwise <- jmvcore::OptionBool$new(
+                "anosimPairwise",
+                anosimPairwise,
                 default=FALSE)
             private$..anosimAdjust <- jmvcore::OptionList$new(
                 "anosimAdjust",
@@ -135,8 +150,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..anosimN)
+            self$.addOption(private$..permRestriction)
             self$.addOption(private$..permScheme)
             self$.addOption(private$..useParallel)
+            self$.addOption(private$..anosimPairwise)
             self$.addOption(private$..anosimAdjust)
         }),
     active = list(
@@ -148,8 +165,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
         anosimN = function() private$..anosimN$value,
+        permRestriction = function() private$..permRestriction$value,
         permScheme = function() private$..permScheme$value,
         useParallel = function() private$..useParallel$value,
+        anosimPairwise = function() private$..anosimPairwise$value,
         anosimAdjust = function() private$..anosimAdjust$value),
     private = list(
         ..vars = NA,
@@ -160,8 +179,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..distBinary = NA,
         ..seed = NA,
         ..anosimN = NA,
+        ..permRestriction = NA,
         ..permScheme = NA,
         ..useParallel = NA,
+        ..anosimPairwise = NA,
         ..anosimAdjust = NA)
 )
 
@@ -169,11 +190,13 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "anosimResults",
     inherit = jmvcore::Group,
     active = list(
-        warnings = function() private$.items[["warnings"]],
+        guidance = function() private$.items[["guidance"]],
         summary = function() private$.items[["summary"]],
+        warnings = function() private$.items[["warnings"]],
         global = function() private$.items[["global"]],
         pairwise = function() private$.items[["pairwise"]],
-        note = function() private$.items[["note"]]),
+        note = function() private$.items[["note"]],
+        settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -181,14 +204,16 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="",
                 title="ANOSIM")
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
-                name="warnings",
-                title="Notes and Warnings"))
+                name="guidance",
+                title="Getting started",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
                 title="Data Summary",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -199,10 +224,16 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="value",
                         `title`="Value",
                         `type`="text"))))
+            self$add(jmvcore::Preformatted$new(
+                options=options,
+                name="warnings",
+                title="Data handling warnings",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="global",
-                title="Global Test",
+                title="Global ANOSIM",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -211,21 +242,22 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="text"),
                     list(
                         `name`="value",
-                        `title`="Value",
+                        `title`="R",
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"),
                     list(
                         `name`="permutations",
-                        `title`="Permutations",
+                        `title`="Effective permutations",
                         `type`="integer"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
                 title="Pairwise ANOSIM",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -238,18 +270,34 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"),
                     list(
                         `name`="padj",
-                        `title`="p-adj",
+                        `title`="Adjusted p",
                         `type`="number",
                         `format`="zto,pvalue"))))
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Notes"))}))
+                title="Interpretation",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="settings",
+                title="Analysis settings",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="setting",
+                        `title`="Setting",
+                        `type`="text"),
+                    list(
+                        `name`="value",
+                        `title`="Value",
+                        `type`="text"))))}))
 
 anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "anosimBase",
@@ -284,16 +332,20 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param distBinary .
 #' @param seed .
 #' @param anosimN .
+#' @param permRestriction .
 #' @param permScheme .
 #' @param useParallel .
+#' @param anosimPairwise .
 #' @param anosimAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
-#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$global} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
@@ -313,8 +365,10 @@ anosim <- function(
     distBinary = FALSE,
     seed = 0,
     anosimN = 999,
-    permScheme = "stratified",
+    permRestriction = "free",
+    permScheme = "free",
     useParallel = FALSE,
+    anosimPairwise = FALSE,
     anosimAdjust = "holm") {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
@@ -342,8 +396,10 @@ anosim <- function(
         distBinary = distBinary,
         seed = seed,
         anosimN = anosimN,
+        permRestriction = permRestriction,
         permScheme = permScheme,
         useParallel = useParallel,
+        anosimPairwise = anosimPairwise,
         anosimAdjust = anosimAdjust)
 
     analysis <- anosimClass$new(

@@ -15,7 +15,8 @@ permdisp(
   distAdd = "none",
   seed = 0,
   permN = 999,
-  permScheme = "stratified",
+  permRestriction = "free",
+  permScheme = "free",
   useParallel = FALSE,
   dispType = "median",
   dispBias = FALSE,
@@ -44,6 +45,8 @@ permdisp(
 
 \item{permN}{.}
 
+\item{permRestriction}{.}
+
 \item{permScheme}{.}
 
 \item{useParallel}{.}
@@ -59,13 +62,15 @@ permdisp(
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a preformatted \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

@@ -1,5 +1,5 @@
 Generated-at-UTC: 2026-07-15T00:00:00Z
-Source-commit: e78b5e88473c53c49c9315a3c59c7164be6371ee
+Source-commit: b1dfd7a45d1c08657221c4559de0003eb8e416dc
 R: 4.6.0
 vegan: 2.7.5
 permute: 0.9.10
@@ -8,4 +8,4 @@ RNGversion: 4.0.0
 Platform: aarch64-apple-darwin23
 Locale: C
 Scenarios: 27
-Reference-rows: 166
+Reference-rows: 335

@@ -4,13 +4,15 @@ title: PERMDISP
 jrs: '1.1'
 
 items:
-  - name: warnings
-    title: Notes and Warnings
+  - name: guidance
+    title: Getting started
     type: Preformatted
+    visible: false
 
   - name: summary
     title: Data Summary
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: item
@@ -20,21 +22,43 @@ items:
         title: Value
         type: text
 
+  - name: warnings
+    title: Data handling warnings
+    type: Preformatted
+    visible: false
+
   - name: distances
-    title: Group Distances to Centre
+    title: Distances to Group Centre
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: group
         title: Group
         type: text
+      - name: 'n'
+        title: n
+        type: integer
       - name: distance
-        title: Mean Distance
+        title: Mean distance
+        type: number
+      - name: median
+        title: Median distance
+        type: number
+      - name: sd
+        title: Standard deviation
+        type: number
+      - name: min
+        title: Minimum
+        type: number
+      - name: max
+        title: Maximum
         type: number
 
   - name: anova
     title: Dispersion Test
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: source
@@ -53,13 +77,14 @@ items:
         title: F
         type: number
       - name: p
-        title: p
+        title: Permutation p
         type: number
         format: zto,pvalue
 
   - name: pairwise
-    title: Pairwise Dispersion
+    title: Pairwise Dispersion Comparisons
     type: Table
+    visible: false
     rows: 0
     columns:
       - name: contrast
@@ -69,23 +94,38 @@ items:
         title: t
         type: number
       - name: p
-        title: p
+        title: Permutation p
         type: number
         format: zto,pvalue
       - name: padj
-        title: p-adj
+        title: Adjusted p
         type: number
         format: zto,pvalue
 
   - name: plot
-    title: Distances to Centre
+    title: Distance Distributions
     type: Image
+    visible: false
     width: 600
     height: 450
     renderFun: .plotDistances
 
   - name: note
-    title: Notes
-    type: Preformatted
+    title: Interpretation
+    type: Html
+    visible: false
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
 
 ...

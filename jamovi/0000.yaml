@@ -17,14 +17,13 @@ analyses:
     ns: tofu
     category: analyses
     menuGroup: tofu
-    menuSubgroup: Compare groups
     menuTitle: PERMANOVA
+    menuSubtitle: Test group differences
   - title: ANOSIM
     name: anosim
     ns: tofu
     category: analyses
     menuGroup: tofu
-    menuSubgroup: Compare groups
     menuTitle: ANOSIM
     menuSubtitle: Rank-based alternative
   - title: PERMDISP
@@ -32,22 +31,22 @@ analyses:
     ns: tofu
     category: analyses
     menuGroup: tofu
-    menuSubgroup: Check dispersion
     menuTitle: PERMDISP
+    menuSubtitle: Check group dispersion
   - title: nMDS
     name: nmds
     ns: tofu
     category: analyses
     menuGroup: tofu
-    menuSubgroup: Ordinate samples
     menuTitle: nMDS
+    menuSubtitle: Visualise sample patterns
   - title: SIMPER
     name: simper
     ns: tofu
     category: analyses
     menuGroup: tofu
-    menuSubgroup: Explore feature contributions
     menuTitle: SIMPER
+    menuSubtitle: Feature contributions
 usesNative: true
 minApp: 1.0.8
 

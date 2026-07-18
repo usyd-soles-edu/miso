@@ -14,7 +14,9 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             seed = 0,
             simperN = 999,
             simperTop = 10,
-            simperCum = 70, ...) {
+            simperCum = 70,
+            simperAssess = FALSE,
+            simperAdjust = "holm", ...) {
 
             super$initialize(
                 package="tofu",
@@ -78,11 +80,13 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "clark",
                     "altGower",
                     "mahalanobis"),
-                default="bray")
+                default="bray",
+                hidden=TRUE)
             private$..distBinary <- jmvcore::OptionBool$new(
                 "distBinary",
                 distBinary,
-                default=FALSE)
+                default=FALSE,
+                hidden=TRUE)
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -104,6 +108,20 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 default=70,
                 min=1,
                 max=100)
+            private$..simperAssess <- jmvcore::OptionBool$new(
+                "simperAssess",
+                simperAssess,
+                default=FALSE)
+            private$..simperAdjust <- jmvcore::OptionList$new(
+                "simperAdjust",
+                simperAdjust,
+                options=list(
+                    "holm",
+                    "bonferroni",
+                    "BH",
+                    "BY",
+                    "none"),
+                default="holm")
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -114,6 +132,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..simperN)
             self$.addOption(private$..simperTop)
             self$.addOption(private$..simperCum)
+            self$.addOption(private$..simperAssess)
+            self$.addOption(private$..simperAdjust)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -124,7 +144,9 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         seed = function() private$..seed$value,
         simperN = function() private$..simperN$value,
         simperTop = function() private$..simperTop$value,
-        simperCum = function() private$..simperCum$value),
+        simperCum = function() private$..simperCum$value,
+        simperAssess = function() private$..simperAssess$value,
+        simperAdjust = function() private$..simperAdjust$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -134,18 +156,25 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..seed = NA,
         ..simperN = NA,
         ..simperTop = NA,
-        ..simperCum = NA)
+        ..simperCum = NA,
+        ..simperAssess = NA,
+        ..simperAdjust = NA)
 )
 
 simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "simperResults",
     inherit = jmvcore::Group,
     active = list(
-        warnings = function() private$.items[["warnings"]],
+        guidance = function() private$.items[["guidance"]],
         summary = function() private$.items[["summary"]],
+        warnings = function() private$.items[["warnings"]],
+        contrasts = function() private$.items[["contrasts"]],
         table = function() private$.items[["table"]],
         plot = function() private$.items[["plot"]],
-        note = function() private$.items[["note"]]),
+        plotDescription = function() private$.items[["plotDescription"]],
+        assessment = function() private$.items[["assessment"]],
+        note = function() private$.items[["note"]],
+        settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -153,14 +182,16 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="",
                 title="SIMPER")
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
-                name="warnings",
-                title="Notes and Warnings"))
+                name="guidance",
+                title="Getting started",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
                 title="Data Summary",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -171,10 +202,39 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="value",
                         `title`="Value",
                         `type`="text"))))
+            self$add(jmvcore::Preformatted$new(
+                options=options,
+                name="warnings",
+                title="Data handling warnings",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="contrasts",
+                title="Contrast summary",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="contrast",
+                        `title`="Contrast",
+                        `type`="text"),
+                    list(
+                        `name`="nFirst",
+                        `title`="n in first group",
+                        `type`="integer"),
+                    list(
+                        `name`="nSecond",
+                        `title`="n in second group",
+                        `type`="integer"),
+                    list(
+                        `name`="overall",
+                        `title`="Average Bray-Curtis dissimilarity",
+                        `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="table",
-                title="Feature Contributions",
+                title="Descriptive feature contributions",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -187,35 +247,90 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="text"),
                     list(
                         `name`="average",
-                        `title`="Average",
+                        `title`="Average contribution",
                         `type`="number"),
                     list(
                         `name`="sd",
-                        `title`="SD",
+                        `title`="Contribution SD",
                         `type`="number"),
                     list(
                         `name`="ratio",
-                        `title`="Ratio",
+                        `title`="Average divided by SD",
+                        `type`="number"),
+                    list(
+                        `name`="meanFirst",
+                        `title`="Mean in first group",
+                        `type`="number"),
+                    list(
+                        `name`="meanSecond",
+                        `title`="Mean in second group",
                         `type`="number"),
                     list(
                         `name`="contribution",
-                        `title`="Contribution %",
+                        `title`="Contribution (%)",
                         `type`="number"),
                     list(
                         `name`="cumulative",
-                        `title`="Cumulative %",
+                        `title`="Cumulative contribution (%)",
                         `type`="number"))))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="plot",
-                title="Contribution Plot",
-                width=650,
+                title="SIMPER contribution percentages by group contrast",
+                visible=FALSE,
+                width=700,
                 height=450,
                 renderFun=".plotContributions"))
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="plotDescription",
+                title="Plot details",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="assessment",
+                title="Exploratory permutation assessment",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="contrast",
+                        `title`="Contrast",
+                        `type`="text"),
+                    list(
+                        `name`="feature",
+                        `title`="Feature",
+                        `type`="text"),
+                    list(
+                        `name`="p",
+                        `title`="Permutation p",
+                        `type`="number",
+                        `format`="zto,pvalue"),
+                    list(
+                        `name`="padj",
+                        `title`="Adjusted p",
+                        `type`="number",
+                        `format`="zto,pvalue"))))
+            self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Notes"))}))
+                title="Interpretation",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="settings",
+                title="Analysis settings",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="setting",
+                        `title`="Setting",
+                        `type`="text"),
+                    list(
+                        `name`="value",
+                        `title`="Value",
+                        `type`="text"))))}))
 
 simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "simperBase",
@@ -251,13 +366,20 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperN .
 #' @param simperTop .
 #' @param simperCum .
+#' @param simperAssess .
+#' @param simperAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
-#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
@@ -277,7 +399,9 @@ simper <- function(
     seed = 0,
     simperN = 999,
     simperTop = 10,
-    simperCum = 70) {
+    simperCum = 70,
+    simperAssess = FALSE,
+    simperAdjust = "holm") {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("simper requires jmvcore to be installed (restart may be required)")
@@ -301,7 +425,9 @@ simper <- function(
         seed = seed,
         simperN = simperN,
         simperTop = simperTop,
-        simperCum = simperCum)
+        simperCum = simperCum,
+        simperAssess = simperAssess,
+        simperAdjust = simperAdjust)
 
     analysis <- simperClass$new(
         options = options,

@@ -19,7 +19,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             seed = 0,
             permInteractions = FALSE,
             permN = 999,
-            permScheme = "stratified",
+            permScheme = "free",
             useParallel = FALSE,
             permBy = "terms",
             permPairwise = FALSE,
@@ -151,7 +151,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "free",
                     "stratified",
                     "series"),
-                default="stratified")
+                default="free")
             private$..useParallel <- jmvcore::OptionBool$new(
                 "useParallel",
                 useParallel,
@@ -242,11 +242,13 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permanovaResults",
     inherit = jmvcore::Group,
     active = list(
-        warnings = function() private$.items[["warnings"]],
+        guidance = function() private$.items[["guidance"]],
         summary = function() private$.items[["summary"]],
+        warnings = function() private$.items[["warnings"]],
         table = function() private$.items[["table"]],
         pairwise = function() private$.items[["pairwise"]],
-        note = function() private$.items[["note"]]),
+        note = function() private$.items[["note"]],
+        settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -256,12 +258,14 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 title="PERMANOVA")
             self$add(jmvcore::Preformatted$new(
                 options=options,
-                name="warnings",
-                title="Notes and Warnings"))
+                name="guidance",
+                title="Getting started",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
                 title="Data Summary",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -272,10 +276,16 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="value",
                         `title`="Value",
                         `type`="text"))))
+            self$add(jmvcore::Preformatted$new(
+                options=options,
+                name="warnings",
+                title="Data handling warnings",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="table",
                 title="PERMANOVA Table",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -296,17 +306,18 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="number"),
                     list(
                         `name`="f",
-                        `title`="F",
+                        `title`="Pseudo-F",
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
                 title="Pairwise PERMANOVA",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -315,22 +326,38 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="text"),
                     list(
                         `name`="f",
-                        `title`="F",
+                        `title`="Pseudo-F",
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"),
                     list(
                         `name`="padj",
-                        `title`="p-adj",
+                        `title`="Adjusted p",
                         `type`="number",
                         `format`="zto,pvalue"))))
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Notes"))}))
+                title="Interpretation",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="settings",
+                title="Analysis settings",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="setting",
+                        `title`="Setting",
+                        `type`="text"),
+                    list(
+                        `name`="value",
+                        `title`="Value",
+                        `type`="text"))))}))
 
 permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permanovaBase",
@@ -377,11 +404,13 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param permAdjust .
 #' @return A results object containing:
 #' \tabular{llllll}{
-#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$guidance} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
 #'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
@@ -406,7 +435,7 @@ permanova <- function(
     seed = 0,
     permInteractions = FALSE,
     permN = 999,
-    permScheme = "stratified",
+    permScheme = "free",
     useParallel = FALSE,
     permBy = "terms",
     permPairwise = FALSE,

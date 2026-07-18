@@ -10,28 +10,21 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables
+        label: Feature variables (required)
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable
+        label: Grouping variable (required)
         children:
           - type: VariablesListBox
             name: factor
             maxItemCount: 1
             isTarget: true
-      - type: TargetLayoutBox
-        label: Strata / blocking factor
-        children:
-          - type: VariablesListBox
-            name: strata
-            maxItemCount: 1
-            isTarget: true
-
   - type: CollapseBox
-    label: Resemblance
+    name: analysisChoices
+    label: Analysis choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -41,23 +34,44 @@ children:
         name: distance
       - type: CheckBox
         name: distBinary
-      - type: TextBox
-        name: seed
-        format: number
-
+      - type: CheckBox
+        name: anosimPairwise
+        events:
+          change: update_control_states
+      - type: ComboBox
+        name: anosimAdjust
   - type: CollapseBox
-    label: ANOSIM
-    collapsed: false
+    name: studyDesign
+    label: Study design and permutation restrictions
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: VariableSupplier
+        persistentItems: false
+        stretchFactor: 1
+        children:
+          - type: TargetLayoutBox
+            label: Blocking variable (optional)
+            children:
+              - type: VariablesListBox
+                name: strata
+                maxItemCount: 1
+                isTarget: true
+      - type: ComboBox
+        name: permRestriction
+  - type: CollapseBox
+    name: reproducibility
+    label: Reproducibility and computation
+    collapsed: true
     stretchFactor: 1
     children:
       - type: TextBox
         name: anosimN
         format: number
-      - type: ComboBox
-        name: permScheme
+      - type: TextBox
+        name: seed
+        format: number
       - type: CheckBox
         name: useParallel
-      - type: ComboBox
-        name: anosimAdjust
 
 ...

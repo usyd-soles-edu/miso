@@ -9,20 +9,21 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables
+        label: Feature variables (required)
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable
+        label: Grouping variable (required)
         children:
           - type: VariablesListBox
             name: factor
             maxItemCount: 1
             isTarget: true
   - type: CollapseBox
-    label: Resemblance
+    name: analysisChoices
+    label: Analysis choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -30,32 +31,41 @@ children:
         name: transform
       - type: ComboBox
         name: distance
+      - type: ComboBox
+        name: dispType
+      - type: CheckBox
+        name: dispPairwise
+        events:
+          change: update_control_states
+      - type: ComboBox
+        name: dispAdjust
+  - type: CollapseBox
+    name: advancedOptions
+    label: Advanced options
+    collapsed: true
+    stretchFactor: 1
+    children:
       - type: CheckBox
         name: distBinary
       - type: CheckBox
         name: distSqrt
       - type: ComboBox
         name: distAdd
-      - type: TextBox
-        name: seed
-        format: number
+      - type: CheckBox
+        name: dispBias
   - type: CollapseBox
-    label: PERMDISP
-    collapsed: false
+    name: reproducibility
+    label: Reproducibility and computation
+    collapsed: true
     stretchFactor: 1
     children:
       - type: TextBox
         name: permN
         format: number
       - type: ComboBox
-        name: permScheme
+        name: permRestriction
+      - type: TextBox
+        name: seed
+        format: number
       - type: CheckBox
         name: useParallel
-      - type: ComboBox
-        name: dispType
-      - type: CheckBox
-        name: dispBias
-      - type: CheckBox
-        name: dispPairwise
-      - type: ComboBox
-        name: dispAdjust
