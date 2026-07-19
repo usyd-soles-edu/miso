@@ -1,6 +1,6 @@
 # jamovi UI smoke-test runbook
 
-This runbook records the Computer Use procedure that successfully launched jamovi from a fully quit state, recalculated PERMANOVA on both baseline workbooks, and verified the rendered tables. It is intended for future Codex sessions and is deliberately separate from the user-facing functionality guide in `README.md`.
+This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised PERMANOVA, SIMPER, and nMDS on both baseline workbooks. It is intended for future Codex sessions and is deliberately separate from the user-facing functionality guide in `README.md`.
 
 ## Current automated scope
 
@@ -9,14 +9,16 @@ The validated baseline-workbook workflow covers:
 - launching jamovi from a quit state;
 - normalizing the window;
 - opening the small and large saved workbooks;
-- forcing PERMANOVA to recalculate;
-- reading the rendered PERMANOVA table through the accessibility tree;
-- checking expected values, structural blank cells, and absence of `NaN`; and
+- forcing PERMANOVA, SIMPER, and nMDS to recalculate;
+- reading their controls, tables, plot descriptions, guidance, and settings through the accessibility tree;
+- checking expected values, conditional outputs, stale-output clearing, control dependencies, and absence of `NaN` or `Inf`;
+- checking SIMPER and nMDS at 200% jamovi zoom;
+- checking nMDS output-only invariance, optional-layer independence, and basic keyboard focus recovery; and
 - confirming that the workbooks and Git worktree were not modified.
 
-The PERMANOVA redesign regression also covers a new analysis, incomplete inputs, conditional result sections, permutation/block truthfulness, control dependencies, valid → invalid → valid clearing, collapsed-section accessibility, and keyboard operation. Run those checks from a clean CSV as described below before claiming the redesigned UI passed.
+The PERMANOVA redesign regression also covers a new analysis, incomplete inputs, conditional result sections, permutation/block truthfulness, control dependencies, valid → invalid → valid clearing, collapsed-section accessibility, and keyboard operation. Run those checks from a clean CSV as described below before claiming the redesigned UI passed. The SIMPER and nMDS procedures below were successfully exercised on the saved baselines and are now repeatable UI workflows.
 
-ANOSIM, PERMDISP, nMDS, SIMPER, and invalid-input UI checks remain manual until equivalent automation has been exercised and added here.
+ANOSIM, PERMDISP, and the shared invalid-input matrix remain manual until equivalent automation has been exercised and added here. Do not claim live coverage for VoiceOver speech, 400% macOS magnification, Windows NVDA, nMDS five-group rendering, or hidden legacy Binary/3D controls; those checks were not physically run.
 
 ## Test assets
 
@@ -35,7 +37,7 @@ Delete the existing `tofu_0.2.0.jmo` before running `jmvtools::install(pkg=".")`
 - the output contains both `Installing tofu_0.2.0.jmo` and `Module installed successfully`; and
 - `~/Library/Application Support/jamovi/modules/tofu/jamovi.yaml` has a fresh modification time.
 
-For the current PERMANOVA redesign, also inspect the installed `ui/permanova.js` for `Required: Feature variables`, the Free default, the `studyVariables` supplier, and four real `update_control_states` event handlers. A compiled `execute: function(ui) { }` means the unsupported `changed:` event alias was used instead of the working `change:` spelling.
+For the current PERMANOVA redesign, also inspect the installed `ui/permanova.js` for `Required: Feature variables`, the Free default, the `studyVariables` supplier, and four real `update_control_states` event handlers. A compiled `execute: function(ui) { }` means the unsupported `changed:` event alias was used instead of the working `change:` spelling. For nMDS, inspect installed `ui/nmds.js` for the short optional-variable labels and the two nearby tips. For SIMPER, inspect installed `ui/simper.js` for `Show detailed statistics`, `Contribution variability`, and `Group means`.
 
 ## Automation principles
 
@@ -181,7 +183,53 @@ Do not save the CSV as a workbook.
 3. With VoiceOver, navigate the PERMANOVA table and confirm it announces the table title, column heading, Source-row context, and the not-applicable meaning of Residual/Total structural cells.
 4. Record Windows NVDA as unverified unless the same checks are physically run on Windows.
 
-### 10. Finish safely
+### 10. Run the SIMPER workflow
+
+Use the saved baselines so all variables are already assigned. Opening cached results is not a pass; force recalculation through a visible option.
+
+#### Small baseline
+
+1. Open `tofu-small-baselines.omv`, activate `container SIMPER- Results`, and fetch a fresh full state.
+2. Change **Top N features** from `10` to `9`. Wait for **Analysis settings** to display `9`.
+3. Assert that the visible **Descriptive feature contributions** table has only `Contrast`, `Feature`, `Contribution (%)`, and `Cumulative (%)`. The legacy wide internal table must not appear.
+4. Confirm three contrasts and the expected first rows: A vs B `feature_04` at about `21.2`, A vs C `feature_01` at about `26.3`, and B vs C `feature_04` at about `24.4`.
+5. Select **Show detailed statistics**. Assert a five-column **Contribution variability** table and a four-column **Group means** table, both contained within the report width. Clear the option and assert that both tables disappear.
+6. With **Assess contributions with permutations** clear, confirm its permutation count, adjustment, and seed controls are unavailable. Select it, enter `19`, retain Holm, and enter seed `123`. Assert a populated four-column **Exploratory permutation assessment** and truthful settings. Clear the assessment.
+7. Remove the required grouping variable. Assert that all prior SIMPER tables, plot, and assessment disappear and that guidance requests a grouping variable. Restore `group` and wait for all three contrasts to return without stale rows.
+8. At 200% jamovi zoom, confirm the option tips, four-column main table, and optional detail tables remain readable and reachable. The zoom sequence is `100 → 110 → 120 → 133 → 150 → 170 → 200`; restore it in reverse.
+9. Fail if `NaN` or `Inf` appears in the SIMPER result block.
+
+#### Large baseline
+
+1. Open `tofu-large-baselines.omv`, activate SIMPER, and change Top N `10 → 9`.
+2. Assert **Data Summary** reports 360 analysed samples, 48 features, three groups, and three contrasts.
+3. Assert exactly 9 contribution rows per contrast, 27 data rows total. The A vs B first row is `feature_47`, contribution `6.54`, cumulative `6.54`.
+4. Confirm the compact main table, plot, and settings appear without horizontal overflow or stale small-data rows.
+
+### 11. Run the nMDS workflow
+
+#### Small baseline
+
+1. Open `tofu-small-baselines.omv`, activate `container nMDS- Results`, and confirm eight required features, `group`, `temperature` plus `pH`, None/Bray-Curtis, Shepard on, feature scores off, environmental permutations `99`, seed `123`, starts `20`, and iterations `200`.
+2. Change seed `123 → 124 → 123`. Wait for **Analysis settings** after each change and do not read the environmental rows until the requested seed appears there. At seed 123, expect stress about `0.1636`, 24 **Site Scores**, temperature r² about `.292` with p `.060`, and pH r² about `.238` with p `.100`.
+3. Remove `group`. The ordination, Site Scores, and Environmental Fit must remain; group styling controls become unavailable and the plot description reports no grouping. Restore `group` and confirm stress/configuration are unchanged.
+4. Remove `pH`, then all environmental variables. Environmental Fit and vectors must follow the requested variables while the base ordination remains. Restore `temperature` and `pH`.
+5. Clear **Show Shepard diagram** and select **Show feature scores**. Assert only the requested output changes and Feature Scores contains 8 rows. Restore Shepard on and Feature Scores off; Site Scores must remain identical.
+6. Change environmental permutations `99 → 19`. Expect temperature p `.050` and pH p `.250`; restore `99`.
+7. Select Standardize with Bray-Curtis. Assert an actionable compatibility message and no stale ordination, scores, or environmental fit. Select Euclidean to recover, then restore None/Bray-Curtis.
+8. Remove all required features. Assert the nMDS result block contains only getting-started guidance asking for at least two numeric features. Restore all eight features and wait for stress `0.1636` and the complete result set.
+9. At 200% zoom, confirm **Optional: Grouping variable** and **Optional: Environmental variables** are not cropped, the compact tips in **Group display** and **Environmental fit** are visible, and the report remains reachable. Restore 100%.
+10. Focus Random seed, press Tab and Shift-Tab, and confirm logical movement among the three reproducibility fields. Change the seed with `set_value`; after recalculation, the accessibility tree should still identify the seed field as focused rather than moving focus into the report. Restore seed `123`.
+11. Confirm the accessibility tree exposes the nMDS heading; named tables and images; the compact ordination description; `p (unadjusted)` headers; and the descriptive, non-inferential overlay warning.
+
+#### Large baseline
+
+1. Open `tofu-large-baselines.omv`, activate nMDS, and change seed `123 → 124 → 123`.
+2. At seed 123, expect stress about `.1844`, 360 Site Scores, temperature r² about `.385` with p `.010`, and pH r² about `.529` with p `.010`.
+3. Select Feature Scores, hulls, the 1-SD ellipse, and spiders. Assert 48 Feature Score rows, unchanged Site Scores, all requested layers in the plot description, two environmental vectors, and truthful feature-label omission text.
+4. Clear the optional layers and confirm the base Site Scores remain unchanged.
+
+### 12. Finish safely
 
 1. Leave the random seed at its documented value of `123`.
 2. Do not press Save or Save As.
@@ -191,4 +239,6 @@ Do not save the CSV as a workbook.
 
 ## Validated result
 
-On 16 July 2026 with jamovi 2.7.36, the full procedure passed from a quit application state. The interface was controlled through accessibility elements after normalizing the window; no coordinate clicks were required.
+PERMANOVA passed on 16 July 2026 with jamovi 2.7.36 from a fully quit application state, using accessibility elements after normalizing the window.
+
+SIMPER and nMDS passed their small- and large-baseline workflows on 19 July 2026 with jamovi 2.7.36. Accessibility elements were preferred throughout; relative coordinates were used only to select target-list rows whose accessibility click was inert. Both workbooks remained unmodified. The unverified assistive-technology and legacy-control checks listed above remain explicit gaps rather than pass claims.

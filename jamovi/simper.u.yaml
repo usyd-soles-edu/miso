@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required) — Numeric response columns, such as species abundances
+        label: 'Required: Feature variables'
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable (required) — One categorical column containing at least two observed groups
+        label: 'Required: Grouping variable'
         children:
           - type: VariablesListBox
             name: factor
@@ -58,18 +58,52 @@ children:
             name: range
           - title: Chi-square
             name: chi.square
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Tip
+            heading: true
+            margin: none
+          - type: Label
+            label: Transforms affect contributions.
+            margin: none
+          - type: Label
+            label: Means use transformed values.
+            margin: none
       - type: Label
-        label: "Dissimilarity: Bray-Curtis (fixed for SIMPER)"
-      - type: TextBox
-        name: simperTop
-        format: number
-      - type: TextBox
-        name: simperCum
-        format: number
-      - type: Label
-        label: "Whichever limit is reached first; the feature that reaches the cumulative threshold is included."
-      - type: Label
-        label: "Transformations can change which features dominate Bray-Curtis dissimilarity; contributions and group means use the transformed scale."
+        label: "Dissimilarity: Bray-Curtis"
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Features shown
+            heading: true
+            margin: none
+          - type: TextBox
+            name: simperTop
+            format: number
+          - type: TextBox
+            name: simperCum
+            format: number
+          - type: LayoutBox
+            style: list
+            margin: small
+            children:
+              - type: Label
+                label: Tip
+                heading: true
+                margin: none
+              - type: Label
+                label: Stop at Top N or cumulative %.
+                margin: none
+              - type: Label
+                label: Keep the threshold-crossing feature.
+                margin: none
+      - type: CheckBox
+        name: simperDetails
 
   - type: CollapseBox
     name: permutationAssessment

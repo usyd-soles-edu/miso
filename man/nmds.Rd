@@ -21,7 +21,8 @@ nmds(
   nmdsSpecies = FALSE,
   nmdsHull = FALSE,
   nmdsEllipse = FALSE,
-  nmdsSpider = FALSE
+  nmdsSpider = FALSE,
+  nmdsEnvPerm = 99
 )
 }
 \arguments{
@@ -58,17 +59,25 @@ nmds(
 \item{nmdsEllipse}{.}
 
 \item{nmdsSpider}{.}
+
+\item{nmdsEnvPerm}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
-  \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
+  \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$shepardDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$sites} \tab \tab \tab \tab \tab a table \cr
+  \code{results$features} \tab \tab \tab \tab \tab a table \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

@@ -71,21 +71,28 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         return(list(error=TRUE, message=paste0("Negative values detected in feature variables: ", paste(badCols, collapse=", "), ". These analyses require non-negative values.")))
     }
 
+    rowIndex <- seq_len(nrow(data))
+
     keep <- stats::complete.cases(dat)
+    rowsMissingExcluded <- sum(!keep)
     if (! all(keep)) {
         warnings <- c(warnings, sprintf("%d rows excluded due to missing values in selected variables.", sum(!keep)))
         commMat <- commMat[keep, , drop=FALSE]
         dat <- dat[keep, , drop=FALSE]
+        rowIndex <- rowIndex[keep]
     }
 
     emptyRows <- rowSums(commMat, na.rm=TRUE) == 0
+    rowsZeroExcluded <- sum(emptyRows)
     if (any(emptyRows)) {
         warnings <- c(warnings, sprintf("%d all-zero samples excluded.", sum(emptyRows)))
         commMat <- commMat[!emptyRows, , drop=FALSE]
         dat <- dat[!emptyRows, , drop=FALSE]
+        rowIndex <- rowIndex[!emptyRows]
     }
 
     emptyCols <- colSums(commMat, na.rm=TRUE) == 0
+    featuresZeroExcluded <- sum(emptyCols)
     if (any(emptyCols)) {
         warnings <- c(warnings, sprintf("%d all-zero feature variables excluded.", sum(emptyCols)))
         commMat <- commMat[, !emptyCols, drop=FALSE]
@@ -155,6 +162,10 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         covariates=covDF,
         covariateNames=covs,
         warnings=warnings,
+        rowIndex=rowIndex,
+        rowsMissingExcluded=rowsMissingExcluded,
+        rowsZeroExcluded=rowsZeroExcluded,
+        featuresZeroExcluded=featuresZeroExcluded,
         rowsUsed=nrow(commMat),
         varsUsed=ncol(commMat),
         varsNames=colnames(commMat),

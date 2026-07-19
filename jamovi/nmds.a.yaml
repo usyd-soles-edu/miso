@@ -12,7 +12,7 @@ options:
     type: Data
 
   - name: vars
-    title: Feature variables
+    title: 'Required: Feature variables'
     type: Variables
     suggested:
       - continuous
@@ -20,7 +20,7 @@ options:
       - numeric
 
   - name: factor
-    title: Grouping variable
+    title: 'Optional: Grouping variable'
     type: Variable
     suggested:
       - nominal
@@ -109,6 +109,7 @@ options:
     title: Binary (presence/absence)
     type: Bool
     default: false
+    hidden: true
 
   - name: seed
     title: Random seed
@@ -122,9 +123,10 @@ options:
     default: 2
     min: 2
     max: 3
+    hidden: true
 
   - name: nmdsTrymax
-    title: Random starts
+    title: Maximum random starts
     type: Number
     default: 20
     min: 1
@@ -141,12 +143,12 @@ options:
     default: true
 
   - name: nmdsOverlay
-    title: Colour by group
+    title: Style points by group
     type: Bool
     default: true
 
   - name: nmdsEnv
-    title: Environmental variables
+    title: 'Optional: Environmental variables'
     type: Variables
     suggested:
       - continuous
@@ -155,7 +157,7 @@ options:
     default: null
 
   - name: nmdsSpecies
-    title: Show species scores
+    title: Show feature scores
     type: Bool
     default: false
 
@@ -165,7 +167,7 @@ options:
     default: false
 
   - name: nmdsEllipse
-    title: Group ellipses
+    title: Group dispersion ellipses (1 SD)
     type: Bool
     default: false
 
@@ -173,5 +175,11 @@ options:
     title: Group spiders
     type: Bool
     default: false
+
+  - name: nmdsEnvPerm
+    title: Environmental-fit permutations
+    type: Number
+    default: 99
+    min: 1
 
 ...

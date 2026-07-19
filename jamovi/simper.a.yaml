@@ -130,7 +130,7 @@ options:
     min: 1
 
   - name: simperCum
-    title: Include features until cumulative contribution reaches (%)
+    title: Cumulative contribution (%)
     type: Number
     default: 70
     min: 1
@@ -156,5 +156,10 @@ options:
       - title: None
         name: none
     default: holm
+
+  - name: simperDetails
+    title: Show detailed statistics
+    type: Bool
+    default: false
 
 ...

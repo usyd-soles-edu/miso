@@ -37,13 +37,73 @@ items:
         title: Contrast
         type: text
       - name: nFirst
-        title: n in first group
+        title: n (first)
         type: integer
       - name: nSecond
-        title: n in second group
+        title: n (second)
         type: integer
       - name: overall
-        title: Average Bray-Curtis dissimilarity
+        title: Mean dissimilarity
+        type: number
+
+  - name: contributions
+    title: Descriptive feature contributions
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: feature
+        title: Feature
+        type: text
+      - name: contribution
+        title: Contribution (%)
+        type: number
+      - name: cumulative
+        title: Cumulative (%)
+        type: number
+
+  - name: variability
+    title: Contribution variability
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: feature
+        title: Feature
+        type: text
+      - name: average
+        title: Average
+        type: number
+      - name: sd
+        title: SD
+        type: number
+      - name: ratio
+        title: Average/SD
+        type: number
+
+  - name: means
+    title: Group means
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: feature
+        title: Feature
+        type: text
+      - name: meanFirst
+        title: First mean
+        type: number
+      - name: meanSecond
+        title: Second mean
         type: number
 
   - name: table
@@ -84,7 +144,7 @@ items:
     title: SIMPER contribution percentages by group contrast
     type: Image
     visible: false
-    width: 700
+    width: 580
     height: 450
     renderFun: .plotContributions
 

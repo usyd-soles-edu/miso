@@ -319,6 +319,13 @@ test_that("SIMPER returns stable contribution results and plot output", {
     expect_true(nrow(tab) >= 1L)
     expect_equal(tab$contribution[1], 48.47328, tolerance = 1e-5)
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
+    expect_false(res$table$visible)
+    expect_true(res$contributions$visible)
+    expect_identical(
+        res$contributions$asDF,
+        tab[c("contrast", "feature", "contribution", "cumulative")])
+    expect_false(res$variability$visible)
+    expect_false(res$means$visible)
     expect_equal(nrow(res$contrasts$asDF), 3L)
     expect_false(res$assessment$visible)
     settings <- setNames(res$settings$asDF$value, res$settings$asDF$setting)
@@ -338,7 +345,8 @@ test_that("nMDS returns stress results and plot outputs", {
     ))
 
     stress <- res$stress$asDF
-    expect_match(as.character(res$note$asString()), "Seed:")
+    summary <- setNames(res$summary$asDF$value, res$summary$asDF$item)
+    expect_identical(summary[["Seed"]], "Fixed (123)")
     expect_true(any(stress$item == "Stress"))
     expect_equal(as.numeric(stress$value[stress$item == "Stress"]), 0, tolerance = 1e-6)
     expect_false(is.null(res$ordination))
@@ -357,8 +365,12 @@ test_that("nMDS can run without an overlay grouping variable", {
         )
     ))
 
-    expect_equal(trimws(as.character(res$warnings$asString())), "")
-    expect_equal(as.character(res$summary$asDF$value[res$summary$asDF$item == "Grouping variable"]), "not selected")
+    expect_false(grepl(
+        "grouping variable|grouping layer",
+        as.character(res$warnings$asString()),
+        ignore.case=TRUE))
+    summary <- setNames(res$summary$asDF$value, res$summary$asDF$item)
+    expect_identical(summary[["Grouping assignment"]], "None")
 }
 )
 
@@ -511,6 +523,13 @@ test_that("envfit populates the environmental fit table", {
     expect_true(nrow(ef) >= 1L)
     expect_true(all(c("temp", "depth") %in% ef$variable))
     expect_true(all(is.finite(ef$r2)))
+    expect_true(all(is.finite(ef$p)))
+    expect_identical(ef$samples, rep(6L, 2L))
+    expect_identical(ef$permutations, rep(99L, 2L))
+    expect_match(
+        res$envfit$notes$interpretation$note,
+        "association|causation|unadjusted",
+        ignore.case=TRUE)
 })
 
 test_that("nMDS ordination ornaments run without error", {

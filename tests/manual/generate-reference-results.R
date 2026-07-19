@@ -15,9 +15,9 @@ parse_output_dir <- function(args = commandArgs(trailingOnly = TRUE)) {
         stop("Use only one --output-dir argument.")
     if (length(output_arg) == 1L)
         return(sub("^--output-dir=", "", output_arg[[1L]]))
-    if ("--write" %in% args)
+    if (length(args) == 0L || "--write" %in% args)
         return(file.path("tests", "manual"))
-    stop("Refusing to overwrite references. Use --write or --output-dir=<path>.")
+    stop("Unsupported arguments. Use --write or --output-dir=<path>.")
 }
 
 write_stable_csv <- function(x, path) {
@@ -222,28 +222,110 @@ reference_permdisp <- function(data, dataset, scenario_id, permutations, scheme 
     do.call(rbind, rows)
 }
 
-reference_nmds <- function(data, dataset, scenario_id, binary = FALSE) {
+finite_integer <- function(x) {
+    if (is.null(x) || length(x) == 0L)
+        return(NA_integer_)
+    value <- suppressWarnings(as.integer(x[[1L]]))
+    if (length(value) == 0L || is.na(value)) NA_integer_ else value
+}
+
+nmds_stopping_reason <- function(fit) {
+    if (!identical(fit$engine, "monoMDS"))
+        return("Not reported by this engine")
+    switch(
+        as.character(finite_integer(fit$icause)),
+        `1` = "Maximum iterations reached",
+        `2` = "Stress nearly zero",
+        `3` = "Stress nearly unchanged",
+        `4` = "Gradient scale factor nearly zero",
+        "Unavailable"
+    )
+}
+
+nmds_best_start <- function(fit) {
+    best <- finite_integer(fit$bestry)
+    if (is.na(best))
+        "Unavailable"
+    else if (best == 0L)
+        "Initial configuration"
+    else
+        paste("Start", best)
+}
+
+reference_nmds <- function(
+    data, dataset, scenario_id, binary = FALSE, k = 2L,
+    feature_scores = FALSE, environmental = c("temperature", "pH")
+) {
     features <- data[feature_columns(data)]
     set_reference_rng(123)
     fit <- suppressWarnings(vegan::metaMDS(
         features,
         distance = "bray",
-        k = 2L,
+        k = as.integer(k),
         trymax = 20L,
         maxit = 200L,
-        wascores = FALSE,
+        wascores = isTRUE(feature_scores),
         autotransform = FALSE,
         trace = FALSE
     ))
-    env <- vegan::envfit(fit, data[c("temperature", "pH")], permutations = 99L)
+    post_fit_rng <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    } else {
+        NULL
+    }
+    sites <- as.matrix(vegan::scores(
+        fit, display = "sites", choices = seq_len(k)))
+    feature_points <- if (isTRUE(feature_scores)) {
+        as.matrix(vegan::scores(
+            fit, display = "species", choices = seq_len(k)))
+    } else {
+        NULL
+    }
+    distances <- sort(as.numeric(stats::dist(sites)))
+    distance_probs <- c(0, 0.25, 0.5, 0.75, 1)
+    distance_quantiles <- stats::quantile(
+        distances, probs = distance_probs, names = FALSE, type = 7)
+    fitted_environment <- list()
+    for (name in environmental) {
+        if (!is.null(post_fit_rng))
+            assign(".Random.seed", post_fit_rng, envir = .GlobalEnv)
+        fitted_environment[[name]] <- vegan::envfit(
+            sites,
+            data.frame(value = data[[name]], row.names = rownames(sites)),
+            permutations = 99L,
+            choices = seq_len(k)
+        )
+    }
     rows <- list(
-        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence", "Stress", fit$stress, display = display_number(fit$stress, 4L), abs_tolerance = 5e-5, reference_function = "vegan::metaMDS", note = if (binary) "Binary control is currently ignored before metaMDS." else "Axes may rotate or reflect."),
-        text_row(dataset, scenario_id, "nMDS", "Ordination Plot", "site points", as.character(nrow(data)), "vegan::scores", "Plot orientation is not frozen."),
-        text_row(dataset, scenario_id, "nMDS", "Shepard Diagram", "plot", "present", "vegan::stressplot")
+        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Stress", fit$stress, display = display_number(fit$stress, 4L), abs_tolerance = 5e-5, reference_function = "vegan::metaMDS", note = "Axis signs and orientation are not frozen; configuration checks use rotation-invariant distances."),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Effective dimensions", k, display = as.character(k), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Random starts tried", finite_integer(fit$tries), display = as.character(finite_integer(fit$tries)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Similar best solution repeats", finite_integer(fit$converged), display = as.character(finite_integer(fit$converged)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Best solution first found", finite_integer(fit$bestry), display = nmds_best_start(fit), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Iterations in retained solution", finite_integer(fit$iters), display = as.character(finite_integer(fit$iters)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        text_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Engine", as.character(fit$engine[[1L]]), "vegan::metaMDS"),
+        text_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Retained optimization stopping reason", nmds_stopping_reason(fit), "vegan::monoMDS icause"),
+        reference_row(dataset, scenario_id, "nMDS", "Site Scores", "table rows", nrow(sites), display = as.character(nrow(sites)), abs_tolerance = 0, reference_function = "vegan::scores"),
+        reference_row(dataset, scenario_id, "nMDS", "Feature Scores", "table rows", if (is.null(feature_points)) 0L else nrow(feature_points), display = as.character(if (is.null(feature_points)) 0L else nrow(feature_points)), abs_tolerance = 0, reference_function = "vegan::scores"),
+        reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", "table rows", length(fitted_environment), display = as.character(length(fitted_environment)), abs_tolerance = 0, reference_function = "vegan::envfit"),
+        text_row(dataset, scenario_id, "nMDS", if (k == 3L) "NMDS1-NMDS2 view of a three-dimensional nMDS solution" else "Two-dimensional nMDS ordination", "configuration reference", "pairwise site distances", "stats::dist", "Rotation and reflection invariant; raw axes are intentionally not stored."),
+        text_row(dataset, scenario_id, "nMDS", "Shepard diagram", "plot", "present", "vegan::stressplot")
     )
-    for (name in names(env$vectors$r)) {
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", paste0(name, " r2"), env$vectors$r[[name]], reference_function = "vegan::envfit")
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", paste0(name, " p"), env$vectors$pvals[[name]], display = display_p(env$vectors$pvals[[name]]), abs_tolerance = 0, reference_function = "vegan::envfit")
+    for (i in seq_along(distance_probs)) {
+        label <- paste0(
+            "Site distance quantile ",
+            c("0", "25", "50", "75", "100")[[i]],
+            "%")
+        rows[[length(rows) + 1L]] <- reference_row(
+            dataset, scenario_id, "nMDS", "Site Scores", label,
+            distance_quantiles[[i]], abs_tolerance = 1e-10,
+            reference_function = "stats::quantile(stats::dist(vegan::scores))",
+            note = "Rotation and reflection invariant.")
+    }
+    for (name in names(fitted_environment)) {
+        env <- fitted_environment[[name]]
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", paste0(name, " r2"), env$vectors$r[[1L]], reference_function = "vegan::envfit")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", paste0(name, " p"), env$vectors$pvals[[1L]], display = display_p(env$vectors$pvals[[1L]]), abs_tolerance = 0, reference_function = "vegan::envfit")
     }
     do.call(rbind, rows)
 }
@@ -288,7 +370,7 @@ simper_display <- function(data, transform = "none", top_n = 10L, threshold = 70
 reference_simper <- function(
     data, dataset, scenario_id, transform = "none",
     selected_distance = "bray", binary = FALSE,
-    assessment = FALSE, permutations = 999L
+    assessment = FALSE, permutations = 999L, details = FALSE
 ) {
     reference <- simper_display(data, transform, top_n = 10L, threshold = 70)
     displayed <- reference$displayed
@@ -300,14 +382,18 @@ reference_simper <- function(
         rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " average dissimilarity"), reference$fit[[index]]$overall, reference_function = "vegan::simper(permutations = 0)")
         rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " n first group"), sum(as.character(reference$group) == pair[[1L]]), display = as.character(sum(as.character(reference$group) == pair[[1L]])), abs_tolerance = 0, reference_function = "group count")
         rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " n second group"), sum(as.character(reference$group) == pair[[2L]]), display = as.character(sum(as.character(reference$group) == pair[[2L]])), abs_tolerance = 0, reference_function = "group count")
-        rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " rows"), as.character(nrow(tab)), "vegan::simper + independent crossing-feature filter")
+            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " rows"), as.character(nrow(tab)), "vegan::simper + independent crossing-feature filter")
         if (nrow(tab) > 0L) {
             rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first feature"), tab$feature[[1L]], "vegan::simper(permutations = 0)")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
             rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first contribution percent"), 100 * tab$contribution[[1L]], reference_function = "vegan::simper(permutations = 0)")
             rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " displayed cumulative percent"), 100 * tail(tab$cumulative, 1L), reference_function = "vegan::simper + independent crossing-feature filter")
+            if (isTRUE(details)) {
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution variability", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution variability", paste0(contrast, " first SD"), tab$sd[[1L]], reference_function = "vegan::simper sd")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution variability", paste0(contrast, " first average divided by SD"), tab$ratio[[1L]], reference_function = "vegan::simper ratio")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group means", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group means", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
+            }
         }
     }
 
@@ -332,6 +418,7 @@ reference_simper <- function(
 
     settings <- paste0(
         "Permutation assessment: ", if (assessment) "Enabled" else "Disabled",
+        "; detailed statistics: ", if (details) "Shown" else "Hidden",
         "; effective dissimilarity: Bray-Curtis",
         if (!identical(selected_distance, "bray")) paste0("; ignored legacy distance: ", selected_distance) else "",
         if (isTRUE(binary)) "; ignored legacy Binary request (separate from Presence/absence transformation)" else "")
@@ -366,9 +453,13 @@ generate_references <- function(output_dir) {
     rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-centroid", 999L, centre = "centroid", bias = TRUE)
     rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-legacy-stratified", 999L, scheme = "stratified")
     rows[[length(rows) + 1L]] <- reference_nmds(small, "tofu-small.csv", "nmds-small-binary-noop", binary = TRUE)
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-transform", transform = "sqrt")
+    rows[[length(rows) + 1L]] <- reference_nmds(
+        small, "tofu-small.csv", "nmds-small-legacy-3d",
+        k = 3L, feature_scores = TRUE)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-transform", transform = "sqrt", details = TRUE)
     rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-distance-noop", selected_distance = "euclidean", binary = TRUE)
     rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-assessment", assessment = TRUE, permutations = 19L)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-details", details = TRUE)
 
     result <- do.call(rbind, rows)
     result <- result[order(result$dataset, result$analysis, result$scenario_id, result$result_slot, result$metric), ]
@@ -411,6 +502,32 @@ generate_references <- function(output_dir) {
     nmds_binary <- metric_values("nmds-small-binary-noop", "^Stress$")
     stopifnot(isTRUE(all.equal(nmds_baseline, nmds_binary, tolerance = 0)))
 
+    nmds_values <- function(scenario) {
+        selected <- result[result$scenario_id == scenario, ]
+        selected <- selected[order(selected$result_slot, selected$metric), ]
+        selected[c(
+            "result_slot", "metric", "raw_value", "display_value",
+            "abs_tolerance", "rel_tolerance", "reference_function", "note")]
+    }
+    stopifnot(isTRUE(all.equal(
+        nmds_values("nmds-small-baseline"),
+        nmds_values("nmds-small-binary-noop"),
+        tolerance = 0,
+        check.attributes = FALSE)))
+    for (scenario in c(
+            "nmds-small-baseline", "nmds-large-baseline",
+            "nmds-small-legacy-3d")) {
+        current <- result[result$scenario_id == scenario, ]
+        stopifnot(
+            sum(grepl("^Site distance quantile ", current$metric)) == 5L,
+            !any(grepl("NMDS[123]", current$metric)),
+            all(c(
+                "Random starts tried", "Similar best solution repeats",
+                "Best solution first found", "Iterations in retained solution",
+                "Engine", "Retained optimization stopping reason",
+                "table rows") %in% current$metric))
+    }
+
     write_stable_csv(result, file.path(output_dir, "reference-results.csv"))
 
     commit <- tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE), error = function(e) "unavailable")
@@ -420,6 +537,10 @@ generate_references <- function(output_dir) {
         paste0("Source-commit: ", commit[[1L]]),
         paste0("R: ", getRversion()),
         paste0("vegan: ", as.character(utils::packageVersion("vegan"))),
+        paste0(
+            "Signed-input classifier: euclidean, manhattan, canberra, gower, ",
+            "mahalanobis (vegan ",
+            as.character(utils::packageVersion("vegan")), ")"),
         paste0("permute: ", as.character(utils::packageVersion("permute"))),
         paste0("RNGkind: ", paste(RNGkind(), collapse = ", ")),
         "RNGversion: 4.0.0",

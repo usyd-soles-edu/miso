@@ -100,7 +100,7 @@ This table describes current computation, including controls that are visible bu
 |---|---|---|---|---|---|
 | Transformation | Yes | Yes | Yes | Yes | Yes |
 | Selectable dissimilarity | Yes | Yes | Yes | Yes | No—calculation stays Bray-Curtis |
-| Binary distance | Yes | Yes | Yes | Control currently has no effect | Not used by fixed Bray-Curtis SIMPER |
+| Binary distance | Yes | Yes | Yes | Legacy saved analyses only; hidden for new analyses | Not available; SIMPER is fixed to Bray-Curtis |
 | Blocking factor | Yes | Yes; required for Within blocks | No blocking target | No | No |
 | Permutation scheme | Yes | Free, Within blocks, or Series for global and pairwise tests | Free and Series; legacy no-block Stratified values migrate to Free with disclosure | No | No |
 | Parallel option | Yes | Yes, for global and pairwise tests | Yes | No | No |
@@ -247,63 +247,78 @@ For `tofu-large.csv`, use all 48 features and **199 permutations**. Expect F app
 
 1. Open `tofu-small.csv`.
 2. Select **Analyses → tofu → nMDS — Visualise sample patterns**.
-3. Move `feature_01`–`feature_08` to **Feature variables**, `group` to **Grouping variable**, and `temperature` plus `pH` to **Environmental variables**.
-4. Under **Resemblance**, select **None**, **Bray-Curtis**, clear **Binary**, and enter seed **123**.
-5. Under **nMDS**, enter **Dimensions: 2**, **Random starts: 20**, and **Max iterations per run: 200**. Select **Show Shepard diagram** and **Colour by group**. Clear **Show species scores**, **Group hulls**, **Group ellipses**, and **Group spiders**.
+3. Move `feature_01`–`feature_08` to **Required: Feature variables**, `group` to **Optional: Grouping variable**, and `temperature` plus `pH` to **Optional: Environmental variables**.
+4. In **Analysis choices**, select **None** and **Bray-Curtis**. New analyses use two dimensions.
+5. In **Output choices**, select **Show Shepard diagram** and clear **Show feature scores**.
+6. In **Group display**, select **Style points by group** and clear **Group hulls**, **Group dispersion ellipses (1 SD)**, and **Group spiders**.
+7. In **Environmental fit**, enter **99** permutations.
+8. In **Reproducibility**, enter seed **123**, **20** maximum random starts, and **200** maximum iterations per run.
 
 Expected results:
 
-| Result | Value |
+| Result | Expected display |
 |---|---:|
 | Stress | approximately 0.1636 |
-| Temperature r² / p | approximately 0.2921 / .060 |
-| pH r² / p | approximately 0.2376 / .100 |
+| Temperature r² / unadjusted permutation p | approximately 0.292 / .060 |
+| pH r² / unadjusted permutation p | approximately 0.238 / .100 |
+| Site Score rows | 24 |
 
-Pass when **Data Summary**, **Ordination Plot**, **Environmental Fit**, **Stress and Convergence**, **Shepard Diagram**, and **Notes** appear. The ordination should contain 24 site points coloured by group. Axes and environmental vectors may rotate or reflect; coordinate signs are not pass criteria.
+Pass when **Data Summary**, **Two-dimensional nMDS ordination**, **Stress and convergence diagnostics**, **Shepard diagram**, **Environmental Fit**, **Site Scores**, **Interpretation**, and **Analysis settings** appear. The ordination should contain 24 site points styled by group and two environmental vectors. Axes and vectors may rotate or reflect; coordinate signs are not pass criteria.
 
 <details>
 <summary>nMDS functionality regression checks</summary>
 
-- Remove `group`, clear **Colour by group**, and confirm **Data Summary** says the grouping variable was not selected while the ordination still renders.
-- Select **Show species scores**, **Group hulls**, **Group ellipses**, and **Group spiders** one at a time and confirm each requested ornament appears without an error.
-- The **Binary** checkbox is currently ignored by the `metaMDS` calculation. With the same seed, selecting it should leave stress at approximately **0.1636**. Record this as a current limitation.
-- Environmental-fit p-values use 99 permutations after the nMDS random starts; compare the displayed references rather than resetting or reproducing only the `envfit` seed separately.
+- Change seed **123 → 124 → 123**. Confirm **Analysis settings** follows each value and stress returns to approximately **0.1636**.
+- Remove `group`. The ordination, 24-row **Site Scores**, and **Environmental Fit** must remain; group styling controls must become unavailable. Restore `group` and confirm the base configuration and stress do not change.
+- Remove `pH`, then remove all environmental variables. **Environmental Fit** and the vectors should follow the requested variables while the base ordination remains. Restore `temperature` and `pH`.
+- Select **Show feature scores** and expect 8 rows. Clear and restore **Show Shepard diagram**. Neither output-only change should alter **Site Scores**.
+- Select the hull, 1-SD ellipse, and spider overlays. The ordination description must name every effective layer; **Interpretation** must state that group displays are descriptive and ellipses are not confidence regions.
+- Change environmental-fit permutations to **19**. Temperature should display p **.050** and pH **.250**. Restore **99**.
+- Select **Standardize** while retaining **Bray-Curtis**. An actionable compatibility message must replace the stale ordination and inferential output. Select **Euclidean** to recover, then restore **None** and **Bray-Curtis**.
+- Remove every required feature. Only the getting-started guidance should remain in the nMDS report. Restore the eight features and confirm a fresh result returns.
+- At 200% jamovi zoom, confirm the required and optional labels, the compact tips in **Group display** and **Environmental fit**, all controls, and the report remain readable and reachable. Restore 100%.
+- Use Tab and Shift-Tab across the three reproducibility fields. After changing the seed, focus must remain in the options rather than jumping into the report.
+- Binary and 3D options are retained only for compatibility with saved legacy analyses and are not visible in a new analysis.
 
 </details>
 
-For `tofu-large.csv`, use all 48 features with the same nMDS settings. Expect stress approximately **0.1844**, temperature r² approximately **0.3852**, and pH r² approximately **0.5291**. Confirm 360 site points and both plots appear; do not compare coordinate signs.
+For `tofu-large.csv`, use all 48 features with the same settings. Expect stress approximately **0.1844**, temperature r² approximately **0.385** with p **.010**, and pH r² approximately **0.529** with p **.010**. Confirm 360 **Site Scores**, 48 **Feature Scores** when requested, both plots, and two environmental vectors. With all three descriptive group overlays selected, the site configuration must remain unchanged; do not compare coordinate signs.
 
 ### Test SIMPER
 
-**What this validates:** Bray-Curtis feature contributions, top-N and cumulative filtering, the contribution plot, and notes explaining current behaviour.
+**What this validates:** Bray-Curtis feature contributions, compact output, top-N and cumulative filtering, optional details, and the exploratory permutation assessment.
 
 1. Open `tofu-small.csv`.
 2. Select **Analyses → tofu → SIMPER — Feature contributions**.
-3. Move `feature_01`–`feature_08` to **Feature variables** and `group` to **Grouping variable**.
-4. Under **Resemblance**, select **None**, **Bray-Curtis**, clear **Binary**, and enter seed **123**.
-5. Under **SIMPER**, enter **999** permutations, **Top N features: 10**, and **Cumulative contribution threshold (%): 70**.
+3. Move `feature_01`–`feature_08` to **Required: Feature variables** and `group` to **Required: Grouping variable**.
+4. In **Analysis choices**, select transformation **None**. Read the adjacent **Tip**: transformations affect contributions and the displayed means use transformed values. SIMPER is fixed to Bray-Curtis.
+5. Under **Features shown**, enter **Top N features: 10** and **Cumulative contribution (%): 70**. Clear **Show detailed statistics**.
+6. Leave **Permutation assessment (advanced)** off for the descriptive baseline.
 
 Expected first rows and displayed row counts:
 
 | Contrast | First feature | First contribution | Rows shown |
 |---|---|---:|---:|
-| A_B | `feature_04` | approximately 21.1956% | 4 |
-| A_C | `feature_01` | approximately 26.3230% | 4 |
-| B_C | `feature_04` | approximately 24.4285% | 4 |
+| A vs B | `feature_04` | approximately 21.20% | 5 |
+| A vs C | `feature_01` | approximately 26.32% | 5 |
+| B vs C | `feature_04` | approximately 24.43% | 5 |
 
-Pass when **Data Summary**, **Feature Contributions**, **Contribution Plot**, and **Notes** appear. The note must say SIMPER uses Bray-Curtis and report 999 permutations.
+Pass when **Data Summary**, **Contrast summary**, the four-column **Descriptive feature contributions** table, **SIMPER contribution percentages by group contrast**, **Plot details**, **Interpretation**, and **Analysis settings** appear. The main table columns are **Contrast**, **Feature**, **Contribution (%)**, and **Cumulative (%)**; detailed statistics and the permutation assessment should not occupy blank report space when they are not selected.
 
 <details>
 <summary>SIMPER functionality regression checks</summary>
 
-- Select **Square root** transformation. Contributions should change; for A_B the first contribution becomes approximately **18.9077%**.
-- Select **Euclidean** and check **Binary**. Contributions should remain identical to the Bray-Curtis baseline, and **Notes** should explain that the selected dissimilarity is not used. This tests current behaviour rather than claiming Euclidean support.
-- Change permutations to **19**. The contribution table remains unchanged because tofu does not display permutation p-values; only the permutation count in **Notes** changes.
-- Change **Top N** and the cumulative threshold and confirm the displayed prefix changes. The current implementation may omit the feature that first crosses the threshold; compare it with the frozen current output rather than assuming the intended prefix.
+- Change **Top N features** from **10 → 9**. Confirm recalculation and that each contrast stops at Top N or the cumulative threshold, while retaining the feature that crosses the threshold.
+- Select **Show detailed statistics**. **Contribution variability** must contain five columns and **Group means** four columns; both must fit the report width. Clear the option and confirm both tables disappear.
+- Select **Square root**. Contributions and group means should change; for A vs B the first contribution becomes approximately **18.91%**. Restore **None**.
+- Select **Assess contributions with permutations**. The permutations, adjustment, and seed controls must become available. Enter **19**, retain **Holm**, and enter seed **123**; expect a populated four-column **Exploratory permutation assessment**. Clear the assessment and confirm both its table and controls return to the inactive state.
+- Remove `group`. All previous SIMPER tables, plot, and assessment must disappear and the guidance must ask for the required grouping variable. Restore `group` and confirm all three contrasts are recalculated without stale rows.
+- At 200% jamovi zoom, confirm the options, four-column main table, and optional detail tables remain readable and reachable. Restore 100%.
+- Fail if `NaN` or `Inf` appears in any visible result.
 
 </details>
 
-For `tofu-large.csv`, use all 48 features and **199 permutations**. The first features for A_B, A_C, and B_C should be `feature_47`, `feature_45`, and `feature_45`, with first contributions approximately **6.5440%**, **6.8497%**, and **7.1003%**. Ten rows should appear for each contrast.
+For `tofu-large.csv`, use all 48 features, **Top N features: 9**, and the 70% cumulative threshold. **Data Summary** should report 360 samples, 48 features, three groups, and three contrasts. Exactly nine contribution rows should appear per contrast. The first features for A vs B, A vs C, and B vs C should be `feature_47`, `feature_45`, and `feature_45`, with first contributions approximately **6.54%**, **6.85%**, and **7.10%**.
 
 ### Shared negative-input checks
 

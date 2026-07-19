@@ -16,7 +16,8 @@ simper(
   simperTop = 10,
   simperCum = 70,
   simperAssess = FALSE,
-  simperAdjust = "holm"
+  simperAdjust = "holm",
+  simperDetails = FALSE
 )
 }
 \arguments{
@@ -43,6 +44,8 @@ simper(
 \item{simperAssess}{.}
 
 \item{simperAdjust}{.}
+
+\item{simperDetails}{.}
 }
 \value{
 A results object containing:
@@ -51,6 +54,9 @@ A results object containing:
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
   \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
+  \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
+  \code{results$variability} \tab \tab \tab \tab \tab a table \cr
+  \code{results$means} \tab \tab \tab \tab \tab a table \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr

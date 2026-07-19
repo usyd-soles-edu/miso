@@ -108,9 +108,15 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             tofu_clear_table(self$results$summary)
             tofu_clear_table(self$results$contrasts)
+            tofu_clear_table(self$results$contributions)
+            tofu_clear_table(self$results$variability)
+            tofu_clear_table(self$results$means)
             tofu_clear_table(self$results$table)
             tofu_clear_table(self$results$assessment)
             self$results$contrasts$setNote(key="meaning", note="")
+            self$results$contributions$setNote(key="meaning", note="")
+            self$results$variability$setNote(key="meaning", note="")
+            self$results$means$setNote(key="meaning", note="")
             self$results$table$setNote(key="meaning", note="")
             self$results$assessment$setNote(key="scope", note="")
             self$results$plotDescription$setContent("")
@@ -118,11 +124,12 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$settings)
             self$results$plot$setTitle(
                 "SIMPER contribution percentages by group contrast")
-            self$results$plot$setSize(700, 450)
+            self$results$plot$setSize(580, 450)
 
             for (name in c(
-                    "guidance", "summary", "warnings", "contrasts", "table",
-                    "plot", "plotDescription", "assessment", "note", "settings"))
+                    "guidance", "summary", "warnings", "contrasts",
+                    "contributions", "variability", "means", "table", "plot",
+                    "plotDescription", "assessment", "note", "settings"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -139,9 +146,12 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(assessmentShown=FALSE) {
             for (name in c(
-                    "summary", "contrasts", "table", "plot",
+                    "summary", "contrasts", "contributions", "plot",
                     "plotDescription", "note", "settings"))
                 self$results[[name]]$setVisible(TRUE)
+            self$results$variability$setVisible(isTRUE(self$options$simperDetails))
+            self$results$means$setVisible(isTRUE(self$options$simperDetails))
+            self$results$table$setVisible(FALSE)
             self$results$assessment$setVisible(isTRUE(assessmentShown))
         },
 
@@ -289,6 +299,18 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$table$addRow(
                     rowKey=as.character(index),
                     values=values)
+                self$results$contributions$addRow(
+                    rowKey=as.character(index),
+                    values=values[c(
+                        "contrast", "feature", "contribution", "cumulative")])
+                self$results$variability$addRow(
+                    rowKey=as.character(index),
+                    values=values[c(
+                        "contrast", "feature", "average", "sd", "ratio")])
+                self$results$means$addRow(
+                    rowKey=as.character(index),
+                    values=values[c(
+                        "contrast", "feature", "meanFirst", "meanSecond")])
             }
 
             private$.state$plotData <- do.call(
@@ -296,7 +318,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 lapply(descriptive$displayRows, as.data.frame, stringsAsFactors=FALSE))
             private$.state$contrastLabels <- unique(private$.state$plotData$contrast)
             height <- max(450, 220 * length(private$.state$contrastLabels))
-            self$results$plot$setSize(700, height)
+            self$results$plot$setSize(580, height)
         },
 
         .runAssessment = function(prep, displayRows) {
@@ -390,8 +412,23 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$contrasts$setNote(
                 key="meaning",
                 note=paste(
-                    "Average Bray-Curtis dissimilarity is the full quantity decomposed for each contrast.",
-                    "Group counts follow the first and second named groups."))
+                    "Mean dissimilarity is the full average Bray-Curtis quantity decomposed for each contrast.",
+                    "n (first) and n (second) follow the named contrast order."))
+            self$results$contributions$setNote(
+                key="meaning",
+                note=paste(
+                    "Percentages use all usable features before display filtering; retained rows are not renormalised."))
+            self$results$variability$setNote(
+                key="meaning",
+                note=paste(
+                    "Average is the mean feature contribution to Bray-Curtis dissimilarity.",
+                    "SD describes variation in contributions across sample pairs.",
+                    "Average/SD describes consistency and is not a significance test.",
+                    "Blank cells mean that a finite value was unavailable."))
+            self$results$means$setNote(
+                key="meaning",
+                note=paste(
+                    "First and second means follow the named contrast order and use the transformed scale."))
             self$results$table$setNote(
                 key="meaning",
                 note=paste(
@@ -412,17 +449,52 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .setPlotDescription = function(displayRows) {
             labels <- unique(vapply(displayRows, `[[`, character(1), "contrast"))
+            describedContrasts <- utils::head(labels, 10L)
+            omittedContrasts <- length(labels) - length(describedContrasts)
+            labelDetails <- character()
+            for (contrast in describedContrasts) {
+                rows <- displayRows[vapply(
+                    displayRows, `[[`, character(1), "contrast") == contrast]
+                describedRows <- utils::head(rows, 10L)
+                entries <- vapply(
+                    describedRows,
+                    function(row) paste0(
+                        private$.htmlEscape(row$feature), ": ",
+                        sprintf("%.1f%%", row$contribution)),
+                    character(1))
+                omitted <- length(rows) - length(describedRows)
+                suffix <- if (omitted > 0L)
+                    sprintf("; %s more shown in the table", omitted)
+                else
+                    ""
+                labelDetails <- c(
+                    labelDetails,
+                    paste0(
+                        '<p style="margin: 0 0 0.4em 0;"><strong>',
+                        private$.htmlEscape(contrast), ':</strong> ',
+                        paste(entries, collapse="; "), suffix, '.</p>'))
+            }
             content <- paste0(
                 '<div style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
                 '<p style="margin: 0 0 0.65em 0;">',
-                'Contrasts shown: ', private$.htmlEscape(paste(labels, collapse=", ")), '. ',
+                'First contrasts described below: ',
+                private$.htmlEscape(paste(describedContrasts, collapse=", ")),
+                if (omittedContrasts > 0L)
+                    paste0('; plus ', omittedContrasts,
+                           ' further contrasts shown in the plot and listed in the results tables.')
+                else
+                    '.',
+                ' ',
                 'The plot uses the same rows as Descriptive feature contributions. ',
                 'Features stop when the cumulative contribution reaches ',
                 private$.htmlEscape(as.character(self$options$simperCum)),
                 '% or the Top features cap of ',
                 private$.htmlEscape(as.character(self$options$simperTop)),
                 ' is reached, whichever occurs first; the threshold-crossing feature is included.',
-                '</p></div>')
+                '</p>',
+                '<p style="margin: 0 0 0.4em 0;"><strong>Full labels and percentages for the contrasts described below.</strong></p>',
+                paste(labelDetails, collapse=""),
+                '</div>')
             self$results$plotDescription$setContent(content)
         },
 
@@ -477,6 +549,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             add("Contrasts", length(private$.state$contrastLabels))
             add("Top features cap", self$options$simperTop)
             add("Cumulative contribution threshold", paste0(self$options$simperCum, "%"))
+            add("Detailed statistics", if (isTRUE(self$options$simperDetails)) "Shown" else "Hidden")
             add("Permutation assessment", if (isTRUE(self$options$simperAssess)) "Enabled" else "Disabled")
             if (isTRUE(self$options$simperAssess)) {
                 add("Requested permutations", private$.state$requestedPermutations)
@@ -490,6 +563,41 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     if (is.na(prep$seed)) "Random on recalculation" else prep$seed)
                 add("Assessment results shown", if (isTRUE(assessmentShown)) "Yes" else "No")
             }
+        },
+
+        .boundedPlotLabel = function(value, width=18L, maxLines=2L) {
+            value <- gsub("[[:space:]]+", " ", trimws(as.character(value)))
+            if (! nzchar(value))
+                return("")
+            width <- max(2L, as.integer(width))
+            maxLines <- max(1L, as.integer(maxLines))
+            remaining <- value
+            lines <- character()
+            while (nzchar(remaining) && length(lines) < maxLines) {
+                if (nchar(remaining) <= width) {
+                    lines <- c(lines, remaining)
+                    remaining <- ""
+                    next
+                }
+                candidate <- substr(remaining, 1L, width)
+                spaces <- gregexpr("[[:space:]]", candidate)[[1L]]
+                spaces <- spaces[spaces > 1L]
+                if (length(spaces) > 0L) {
+                    splitAt <- max(spaces)
+                    lines <- c(lines, trimws(substr(remaining, 1L, splitAt - 1L)))
+                    remaining <- trimws(substr(
+                        remaining, splitAt + 1L, nchar(remaining)))
+                } else {
+                    lines <- c(lines, candidate)
+                    remaining <- substr(remaining, width + 1L, nchar(remaining))
+                }
+            }
+            if (nzchar(remaining)) {
+                last <- lines[[length(lines)]]
+                last <- substr(last, 1L, min(nchar(last), width - 1L))
+                lines[[length(lines)]] <- paste0(last, "\u2026")
+            }
+            paste(lines, collapse="\n")
         },
 
         .plotContributions = function(image, ...) {
@@ -508,13 +616,19 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 rows <- rows[rev(seq_len(nrow(rows))), , drop=FALSE]
                 graphics::barplot(
                     height=rows$contribution,
-                    names.arg=rows$feature,
+                    names.arg=vapply(
+                        rows$feature,
+                        private$.boundedPlotLabel,
+                        character(1),
+                        width=18L,
+                        maxLines=2L),
                     horiz=TRUE,
                     las=1,
                     col="#277da1",
                     border="#1b566f",
                     xlab="Contribution (%)",
-                    main=contrast)
+                    main=private$.boundedPlotLabel(
+                        contrast, width=28L, maxLines=2L))
             }
         },
 
