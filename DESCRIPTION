@@ -4,10 +4,10 @@ Title: Multivariate Abundance Workflows for jamovi
 Version: 0.2.0
 Author: Januar Harianto
 Maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
-Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, and nMDS workflows
-    for multivariate abundance and community-style data. The module uses a
-    shared transformation and dissimilarity workflow powered by the vegan R
-    package.
+Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, and cluster
+    analysis workflows for multivariate abundance and community-style data.
+    The module uses a shared transformation and dissimilarity workflow powered
+    by the vegan R package.
 License: GPL (>= 2)
 Encoding: UTF-8
 Imports: jmvcore (>= 0.8.5), R6, vegan, permute

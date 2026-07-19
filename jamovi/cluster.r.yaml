@@ -1,0 +1,92 @@
+---
+name: cluster
+title: Cluster analysis
+jrs: '1.1'
+
+items:
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - showLabels
+
+  - name: summary
+    title: Data summary
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - showLabels
+
+  - name: warnings
+    title: Data handling warnings
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - showLabels
+
+  - name: dendrogram
+    title: Group-average cluster dendrogram
+    type: Image
+    visible: false
+    width: 650
+    height: 480
+    renderFun: .plotDendrogram
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - showLabels
+
+  - name: interpretation
+    title: How to read this dendrogram
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - showLabels
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - showLabels
+
+...

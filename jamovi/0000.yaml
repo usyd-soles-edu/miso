@@ -9,8 +9,9 @@ maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
 date: '2026-06-30'
 type: R
 description: >-
-  Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, and nMDS workflows for
-  multivariate abundance and community-style data using the vegan R package.
+  Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, and cluster analysis
+  workflows for multivariate abundance and community-style data using vegan and
+  base R.
 analyses:
   - title: PERMANOVA
     name: permanova
@@ -40,6 +41,13 @@ analyses:
     menuGroup: tofu
     menuTitle: nMDS
     menuSubtitle: Visualise sample patterns
+  - title: Cluster analysis
+    name: cluster
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuTitle: Cluster analysis
+    menuSubtitle: Visualise sample similarity
   - title: SIMPER
     name: simper
     ns: tofu

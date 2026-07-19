@@ -49,6 +49,27 @@ expect_dune_table_equal <- function(
     }
 }
 
+test_that("Module 3 cluster analysis matches vegan and hclust", {
+    fixture <- dune_fixture()
+    transformed <- fixture$community ^ 0.25
+    expected <- stats::hclust(
+        vegan::vegdist(transformed, method="bray"),
+        method="average")
+    options <- clusterOptions$new(
+        vars=fixture$vars,
+        transform="fourthroot",
+        distance="bray")
+    analysis <- clusterClass$new(options=options, data=fixture$data)
+
+    suppressWarnings(suppressMessages(analysis$run()))
+    actual <- analysis$.__enclos_env__$private$.state$fit
+
+    expect_identical(actual$merge, expected$merge)
+    expect_equal(actual$height, expected$height, tolerance=1e-12)
+    expect_identical(actual$order, expected$order)
+    expect_identical(actual$method, "average")
+})
+
 test_that("Module 3 transformation paths match vegan group tests", {
     fixture <- dune_fixture()
     transformations <- list(

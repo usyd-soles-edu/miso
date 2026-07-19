@@ -1,6 +1,6 @@
 # tofu
 
-`tofu` brings the community-ecology methods from the R [`vegan`](https://cran.r-project.org/package=vegan) package into [jamovi](https://www.jamovi.org). It covers PERMANOVA, PERMDISP, ANOSIM, SIMPER, and nMDS, so you can run them on abundance-style data without leaving the spreadsheet.
+`tofu` brings community-ecology methods from R into [jamovi](https://www.jamovi.org). It covers PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, and hierarchical cluster analysis, so you can run them on abundance-style data without leaving the spreadsheet.
 
 Not all features are included as we have deliberately ported only the most commonly used techniques for teaching purposes. If you need additional functionality for teaching, let us know. Otherwise, please use `vegan` directly.
 
@@ -12,6 +12,7 @@ Not all features are included as we have deliberately ported only the most commo
 | ANOSIM | `vegan::anosim` | Rank-based group comparison |
 | PERMDISP | `vegan::betadisper` | Check multivariate dispersion, with a distance-to-centre plot |
 | nMDS | `vegan::metaMDS` | Ordinate samples, with stress and Shepard plots |
+| Cluster analysis | `vegan::vegdist` and `stats::hclust` | Display sample similarity as a group-average dendrogram |
 | SIMPER | `vegan::simper` | See which features drive Bray-Curtis dissimilarity |
 
 ## Installation
@@ -49,8 +50,8 @@ Do this before trusting any jamovi result:
    R -q -e 'jmvtools::install(pkg = ".")'
    ```
 
-5. Relaunch jamovi. Open **Analyses → tofu** and confirm that the five analyses below are present.
-6. Open PERMANOVA, expand **Study design and model**, and confirm that it includes **Continuous covariates**. Open nMDS and confirm that it includes **Environmental variables**.
+5. Relaunch jamovi. Open **Analyses → tofu** and confirm that the six analyses below are present.
+6. Open PERMANOVA, expand **Study design and model**, and confirm that it includes **Continuous covariates**. Open nMDS and confirm that it includes **Environmental variables**. Open Cluster analysis and confirm that it includes optional **Sample labels**.
 
 Record the operating system plus the jamovi and tofu versions with your test notes. The version alone is not proof that the new build loaded: an older build may also say `0.2.0`. If the menu or controls do not match this guide, remove tofu, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
 
@@ -96,16 +97,16 @@ jamovi recalculates automatically; there is no **Run** button. Wait until the sp
 
 This table describes current computation, including controls that are visible but limited or ignored.
 
-| Capability | PERMANOVA | ANOSIM | PERMDISP | nMDS | SIMPER |
-|---|---|---|---|---|---|
-| Transformation | Yes | Yes | Yes | Yes | Yes |
-| Selectable dissimilarity | Yes | Yes | Yes | Yes | No—calculation stays Bray-Curtis |
-| Binary distance | Yes | Yes | Yes | Legacy saved analyses only; hidden for new analyses | Not available; SIMPER is fixed to Bray-Curtis |
-| Blocking factor | Yes | Yes; required for Within blocks | No blocking target | No | No |
-| Permutation scheme | Yes | Free, Within blocks, or Series for global and pairwise tests | Free and Series; legacy no-block Stratified values migrate to Free with disclosure | No | No |
-| Parallel option | Yes | Yes, for global and pairwise tests | Yes | No | No |
-| Pairwise output | Optional | Optional | Optional | No | Group contrasts |
-| Main plots | No | No | Distance distributions | Ordination and Shepard | Contributions |
+| Capability | PERMANOVA | ANOSIM | PERMDISP | nMDS | Cluster | SIMPER |
+|---|---|---|---|---|---|---|
+| Transformation | Yes | Yes | Yes | Yes | Yes | Yes |
+| Selectable dissimilarity | Yes | Yes | Yes | Yes | Yes | No—calculation stays Bray-Curtis |
+| Binary distance | Yes | Yes | Yes | Legacy saved analyses only; hidden for new analyses | No | Not available; SIMPER is fixed to Bray-Curtis |
+| Blocking factor | Yes | Yes; required for Within blocks | No blocking target | No | No | No |
+| Permutation scheme | Yes | Free, Within blocks, or Series for global and pairwise tests | Free and Series; legacy no-block Stratified values migrate to Free with disclosure | No | No | No |
+| Parallel option | Yes | Yes, for global and pairwise tests | Yes | No | No | No |
+| Pairwise output | Optional | Optional | Optional | No | No | Group contrasts |
+| Main plots | No | No | Distance distributions | Ordination and Shepard | Group-average dendrogram | Contributions |
 
 Enabling **Parallel processing** can show that the option does not alter results or cause an error. It cannot prove that worker processes ran, because tofu may silently fall back to serial execution.
 
@@ -283,6 +284,39 @@ Pass when **Data Summary**, **Two-dimensional nMDS ordination**, **Stress and co
 </details>
 
 For `tofu-large.csv`, use all 48 features with the same settings. Expect stress approximately **0.1844**, temperature r² approximately **0.385** with p **.010**, and pH r² approximately **0.529** with p **.010**. Confirm 360 **Site Scores**, 48 **Feature Scores** when requested, both plots, and two environmental vectors. With all three descriptive group overlays selected, the site configuration must remain unchanged; do not compare coordinate signs.
+
+### Test cluster analysis
+
+**What this validates:** Bray-Curtis calculation, group-average hierarchical clustering, sample labels, and bounded dendrogram output.
+
+1. Open `tofu-small.csv`.
+2. Select **Analyses → tofu → Cluster analysis — Visualise sample similarity**.
+3. Before assigning anything, confirm that **Getting started** asks for numeric Feature variables and no empty plot or table appears.
+4. Move `feature_01`–`feature_08` to **Required: Feature variables** and `sample_id` to **Optional: Sample labels**.
+5. Under **Analysis choices**, select **Transformation: None** and **Dissimilarity index: Bray-Curtis**.
+6. Under **Output choices**, select **Show sample labels**.
+
+Expected results:
+
+- **Data summary** reports 24 samples and 8 feature variables.
+- **Analysis settings** reports **Group average (UPGMA)** linkage and `sample_id` as the label source.
+- The lowest join in the dendrogram connects `S002` and `S023` at Bray-Curtis dissimilarity approximately **0.108**.
+- **How to read this dendrogram** explains lower branch heights without presenting the clustering as a hypothesis test.
+
+Pass when the dendrogram is populated, all 24 sample labels are contained within the plot, **Data handling warnings** is absent, and no resemblance matrix or empty result section appears.
+
+<details>
+<summary>Cluster-analysis functionality regression checks</summary>
+
+- Clear **Show sample labels**. Labels should disappear without changing the branches or heights; restore the option.
+- Change the transformation to **Fourth root**. The dendrogram should recalculate and **Analysis settings** should report Fourth root; restore None.
+- Remove every required feature after a valid run. Only the getting-started guidance should remain; restoring the features should create a fresh dendrogram without stale output.
+- If a label column contains blanks or duplicate values, confirm that **Data handling warnings** explains the row-number fallback or disambiguation.
+- Long labels should end with an ellipsis inside the plot, accompanied by a warning that the source data are unchanged.
+
+</details>
+
+For `tofu-large.csv`, use all 48 features and clear **Show sample labels**. **Data summary** should report 360 samples and 48 features, and the dendrogram should render without a report-width overflow. Selecting **Show sample labels** should give a crowding warning rather than failing.
 
 ### Test SIMPER
 

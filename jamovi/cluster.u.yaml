@@ -1,0 +1,57 @@
+---
+title: Cluster analysis
+name: cluster
+jus: '3.0'
+stage: 0
+compilerMode: tame
+children:
+  - type: VariableSupplier
+    persistentItems: false
+    stretchFactor: 1
+    children:
+      - type: TargetLayoutBox
+        label: 'Required: Feature variables'
+        children:
+          - type: VariablesListBox
+            name: vars
+            isTarget: true
+      - type: TargetLayoutBox
+        label: 'Optional: Sample labels'
+        children:
+          - type: VariablesListBox
+            name: labels
+            maxItemCount: 1
+            isTarget: true
+
+  - type: CollapseBox
+    name: analysisChoices
+    label: Analysis choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: transform
+      - type: ComboBox
+        name: distance
+
+  - type: CollapseBox
+    name: outputChoices
+    label: Output choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: showLabels
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Tip
+            heading: true
+            margin: none
+          - type: Label
+            label: Row numbers are used when sample labels are not selected.
+            margin: none
+
+...
