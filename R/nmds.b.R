@@ -197,27 +197,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .htmlEscape = function(value) {
-            value <- as.character(value)
-            value <- gsub("&", "&amp;", value, fixed=TRUE)
-            value <- gsub("<", "&lt;", value, fixed=TRUE)
-            value <- gsub(">", "&gt;", value, fixed=TRUE)
-            value <- gsub("\"", "&quot;", value, fixed=TRUE)
-            gsub("'", "&#39;", value, fixed=TRUE)
+            tofu_html_escape(value)
         },
 
         .htmlBlock = function(paragraphs) {
-            paragraphs <- as.character(paragraphs)
-            paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
-            paste0(
-                "<div style='max-width: 100%; overflow-wrap: anywhere; word-break: normal;'>",
-                paste(sprintf(
-                    "<p>%s</p>",
-                    vapply(
-                        paragraphs,
-                        private$.htmlEscape,
-                        character(1))),
-                    collapse=""),
-                "</div>")
+            tofu_html_block(paragraphs)
         },
 
         .distanceLabel = function(method) {

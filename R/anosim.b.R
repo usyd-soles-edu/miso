@@ -113,13 +113,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showGuidance = function(content, title="Action needed") {
-            content <- private$.htmlEscape(content)
-            content <- gsub("\n", "<br>", content, fixed=TRUE)
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(paste0(
-                '<div style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
-                content,
-                '</div>'))
+            self$results$guidance$setContent(tofu_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -136,7 +131,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(paste(warnings, collapse="\n"))
+            self$results$warnings$setContent(tofu_html_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -482,11 +477,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "whether group dispersions differ."),
                 pairwiseText)
             paragraphs <- paragraphs[nzchar(paragraphs)]
-            html <- paste0(
-                '<div style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
-                paste0('<p style="margin: 0 0 0.65em 0;">', paragraphs, '</p>', collapse=""),
-                '</div>')
-            self$results$note$setContent(html)
+            self$results$note$setContent(tofu_html_block(paragraphs))
         },
 
         .populateSettings = function(prep, pairwiseShown) {

@@ -149,7 +149,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(content)
+            self$results$guidance$setContent(tofu_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -166,7 +166,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(paste(warnings, collapse="\n"))
+            self$results$warnings$setContent(tofu_html_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -499,9 +499,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             self$results$note$setContent(paste0(
                 '<h2>Interpretation</h2>',
-                '<p style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
-                text,
-                '</p>'))
+                tofu_html_block(text)))
         },
 
         .populateSettings = function(prep, permutation, pairwiseShown) {

@@ -134,13 +134,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showGuidance = function(content, title="Action needed") {
-            content <- private$.htmlEscape(content)
-            content <- gsub("\n", "<br>", content, fixed=TRUE)
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(paste0(
-                '<div style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
-                content,
-                '</div>'))
+            self$results$guidance$setContent(tofu_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -162,7 +157,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(paste(warnings, collapse="\n"))
+            self$results$warnings$setContent(tofu_html_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -475,7 +470,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         paste(entries, collapse="; "), suffix, '.</p>'))
             }
             content <- paste0(
-                '<div style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
+                '<div style="margin: 0; max-width: 44em; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; word-break: normal;">',
                 '<p style="margin: 0 0 0.65em 0;">',
                 'First contrasts described below: ',
                 private$.htmlEscape(paste(describedContrasts, collapse=", ")),
@@ -520,12 +515,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "The exploratory permutation p-value is the proportion of random group-label assignments whose average contribution is at least as large as observed.",
                         "It does not test contribution percentage, establish causation, show which group mean is higher, or replace an overall group test.",
                         "Multiple-testing adjustment was performed separately within each contrast."))
-            html <- paste0(
-                '<div style="margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;">',
-                paste0('<p style="margin: 0 0 0.65em 0;">',
-                       private$.htmlEscape(paragraphs), '</p>', collapse=""),
-                '</div>')
-            self$results$note$setContent(html)
+            self$results$note$setContent(tofu_html_block(paragraphs))
         },
 
         .populateSettings = function(prep, assessmentShown) {

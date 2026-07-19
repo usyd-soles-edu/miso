@@ -73,7 +73,7 @@ test_that("negative feature values are rejected with a clear note", {
         factor = "group"
     )
 
-    expect_match(as.character(res$guidance$asString()), "Negative values detected in feature variables: a")
+    expect_match(tofu_squish_result(res$guidance), "Negative values detected in feature variables: a")
 })
 
 test_that("missing rows are excluded and warning text is added", {
@@ -122,7 +122,7 @@ test_that("entirely empty datasets return a clear note instead of crashing", {
     )
 
     expect_match(
-        as.character(res$guidance$asString()),
+        tofu_squish_result(res$guidance),
         "No feature variables with non-zero values remain after filtering\\."
     )
 })
@@ -139,7 +139,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        as.character(all_zero$guidance$asString()),
+        tofu_squish_result(all_zero$guidance),
         "No feature variables with non-zero values remain after filtering\\.|Too few samples \\(0\\) for multivariate analysis\\."
     )
 
@@ -154,7 +154,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        as.character(one_group$guidance$asString()),
+        tofu_squish_result(one_group$guidance),
         "Primary factor 'group' has fewer than 2 groups after filtering\\."
     )
 })
@@ -175,7 +175,7 @@ test_that("non-syntactic variable names are handled", {
         )
     )
 
-    expect_equal(trimws(as.character(res$warnings$asString())), "")
+    expect_false(res$warnings$visible)
     expect_equal(
         as.character(res$summary$asDF$value[res$summary$asDF$item == "Grouping variable"]),
         "site group"
@@ -195,7 +195,7 @@ test_that("count-data distance warns when values are non-integer", {
     )
 
     expect_match(
-        as.character(res$warnings$asString()),
+        tofu_squish_result(res$warnings),
         "'morisita' is designed for count data\\. Non-integer values detected\\."
     )
 })
@@ -215,7 +215,7 @@ test_that("saturated PERMANOVA model reports a failure note instead of crashing"
         )
     )
 
-    expect_match(as.character(res$guidance$asString()), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
+    expect_match(tofu_squish_result(res$guidance), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
     expect_equal(nrow(res$table$asDF), 0L)
 })
 
@@ -231,7 +231,7 @@ test_that("PERMANOVA returns stable numeric results", {
     )
 
     tab <- res$table$asDF
-    expect_equal(trimws(as.character(res$warnings$asString())), "")
+    expect_false(res$warnings$visible)
     expect_equal(tab$r2[tab$source == "group"], 0.1788435, tolerance = 1e-6)
     expect_equal(tab$f[tab$source == "group"], 0.3266921, tolerance = 1e-6)
     expect_equal(tab$p[tab$source == "group"], 0.7, tolerance = 1e-6)
@@ -407,7 +407,7 @@ test_that("mahalanobis is rejected when n <= p", {
     res <- suppressMessages(permanova(
         data = wide, vars = paste0("g", 1:8), factor = "group",
         distance = "mahalanobis", permN = 9, seed = 123))
-    expect_match(as.character(res$guidance$asString()), "mahalanobis requires more samples than features")
+    expect_match(tofu_squish_result(res$guidance), "mahalanobis requires more samples than features")
 })
 
 test_that("sqrt.dist and additive constant run in PERMANOVA", {
@@ -539,4 +539,18 @@ test_that("nMDS ordination ornaments run without error", {
         nmdsTrymax = 5, seed = 123)))
     expect_false(is.null(res$ordination))
     expect_false(is.null(res$envfit))
+})
+
+test_that("narrative HTML is readable, wrapping, and escaped", {
+    html <- tofu_html_block(c(
+        "A deliberately long guidance sentence.",
+        "<script>alert('x')</script> & more"))
+
+    expect_match(html, "max-width: 44em", fixed=TRUE)
+    expect_match(html, "line-height: 1.45", fixed=TRUE)
+    expect_match(html, "overflow-wrap: anywhere", fixed=TRUE)
+    expect_match(html, "word-break: normal", fixed=TRUE)
+    expect_false(grepl("<script>", html, fixed=TRUE))
+    expect_match(html, "&lt;script&gt;", fixed=TRUE)
+    expect_match(html, "&amp; more", fixed=TRUE)
 })

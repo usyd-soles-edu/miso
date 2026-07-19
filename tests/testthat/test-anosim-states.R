@@ -99,6 +99,7 @@ test_that("ANOSIM result schema hides every empty shell", {
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
     expect_identical(by_name$guidance$type, "Html")
+    expect_identical(by_name$warnings$type, "Html")
     expect_identical(by_name$note$type, "Html")
     expect_identical(by_name$global$title, "Global ANOSIM")
     expect_identical(by_name$global$columns[[2L]]$title, "R")
@@ -242,7 +243,7 @@ test_that("ineffective ANOSIM blocks stop inference", {
         seed=123
     )
 
-    expect_match(as.character(result$guidance$asString()), "does not vary within any block")
+    expect_match(tofu_squish_result(result$guidance), "does not vary within any block")
     expect_false(result$global$visible)
     expect_equal(nrow(result$global$asDF), 0L)
 })
@@ -435,6 +436,7 @@ test_that("ANOSIM interpretation explains negative R and settings are effective"
 
     expect_match(interpretation, "negative R")
     expect_match(interpretation, "within-group observations")
+    expect_match(interpretation, "max-width: 44em", fixed=TRUE)
     expect_match(interpretation, "overflow-wrap: anywhere", fixed=TRUE)
     expect_identical(settings[["Requested permutation restriction"]], "Free")
     expect_identical(settings[["Effective permutation restriction"]], "Free")

@@ -73,6 +73,8 @@ test_that("PERMDISP result schema hides every empty shell", {
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
+    expect_identical(by_name$guidance$type, "Html")
+    expect_identical(by_name$warnings$type, "Html")
     expect_identical(by_name$note$type, "Html")
     expect_identical(
         vapply(by_name$distances$columns, `[[`, character(1), "name"),
@@ -90,6 +92,7 @@ test_that("new PERMDISP shows only complete getting-started guidance", {
     analysis$.__enclos_env__$private$.run()
     result <- analysis$results
 
+    expect_match(as.character(result$guidance$asString()), "max-width: 44em", fixed=TRUE)
     expect_match(as.character(result$guidance$asString()), "PERMDISP tests whether groups differ in multivariate spread")
     expect_match(as.character(result$guidance$asString()), "Feature variables")
     expect_match(as.character(result$guidance$asString()), "Grouping variable")

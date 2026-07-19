@@ -50,7 +50,7 @@ Do this before trusting any jamovi result:
    ```
 
 5. Relaunch jamovi. Open **Analyses → tofu** and confirm that the five analyses below are present.
-6. Open PERMANOVA, expand **Study design and model — use when part of your study design**, and confirm that it includes **Continuous covariates**. Open nMDS and confirm that it includes **Environmental variables**.
+6. Open PERMANOVA, expand **Study design and model**, and confirm that it includes **Continuous covariates**. Open nMDS and confirm that it includes **Environmental variables**.
 
 Record the operating system plus the jamovi and tofu versions with your test notes. The version alone is not proof that the new build loaded: an older build may also say `0.2.0`. If the menu or controls do not match this guide, remove tofu, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
 
@@ -125,7 +125,7 @@ Enabling **Parallel processing** can show that the option does not alter results
    - **Square-root distances:** cleared
    - **Additive constant:** None
    - **Pairwise comparisons:** cleared
-7. Leave **Study design and model — use when part of your study design** collapsed. Its default is **Sequential terms** with **Free** permutation restrictions and no block, factor, covariate, or interaction.
+7. Leave **Study design and model** collapsed. Its default is **Sequential terms** with **Free** permutation restrictions and no block, factor, covariate, or interaction.
 8. Expand **Reproducibility and technical settings** and select:
    - **Number of permutations:** 999
    - **Random seed (0 = random):** 123
@@ -145,7 +145,7 @@ Pass when **Data Summary**, **PERMANOVA Table**, **Interpretation**, and **Analy
 <summary>PERMANOVA functionality regression checks</summary>
 
 - **Pairwise dependency:** confirm **P-value adjustment** is disabled while **Pairwise comparisons** is cleared. Select **Pairwise comparisons**, leave the adjustment at **Holm**, and confirm that a populated **Pairwise PERMANOVA** table appears. Clear Pairwise and confirm that the table disappears rather than leaving an empty heading.
-- **Additional factor and interactions:** expand **Study design and model — use when part of your study design**, move `treatment` to **Additional factors**, and confirm both model terms appear. Clear Pairwise, select **Include interactions**, and confirm the interaction row appears. Pairwise should be unavailable until interactions are cleared.
+- **Additional factor and interactions:** expand **Study design and model**, move `treatment` to **Additional factors**, and confirm both model terms appear. Clear Pairwise, select **Include interactions**, and confirm the interaction row appears. Pairwise should be unavailable until interactions are cleared.
 - **Covariates:** move `temperature` and `pH` to **Continuous covariates** and confirm both appear as model terms. Change **Test type** between **Sequential terms** and **Marginal terms** and confirm the Interpretation explains the selected model-term test.
 - **Free with an assigned block:** move `block` to **Blocking variable** while leaving **Permutation restrictions: Free**. The main result should remain, **Data handling warnings** should say the block is unused, and **Analysis settings** should report **Block used: No**.
 - **Within blocks without a block:** remove `block`, select **Within blocks — requires a Blocking variable**, and confirm that only the actionable correction appears, with no inferential table.
@@ -322,7 +322,7 @@ For `tofu-large.csv`, use all 48 features, **Top N features: 9**, and the 70% cu
 
 ### Shared negative-input checks
 
-Open `tofu-invalid.csv` and use PERMANOVA unless stated otherwise. Reopen the file before each check.
+Open `tofu-invalid.csv` and use PERMANOVA unless stated otherwise. Reopen the file before each check. Before the all-zero-feature check, set `all_zero_feature` to **Continuous** under **Variables → Edit**; jamovi imports this constant column as Nominal by default.
 
 | Check | What to assign | Expected current behaviour |
 |---|---|---|

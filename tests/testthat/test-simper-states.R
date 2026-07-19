@@ -167,6 +167,7 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
             "assessment", "note", "settings")
     )
     expect_identical(by_name$guidance$type, "Html")
+    expect_identical(by_name$warnings$type, "Html")
     expect_identical(by_name$warnings$title, "Data handling warnings")
     expect_identical(by_name$contrasts$title, "Contrast summary")
     expect_identical(by_name$contributions$title, "Descriptive feature contributions")
@@ -216,6 +217,7 @@ test_that("new and incomplete SIMPER analyses show one actionable state", {
     analysis <- simperClass$new(options=options, data=data)
     analysis$.__enclos_env__$private$.run()
     new <- analysis$results
+    expect_match(as.character(new$guidance$asString()), "max-width: 44em", fixed=TRUE)
     expect_match(as.character(new$guidance$asString()), "SIMPER \\(similarity percentages\\)")
     expect_match(as.character(new$guidance$asString()), "Feature variables")
     expect_match(as.character(new$guidance$asString()), "Grouping variable")
@@ -569,7 +571,7 @@ test_that("assessment failure preserves valid descriptive output", {
     expect_false(result$assessment$visible)
     expect_equal(length(result$assessment$rowKeys), 0L)
     expect_match(
-        as.character(result$warnings$asString()),
+        tofu_squish_result(result$warnings),
         "simulated assessment failure")
 })
 

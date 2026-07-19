@@ -17,6 +17,34 @@ expect_result_visibility <- function(result, visible, hidden) {
         expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
+test_that("PERMANOVA study design controls use the full option width", {
+    ui <- yaml::read_yaml(
+        test_path("..", "..", "jamovi", "permanova.u.yaml"))
+    rootNames <- vapply(
+        ui$children,
+        function(node) if (is.null(node$name)) "" else node$name,
+        character(1))
+    studyDesign <- ui$children[[match("studyDesign", rootNames)]]
+
+    expect_false(is.null(studyDesign))
+    expect_identical(studyDesign$label, "Study design and model")
+    expect_true(studyDesign$collapsed)
+    expect_identical(studyDesign$children[[1L]]$name, "studyVariables")
+    expect_identical(
+        studyDesign$children[[1L]]$label,
+        "Optional model variables")
+})
+
+test_that("PERMANOVA narrative results use bounded HTML", {
+    results <- yaml::read_yaml(
+        test_path("..", "..", "jamovi", "permanova.r.yaml"))$items
+    by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
+
+    expect_identical(by_name$guidance$type, "Html")
+    expect_identical(by_name$warnings$type, "Html")
+    expect_identical(by_name$note$type, "Html")
+})
+
 test_that("new PERMANOVA shows only complete getting-started guidance", {
     result <- permanova(
         data=permanova_state_data(),
@@ -24,16 +52,12 @@ test_that("new PERMANOVA shows only complete getting-started guidance", {
         factor="group"
     )
 
-    expect_identical(
-        trimws(as.character(result$guidance$asString())),
-        paste(
-            "To run PERMANOVA:",
-            "1. Add one or more numeric Feature variables.",
-            "2. Add one categorical Grouping variable with at least two groups.",
-            "Results update automatically.",
-            sep="\n"
-        )
-    )
+    guidance <- tofu_squish_result(result$guidance)
+    expect_match(guidance, "max-width: 44em", fixed=TRUE)
+    expect_match(guidance, "To run PERMANOVA:", fixed=TRUE)
+    expect_match(guidance, "1. Add one or more numeric Feature variables.", fixed=TRUE)
+    expect_match(guidance, "2. Add one categorical Grouping variable with at least two groups.", fixed=TRUE)
+    expect_match(guidance, "Results update automatically.", fixed=TRUE)
     expect_result_visibility(
         result,
         visible="guidance",
@@ -48,13 +72,10 @@ test_that("features without a group show one actionable correction", {
         factor=NULL
     )
 
-    expect_identical(
-        trimws(as.character(result$guidance$asString())),
-        paste(
-            "PERMANOVA is waiting for a Grouping variable.",
-            "Add one categorical variable containing at least two groups."
-        )
-    )
+    guidance <- tofu_squish_result(result$guidance)
+    expect_match(guidance, "max-width: 44em", fixed=TRUE)
+    expect_match(guidance, "PERMANOVA is waiting for a Grouping variable.", fixed=TRUE)
+    expect_match(guidance, "Add one categorical variable containing at least two groups.", fixed=TRUE)
     expect_result_visibility(
         result,
         visible="guidance",
@@ -307,7 +328,7 @@ test_that("within-block validation identifies ineffective and singleton blocks",
     )
 
     expect_match(
-        as.character(failed$guidance$asString()),
+        tofu_squish_result(failed$guidance),
         "Grouping variable does not vary within any block")
     expect_false(failed$table$visible)
 
@@ -477,9 +498,9 @@ test_that("interpretation distinguishes simple sequential and marginal models", 
         seed=123
     ))
 
-    expect_match(as.character(simple$note$asString()), "R² is the proportion")
-    expect_match(as.character(simple$note$asString()), "Examine PERMDISP")
-    expect_false(grepl("Sequential tests", as.character(simple$note$asString())))
-    expect_match(as.character(sequential$note$asString()), "Sequential tests depend on model-term order")
-    expect_match(as.character(marginal$note$asString()), "Marginal tests assess each term")
+    expect_match(tofu_squish_result(simple$note), "R² is the proportion")
+    expect_match(tofu_squish_result(simple$note), "Examine PERMDISP")
+    expect_false(grepl("Sequential tests", tofu_squish_result(simple$note)))
+    expect_match(tofu_squish_result(sequential$note), "Sequential tests depend on model-term order")
+    expect_match(tofu_squish_result(marginal$note), "Marginal tests assess each term")
 })

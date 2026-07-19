@@ -24,7 +24,7 @@ items:
 
   - name: warnings
     title: Data handling warnings
-    type: Preformatted
+    type: Html
     visible: false
 
   - name: global

@@ -354,13 +354,13 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
 
     none <- run_nmds_private(data, vars=character())$results
     expect_match(
-        as.character(none$guidance$asString()),
+        nmds_squish(none$guidance$asString()),
         "at least two numeric Feature variables")
     expect_only_nmds_guidance(none)
 
     one <- run_nmds_private(data, vars="feature_01")$results
     expect_match(
-        as.character(one$guidance$asString()),
+        nmds_squish(one$guidance$asString()),
         "at least two usable numeric Feature variables")
     expect_only_nmds_guidance(one)
 })
@@ -474,7 +474,7 @@ test_that("too few usable sites gives dimensionality-specific guidance", {
         data,
         vars=paste0("feature_0", 1:4),
         distance="euclidean")$results
-    guidance <- as.character(result$guidance$asString())
+    guidance <- nmds_squish(result$guidance$asString())
 
     expect_match(guidance, "2-dimensional nMDS")
     expect_match(guidance, "at least 3 usable sites")
@@ -492,7 +492,7 @@ test_that("fewer than two retained features returns one correction state", {
         distance="euclidean")$results
 
     expect_match(
-        as.character(result$guidance$asString()),
+        nmds_squish(result$guidance$asString()),
         "at least two usable numeric Feature variables")
     expect_only_nmds_guidance(result)
 })
@@ -504,7 +504,7 @@ test_that("signed transformations name incompatible dissimilarities", {
         vars=paste0("feature_0", 1:4),
         transform="standardize",
         distance="bray")$results
-    guidance <- as.character(result$guidance$asString())
+    guidance <- nmds_squish(result$guidance$asString())
 
     expect_match(guidance, "Bray-Curtis")
     expect_match(guidance, "Standardize")
@@ -1264,7 +1264,7 @@ test_that("bounded HTML escapes plain text and Interpretation stays compact", {
     escaped <- private$.htmlBlock(c("<script>alert('x')</script>", "A & B"))
     interpretation <- nmds_squish(analysis$results$note$asString())
 
-    expect_match(escaped, "max-width: 100%")
+    expect_match(escaped, "max-width: 44em")
     expect_match(escaped, "overflow-wrap: anywhere")
     expect_match(escaped, "word-break: normal")
     expect_false(grepl("<script>", escaped, fixed=TRUE))
@@ -1280,7 +1280,7 @@ test_that("bounded HTML escapes plain text and Interpretation stays compact", {
     expect_match(interpretation, "not group differences")
     expect_match(interpretation, "p-values are unadjusted")
     expect_lt(nchar(interpretation), 700L)
-    expect_false(grepl("white-space", interpretation, fixed=TRUE))
+    expect_match(interpretation, "white-space: normal", fixed=TRUE)
 })
 
 test_that("Shepard visibility is prevalidated and its renderer is read-only", {

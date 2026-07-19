@@ -6,7 +6,7 @@ jrs: '1.1'
 items:
   - name: guidance
     title: Getting started
-    type: Preformatted
+    type: Html
     visible: false
 
   - name: summary
@@ -24,7 +24,7 @@ items:
 
   - name: warnings
     title: Data handling warnings
-    type: Preformatted
+    type: Html
     visible: false
 
   - name: table

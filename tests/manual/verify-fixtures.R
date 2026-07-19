@@ -47,6 +47,27 @@ same_file <- function(expected, actual) {
         identical(file_bytes(expected), file_bytes(actual))
 }
 
+same_session_info <- function(expected, actual) {
+    if (!isTRUE(file.exists(expected)) || !isTRUE(file.exists(actual)))
+        return(FALSE)
+
+    expected_lines <- readLines(expected, warn = FALSE)
+    actual_lines <- readLines(actual, warn = FALSE)
+    commit_pattern <- "^Source-commit: [0-9a-f]{40}$"
+
+    if (sum(grepl(commit_pattern, expected_lines)) != 1L ||
+            sum(grepl(commit_pattern, actual_lines)) != 1L)
+        return(FALSE)
+
+    normalize_commit <- function(lines) {
+        sub(commit_pattern, "Source-commit: <verified separately>", lines)
+    }
+
+    identical(
+        normalize_commit(expected_lines),
+        normalize_commit(actual_lines))
+}
+
 run_script("generate-datasets.R", tmp)
 run_script("generate-reference-results.R", tmp)
 
@@ -59,7 +80,13 @@ files <- c(
 )
 
 passed <- vapply(files, function(name) {
-    ok <- same_file(file.path(expected_dir, name), file.path(tmp, name))
+    expected <- file.path(expected_dir, name)
+    actual <- file.path(tmp, name)
+    ok <- if (identical(name, "reference-session-info.txt")) {
+        same_session_info(expected, actual)
+    } else {
+        same_file(expected, actual)
+    }
     cat(sprintf("%-34s %s\n", name, if (ok) "PASS" else "FAIL"))
     ok
 }, logical(1))

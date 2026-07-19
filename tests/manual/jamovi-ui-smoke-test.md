@@ -9,16 +9,17 @@ The validated baseline-workbook workflow covers:
 - launching jamovi from a quit state;
 - normalizing the window;
 - opening the small and large saved workbooks;
-- forcing PERMANOVA, SIMPER, and nMDS to recalculate;
+- forcing PERMANOVA, ANOSIM, PERMDISP, SIMPER, and nMDS to recalculate;
 - reading their controls, tables, plot descriptions, guidance, and settings through the accessibility tree;
 - checking expected values, conditional outputs, stale-output clearing, control dependencies, and absence of `NaN` or `Inf`;
 - checking SIMPER and nMDS at 200% jamovi zoom;
+- checking that guidance, warnings, and interpretation text remain within a readable report width, including when the results pane is narrowed;
 - checking nMDS output-only invariance, optional-layer independence, and basic keyboard focus recovery; and
 - confirming that the workbooks and Git worktree were not modified.
 
-The PERMANOVA redesign regression also covers a new analysis, incomplete inputs, conditional result sections, permutation/block truthfulness, control dependencies, valid → invalid → valid clearing, collapsed-section accessibility, and keyboard operation. Run those checks from a clean CSV as described below before claiming the redesigned UI passed. The SIMPER and nMDS procedures below were successfully exercised on the saved baselines and are now repeatable UI workflows.
+The PERMANOVA redesign regression also covers a new analysis, incomplete inputs, conditional result sections, permutation/block truthfulness, control dependencies, valid → invalid → valid clearing, collapsed-section accessibility, and keyboard operation. Run those checks from a clean CSV as described below before claiming the redesigned UI passed. The ANOSIM, PERMDISP, SIMPER, nMDS, and shared invalid-input procedures below were successfully exercised and are now repeatable UI workflows.
 
-ANOSIM, PERMDISP, and the shared invalid-input matrix remain manual until equivalent automation has been exercised and added here. Do not claim live coverage for VoiceOver speech, 400% macOS magnification, Windows NVDA, nMDS five-group rendering, or hidden legacy Binary/3D controls; those checks were not physically run.
+Do not claim live coverage for VoiceOver speech, 400% macOS magnification, Windows NVDA, nMDS five-group rendering, or hidden legacy Binary/3D controls; those checks were not physically run.
 
 ## Test assets
 
@@ -159,7 +160,7 @@ Open `tests/manual/tofu-small.csv`, create a new **Analyses → tofu → PERMANO
 2. Assign `feature_01`–`feature_08` to **Required: Feature variables** using keyboard selection and the transfer arrow. Assert that **Action needed** asks for a categorical Grouping variable and that result tables remain absent.
 3. Assign `group` to **Required: Grouping variable**. Wait for `table PERMANOVA Table`, then assert that `table Pairwise PERMANOVA` and `Data handling warnings` are absent.
 4. Select **Pairwise comparisons**. Wait for a populated `table Pairwise PERMANOVA`. Clear Pairwise and assert that the table is removed from the accessibility tree.
-5. Expand **Study design and model — use when part of your study design**, assign `block` to **Blocking variable**, and leave **Permutation restrictions** at **Free**. Assert that **Data handling warnings** says the block is not used and **Analysis settings** reports `Block used` followed by `No`.
+5. Expand **Study design and model**, assign `block` to **Blocking variable**, and leave **Permutation restrictions** at **Free**. Assert that **Data handling warnings** says the block is not used and **Analysis settings** reports `Block used` followed by `No`.
 6. Remove `block`, select **Within blocks — requires a Blocking variable**, and assert that only the correction appears; the inferential tables must be absent. Reassign `block` and assert that the table returns and settings report `Block used` followed by `Yes`.
 7. Restore **Free**, remove `group`, and assert that all previous rows and headings disappear. Restore `group` and assert that a fresh standard result appears.
 
@@ -172,7 +173,7 @@ Do not save the CSV as a workbook.
 3. Assign `treatment` to **Additional factors** and confirm **Include interactions** becomes available.
 4. Select interactions and confirm an unselected **Pairwise comparisons** becomes unavailable. Clear interactions, select Pairwise, and confirm an unselected **Include interactions** becomes unavailable.
 5. Select **Omnibus** and confirm an unselected Pairwise control is unavailable. A saved legacy conflict must keep its already-selected conflicting control operable so it can be cleared.
-6. Collapse **Study design and model — use when part of your study design**. Confirm its descendants are absent from the accessibility tree and cannot receive focus. Expand it and confirm `aria-expanded`/expanded state, accessible region name, and logical focus order.
+6. Collapse **Study design and model**. Confirm its descendants are absent from the accessibility tree and cannot receive focus. Expand it and confirm `aria-expanded`/expanded state, accessible region name, and logical focus order.
 7. Reopen an analysis containing a block or non-default Test type and confirm the study-design section auto-expands. Reopen one containing a non-default seed or permutation count and confirm **Reproducibility and technical settings** auto-expands.
 8. Confirm result updates do not move keyboard focus into the report.
 
@@ -229,7 +230,60 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 3. Select Feature Scores, hulls, the 1-SD ellipse, and spiders. Assert 48 Feature Score rows, unchanged Site Scores, all requested layers in the plot description, two environmental vectors, and truthful feature-label omission text.
 4. Clear the optional layers and confirm the base Site Scores remain unchanged.
 
-### 12. Finish safely
+### 12. Run the ANOSIM workflow
+
+#### Small baseline
+
+1. Open `tofu-small-baselines.omv`, activate ANOSIM, and change seed `123 → 124 → 123` to force recalculation.
+2. At seed 123, assert Global R is about `.495` and permutation p is `.001`.
+3. Select **Pairwise ANOSIM comparisons** with Holm adjustment. Assert the A vs B row has R about `.678` and adjusted p `.003`.
+4. Clear Pairwise. Assert its table disappears and **P-value adjustment** becomes unavailable.
+
+#### Large baseline
+
+1. Open `tofu-large-baselines.omv`, activate ANOSIM, and change seed `123 → 124 → 123`.
+2. At seed 123, assert Global R is about `.829` and permutation p is `.005`.
+3. Select Pairwise with Holm adjustment. Assert the A vs B row has R about `.985` and adjusted p `.015`.
+4. Clear Pairwise and assert that its table disappears without stale rows.
+
+### 13. Run the PERMDISP workflow
+
+#### Small baseline
+
+1. Open `tofu-small-baselines.omv`, activate PERMDISP, and change seed `123 → 124 → 123`.
+2. At seed 123 with the median centre, assert F is about `1.69`, permutation p is about `.219`, and mean distances for A/B/C are about `.160 / .163 / .221`.
+3. Assert the Residuals-row F and p cells are blank rather than `NaN`.
+4. Select **Pairwise dispersion comparisons** with Holm adjustment. Assert the table appears and the A vs B row has t about `−0.0926` and p about `.920`.
+5. Clear Pairwise and assert its table disappears.
+6. Select **Centroid** and **Bias adjustment**. Assert F is about `2.16`, p about `.148`, and mean distances are about `.172 / .178 / .237`. Restore Median and clear Bias adjustment.
+
+#### Large baseline
+
+1. Open `tofu-large-baselines.omv`, activate PERMDISP, and change seed `123 → 124 → 123`.
+2. At seed 123, assert F is about `372.5`, permutation p is `.005`, and mean distances for A/B/C are about `.158 / .182 / .247`.
+3. Select Pairwise with Holm adjustment. Assert the table is populated and adjusted p values are `.015`; clear Pairwise and assert its table disappears.
+
+### 14. Run the shared invalid-input matrix
+
+Open `tests/manual/tofu-invalid.csv`, create a new PERMANOVA, and return to a clean analysis before each case.
+
+1. Assign only `group`. Assert **Getting started** shows both required steps and no inferential table appears.
+2. Assign `valid_01` and `valid_02` without a group. Assert the guidance requests a Grouping variable and no inferential table appears.
+3. Try to move `text_feature` to Feature variables. Assert jamovi refuses it and announces **Incorrect measure or data type**.
+4. Assign `valid_01` plus `negative_feature`, with group `group`. Assert the guidance names `negative_feature` and no inferential table appears.
+5. Assign `valid_01` plus `missing_feature`, with group `group`. Assert one row is excluded, seven samples are analysed, and the inferential table is populated.
+6. Before the all-zero-feature case, open **Variables → Edit** for `all_zero_feature` and set **Measure type: Continuous**. Constant columns are otherwise imported as Nominal. Assign it with `valid_01` and group `group`; assert one all-zero feature is excluded and the inferential table is populated.
+7. Assign `zero_case_01` and `zero_case_02`, with group `group`. Assert one all-zero sample is excluded, seven samples are analysed, and the inferential table is populated.
+8. Assign `valid_01` and `valid_02`, with group `single_group`. Assert the guidance reports fewer than two groups and no inferential table appears.
+
+### 15. Check result text width across analyses
+
+1. In a clean analysis for each of PERMANOVA, ANOSIM, PERMDISP, nMDS, and SIMPER, inspect the getting-started guidance in the report.
+2. For PERMANOVA, assign one numeric Feature variable without a Grouping variable and inspect the waiting-for-group guidance.
+3. Narrow the results pane with the workspace splitter. Confirm guidance, warnings, tips, and interpretation paragraphs wrap within the white report card instead of extending horizontally or forcing report-level horizontal scrolling.
+4. Confirm normal result tables retain their column structure. Treat a genuinely wide data table separately from avoidable narrative-text overflow.
+
+### 16. Finish safely
 
 1. Leave the random seed at its documented value of `123`.
 2. Do not press Save or Save As.
@@ -241,4 +295,4 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 PERMANOVA passed on 16 July 2026 with jamovi 2.7.36 from a fully quit application state, using accessibility elements after normalizing the window.
 
-SIMPER and nMDS passed their small- and large-baseline workflows on 19 July 2026 with jamovi 2.7.36. Accessibility elements were preferred throughout; relative coordinates were used only to select target-list rows whose accessibility click was inert. Both workbooks remained unmodified. The unverified assistive-technology and legacy-control checks listed above remain explicit gaps rather than pass claims.
+ANOSIM, PERMDISP, SIMPER, and nMDS passed their small- and large-baseline workflows on 19 July 2026 with jamovi 2.7.36. The shared invalid-input matrix also passed, including current jamovi type handling for the constant all-zero feature. Guidance and other narrative text for all five analyses remained contained when the results pane was narrowed. Accessibility elements were preferred throughout; relative coordinates were used only to select target-list rows whose accessibility click was inert. Both workbooks remained unmodified. The unverified assistive-technology and legacy-control checks listed above remain explicit gaps rather than pass claims.

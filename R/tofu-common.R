@@ -200,6 +200,30 @@ tofu_num_or_na <- function(x) {
         x
 }
 
+tofu_html_escape <- function(value) {
+    value <- gsub("&", "&amp;", as.character(value), fixed=TRUE)
+    value <- gsub("<", "&lt;", value, fixed=TRUE)
+    value <- gsub(">", "&gt;", value, fixed=TRUE)
+    value <- gsub("\"", "&quot;", value, fixed=TRUE)
+    gsub("'", "&#39;", value, fixed=TRUE)
+}
+
+tofu_html_block <- function(paragraphs) {
+    paragraphs <- as.character(paragraphs)
+    paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
+    escaped <- tofu_html_escape(paragraphs)
+    escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
+    paste0(
+        '<div style="margin: 0; max-width: 44em; line-height: 1.45; ',
+        'white-space: normal; overflow-wrap: anywhere; word-break: normal;">\n',
+        paste0(
+            '<p style="margin: 0 0 0.65em 0;">\n',
+            escaped,
+            '\n</p>',
+            collapse=""),
+        '\n</div>')
+}
+
 tofu_populate_summary <- function(results, prep, transform, distance) {
     rows <- tofu_summary_rows(prep, transform, distance)
     for (i in seq_along(rows))
