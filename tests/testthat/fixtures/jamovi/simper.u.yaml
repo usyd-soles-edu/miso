@@ -1,0 +1,127 @@
+---
+title: SIMPER
+name: simper
+jus: '3.0'
+stage: 0
+compilerMode: tame
+children:
+  - type: VariableSupplier
+    persistentItems: false
+    stretchFactor: 1
+    children:
+      - type: TargetLayoutBox
+        label: 'Required: Feature variables'
+        children:
+          - type: VariablesListBox
+            name: vars
+            isTarget: true
+      - type: TargetLayoutBox
+        label: 'Required: Grouping variable'
+        children:
+          - type: VariablesListBox
+            name: factor
+            maxItemCount: 1
+            isTarget: true
+
+  - type: CollapseBox
+    name: analysisChoices
+    label: Analysis choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: transform
+        options:
+          - title: None
+            name: none
+          - title: Square root
+            name: sqrt
+          - title: Fourth root
+            name: fourthroot
+          - title: Log(x + 1)
+            name: log
+          - title: Presence/absence
+            name: pa
+          - title: Wisconsin
+            name: wisconsin
+          - title: Hellinger
+            name: hellinger
+          - title: Total
+            name: total
+          - title: Max
+            name: max
+          - title: Frequency
+            name: frequency
+          - title: Normalize
+            name: normalize
+          - title: Range
+            name: range
+          - title: Chi-square
+            name: chi.square
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Tip
+            heading: true
+            margin: none
+          - type: Label
+            label: Transforms affect contributions.
+            margin: none
+          - type: Label
+            label: Means use transformed values.
+            margin: none
+      - type: Label
+        label: "Dissimilarity: Bray-Curtis"
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Features shown
+            heading: true
+            margin: none
+          - type: TextBox
+            name: simperTop
+            format: number
+          - type: TextBox
+            name: simperCum
+            format: number
+          - type: LayoutBox
+            style: list
+            margin: small
+            children:
+              - type: Label
+                label: Tip
+                heading: true
+                margin: none
+              - type: Label
+                label: Stop at Top N or cumulative %.
+                margin: none
+              - type: Label
+                label: Keep the threshold-crossing feature.
+                margin: none
+      - type: CheckBox
+        name: simperDetails
+
+  - type: CollapseBox
+    name: permutationAssessment
+    label: Permutation assessment (advanced)
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: simperAssess
+        events:
+          change: update_control_states
+      - type: TextBox
+        name: simperN
+        format: number
+      - type: ComboBox
+        name: simperAdjust
+      - type: TextBox
+        name: seed
+        format: number
+
+...

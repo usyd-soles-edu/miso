@@ -1,0 +1,403 @@
+---
+name: nmds
+title: nMDS
+jrs: '1.1'
+
+items:
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: warnings
+    title: Warnings
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: ordination
+    title: Two-dimensional nMDS ordination
+    type: Image
+    width: 580
+    height: 450
+    renderFun: .plotNmds
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: ordinationDescription
+    title: Ordination description
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: stress
+    title: Stress and convergence diagnostics
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: shepard
+    title: Shepard diagram
+    type: Image
+    width: 580
+    height: 450
+    renderFun: .plotShepard
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: shepardDescription
+    title: Shepard diagram description
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: envfit
+    title: Environmental Fit
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: variable
+        title: Variable
+        type: text
+      - name: r2
+        title: r²
+        type: number
+        format: zto
+      - name: p
+        title: p (unadjusted)
+        type: number
+        format: zto,pvalue
+      - name: samples
+        title: n
+        type: integer
+      - name: permutations
+        title: Permutations
+        type: integer
+      - name: NMDS1
+        title: NMDS1
+        type: number
+        format: zto
+      - name: NMDS2
+        title: NMDS2
+        type: number
+        format: zto
+      - name: NMDS3
+        title: NMDS3
+        type: number
+        format: zto
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: note
+    title: Interpretation
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: sites
+    title: Site Scores
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: row
+        title: Row
+        type: integer
+      - name: NMDS1
+        title: NMDS1
+        type: number
+        format: zto
+      - name: NMDS2
+        title: NMDS2
+        type: number
+        format: zto
+      - name: NMDS3
+        title: NMDS3
+        type: number
+        format: zto
+      - name: group
+        title: Group
+        type: text
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: features
+    title: Feature Scores
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: feature
+        title: Feature
+        type: text
+      - name: NMDS1
+        title: NMDS1
+        type: number
+        format: zto
+      - name: NMDS2
+        title: NMDS2
+        type: number
+        format: zto
+      - name: NMDS3
+        title: NMDS3
+        type: number
+        format: zto
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+...

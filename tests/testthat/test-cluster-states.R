@@ -42,11 +42,11 @@ run_cluster_private <- function(data, ...) {
 
 test_that("cluster schema stays teaching-focused", {
     analysis <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "cluster.a.yaml"))
+        tofu_fixture_path("jamovi", "cluster.a.yaml"))
     ui <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "cluster.u.yaml"))
+        tofu_fixture_path("jamovi", "cluster.u.yaml"))
     results <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "cluster.r.yaml"))$items
+        tofu_fixture_path("jamovi", "cluster.r.yaml"))$items
     options <- analysis$options
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     result_by_name <- setNames(
@@ -69,7 +69,10 @@ test_that("cluster schema stays teaching-focused", {
     expect_false(cluster_yaml_node(ui, "outputChoices")$collapsed)
     expect_match(
         cluster_yaml_node(ui, "outputChoices")$children[[2L]]$children[[2L]]$label,
-        "Row numbers")
+        "large datasets")
+    expect_match(
+        cluster_yaml_node(ui, "outputChoices")$children[[2L]]$children[[3L]]$label,
+        "row numbers")
 
     expect_true(all(vapply(
         results,
@@ -79,8 +82,8 @@ test_that("cluster schema stays teaching-focused", {
         names(result_by_name),
         c("guidance", "summary", "warnings", "dendrogram", "interpretation", "settings"))
     expect_identical(result_by_name$dendrogram$type, "Image")
-    expect_identical(result_by_name$dendrogram$width, 650L)
-    expect_identical(result_by_name$dendrogram$height, 480L)
+    expect_identical(result_by_name$dendrogram$width, 540L)
+    expect_identical(result_by_name$dendrogram$height, 360L)
 })
 
 test_that("new cluster analysis shows only complete getting-started guidance", {
@@ -229,7 +232,7 @@ test_that("cluster dendrogram rendering is bounded and read-only", {
     on.exit(unlink(path), add=TRUE)
 
     grDevices::png(path, width=900, height=700)
-    private$.plotDendrogram(NULL)
+    expect_true(private$.plotDendrogram(NULL))
     grDevices::dev.off()
 
     expect_gt(file.info(path)$size, 0)

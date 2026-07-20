@@ -1,0 +1,185 @@
+---
+name: nmds
+title: nMDS
+menuGroup: tofu
+menuTitle: nMDS
+menuSubtitle: Visualise sample patterns
+version: '0.2.0'
+jas: '1.2'
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: 'Required: Feature variables'
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: factor
+    title: 'Optional: Grouping variable'
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+    default: null
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+      - title: Max
+        name: max
+      - title: Frequency
+        name: frequency
+      - title: Normalize
+        name: normalize
+      - title: Range
+        name: range
+      - title: Standardize
+        name: standardize
+      - title: Chi-square
+        name: chi.square
+      - title: Reverse CLR
+        name: rclr
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+      - title: Clark
+        name: clark
+      - title: Alternative Gower
+        name: altGower
+      - title: Mahalanobis
+        name: mahalanobis
+    default: bray
+
+  - name: distBinary
+    title: Binary (presence/absence)
+    type: Bool
+    default: false
+    hidden: true
+
+  - name: seed
+    title: Random seed
+    type: Number
+    default: 0
+    min: 0
+
+  - name: nmdsK
+    title: Dimensions
+    type: Number
+    default: 2
+    min: 2
+    max: 3
+    hidden: true
+
+  - name: nmdsTrymax
+    title: Maximum random starts
+    type: Number
+    default: 20
+    min: 1
+
+  - name: nmdsMaxit
+    title: Max iterations per run
+    type: Number
+    default: 200
+    min: 1
+
+  - name: nmdsShepard
+    title: Show Shepard diagram
+    type: Bool
+    default: true
+
+  - name: nmdsOverlay
+    title: Style points by group
+    type: Bool
+    default: true
+
+  - name: nmdsEnv
+    title: 'Optional: Environmental variables'
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+    default: null
+
+  - name: nmdsSpecies
+    title: Show feature scores
+    type: Bool
+    default: false
+
+  - name: nmdsHull
+    title: Group hulls
+    type: Bool
+    default: false
+
+  - name: nmdsEllipse
+    title: Group dispersion ellipses (1 SD)
+    type: Bool
+    default: false
+
+  - name: nmdsSpider
+    title: Group spiders
+    type: Bool
+    default: false
+
+  - name: nmdsEnvPerm
+    title: Environmental-fit permutations
+    type: Number
+    default: 99
+    min: 1
+
+...

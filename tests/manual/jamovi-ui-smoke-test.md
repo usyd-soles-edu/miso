@@ -1,6 +1,6 @@
 # jamovi UI smoke-test runbook
 
-This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised PERMANOVA, SIMPER, and nMDS on both baseline workbooks. It is intended for future Codex sessions and is deliberately separate from the user-facing functionality guide in `README.md`.
+This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised the tofu analyses on the saved baseline workbooks and clean CSV fixtures. It is intended for future Codex sessions and is deliberately separate from the user-facing functionality guide in `README.md`.
 
 ## Current automated scope
 
@@ -9,7 +9,7 @@ The validated baseline-workbook workflow covers:
 - launching jamovi from a quit state;
 - normalizing the window;
 - opening the small and large saved workbooks;
-- forcing PERMANOVA, ANOSIM, PERMDISP, SIMPER, and nMDS to recalculate;
+- forcing PERMANOVA, ANOSIM, PERMDISP, SIMPER, nMDS, and Cluster analysis to recalculate;
 - reading their controls, tables, plot descriptions, guidance, and settings through the accessibility tree;
 - checking expected values, conditional outputs, stale-output clearing, control dependencies, and absence of `NaN` or `Inf`;
 - checking SIMPER and nMDS at 200% jamovi zoom;
@@ -17,7 +17,7 @@ The validated baseline-workbook workflow covers:
 - checking nMDS output-only invariance, optional-layer independence, and basic keyboard focus recovery; and
 - confirming that the workbooks and Git worktree were not modified.
 
-The PERMANOVA redesign regression also covers a new analysis, incomplete inputs, conditional result sections, permutation/block truthfulness, control dependencies, valid → invalid → valid clearing, collapsed-section accessibility, and keyboard operation. Run those checks from a clean CSV as described below before claiming the redesigned UI passed. The ANOSIM, PERMDISP, SIMPER, nMDS, and shared invalid-input procedures below were successfully exercised and are now repeatable UI workflows.
+The PERMANOVA redesign regression also covers a new analysis, incomplete inputs, conditional result sections, permutation/block truthfulness, control dependencies, valid → invalid → valid clearing, collapsed-section accessibility, and keyboard operation. Run those checks from a clean CSV as described below before claiming the redesigned UI passed. The ANOSIM, PERMDISP, SIMPER, nMDS, Cluster analysis, and shared invalid-input procedures below were successfully exercised and are now repeatable UI workflows.
 
 Do not claim live coverage for VoiceOver speech, 400% macOS magnification, Windows NVDA, nMDS five-group rendering, or hidden legacy Binary/3D controls; those checks were not physically run.
 
@@ -25,6 +25,8 @@ Do not claim live coverage for VoiceOver speech, 400% macOS magnification, Windo
 
 - Small: `tests/manual/workbooks/tofu-small-baselines.omv`
 - Large: `tests/manual/workbooks/tofu-large-baselines.omv`
+- Clean small CSV: `tests/manual/tofu-small.csv`
+- Clean large CSV: `tests/manual/tofu-large.csv`
 - Full-precision references: `tests/manual/reference-results.csv`
 
 Install the tofu build under test before starting. The `.omv` files contain cached results, so opening a workbook is not itself evidence that the current build works.
@@ -276,14 +278,35 @@ Open `tests/manual/tofu-invalid.csv`, create a new PERMANOVA, and return to a cl
 7. Assign `zero_case_01` and `zero_case_02`, with group `group`. Assert one all-zero sample is excluded, seven samples are analysed, and the inferential table is populated.
 8. Assign `valid_01` and `valid_02`, with group `single_group`. Assert the guidance reports fewer than two groups and no inferential table appears.
 
-### 15. Check result text width across analyses
+### 15. Run the Cluster analysis workflow
+
+Use the clean CSV fixtures because the saved baseline workbooks predate Cluster analysis.
+
+#### Small dataset
+
+1. Open `tests/manual/tofu-small.csv` and create **Analyses → tofu → Cluster analysis — Visualise sample similarity**.
+2. Assign `feature_01`–`feature_08` to **Required: Feature variables**.
+3. Assert **Data summary** reports 24 samples, 8 features, and zero exclusions.
+4. Confirm the group-average dendrogram is visibly drawn, uses row numbers when no Sample labels variable is assigned, and **Analysis settings** reports None, Bray-Curtis, Group average (UPGMA), Data row numbers, and labels shown.
+5. Confirm the 540 × 360 plot and its surrounding interpretation fit within the report card without report-level horizontal scrolling.
+6. Fail if `NaN` or `Inf` appears in the Cluster result block.
+
+#### Large dataset
+
+1. Open `tests/manual/tofu-large.csv`, create Cluster analysis, and assign `feature_01`–`feature_48`.
+2. Assert **Data summary** reports 360 samples, 48 features, and zero exclusions.
+3. With **Show sample labels** selected, assert that the crowding warning appears and the dendrogram remains visible.
+4. Clear **Show sample labels**. Assert that the crowding warning disappears, the dendrogram remains visible, and settings report labels not shown.
+5. Confirm the plot remains contained without report-level horizontal scrolling. Fail if `NaN` or `Inf` appears.
+
+### 16. Check result text width across analyses
 
 1. In a clean analysis for each of PERMANOVA, ANOSIM, PERMDISP, nMDS, and SIMPER, inspect the getting-started guidance in the report.
 2. For PERMANOVA, assign one numeric Feature variable without a Grouping variable and inspect the waiting-for-group guidance.
 3. Narrow the results pane with the workspace splitter. Confirm guidance, warnings, tips, and interpretation paragraphs wrap within the white report card instead of extending horizontally or forcing report-level horizontal scrolling.
 4. Confirm normal result tables retain their column structure. Treat a genuinely wide data table separately from avoidable narrative-text overflow.
 
-### 16. Finish safely
+### 17. Finish safely
 
 1. Leave the random seed at its documented value of `123`.
 2. Do not press Save or Save As.
@@ -296,3 +319,5 @@ Open `tests/manual/tofu-invalid.csv`, create a new PERMANOVA, and return to a cl
 PERMANOVA passed on 16 July 2026 with jamovi 2.7.36 from a fully quit application state, using accessibility elements after normalizing the window.
 
 ANOSIM, PERMDISP, SIMPER, and nMDS passed their small- and large-baseline workflows on 19 July 2026 with jamovi 2.7.36. The shared invalid-input matrix also passed, including current jamovi type handling for the constant all-zero feature. Guidance and other narrative text for all five analyses remained contained when the results pane was narrowed. Accessibility elements were preferred throughout; relative coordinates were used only to select target-list rows whose accessibility click was inert. Both workbooks remained unmodified. The unverified assistive-technology and legacy-control checks listed above remain explicit gaps rather than pass claims.
+
+Cluster analysis passed its clean small- and large-CSV workflows on 20 July 2026 with jamovi 2.7.36. The live result displayed the 24-sample and 360-sample dendrograms, the large-data label-crowding warning followed the label toggle, and the 540 × 360 image stayed within the report width. Neither CSV nor either saved workbook was modified.

@@ -1,0 +1,126 @@
+---
+title: nMDS
+name: nmds
+jus: '3.0'
+stage: 0
+compilerMode: tame
+events:
+  loaded: view_loaded
+children:
+  - type: VariableSupplier
+    persistentItems: false
+    stretchFactor: 1
+    children:
+      - type: TargetLayoutBox
+        label: 'Required: Feature variables'
+        children:
+          - type: VariablesListBox
+            name: vars
+            isTarget: true
+      - type: TargetLayoutBox
+        label: 'Optional: Grouping variable'
+        children:
+          - type: VariablesListBox
+            name: factor
+            maxItemCount: 1
+            isTarget: true
+            events:
+              change: update_control_states
+      - type: TargetLayoutBox
+        label: 'Optional: Environmental variables'
+        children:
+          - type: VariablesListBox
+            name: nmdsEnv
+            isTarget: true
+            events:
+              change: update_control_states
+
+  - type: CollapseBox
+    name: analysisChoices
+    label: Analysis choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: transform
+      - type: ComboBox
+        name: distance
+
+  - type: CollapseBox
+    name: outputChoices
+    label: Output choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: nmdsShepard
+      - type: CheckBox
+        name: nmdsSpecies
+
+  - type: CollapseBox
+    name: groupOptions
+    label: Group display
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: nmdsOverlay
+      - type: CheckBox
+        name: nmdsHull
+      - type: CheckBox
+        name: nmdsEllipse
+      - type: CheckBox
+        name: nmdsSpider
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Tip
+            heading: true
+            margin: none
+          - type: Label
+            label: Overlays are descriptive only.
+            margin: none
+          - type: Label
+            label: Ellipses show 1 SD, not confidence.
+            margin: none
+
+  - type: CollapseBox
+    name: environmentAssessment
+    label: Environmental fit
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: TextBox
+        name: nmdsEnvPerm
+        format: number
+      - type: LayoutBox
+        style: list
+        margin: small
+        children:
+          - type: Label
+            label: Tip
+            heading: true
+            margin: none
+          - type: Label
+            label: P-values are unadjusted.
+            margin: none
+
+  - type: CollapseBox
+    name: reproducibility
+    label: Reproducibility
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: TextBox
+        name: seed
+        format: number
+      - type: TextBox
+        name: nmdsTrymax
+        format: number
+      - type: TextBox
+        name: nmdsMaxit
+        format: number
+
+...

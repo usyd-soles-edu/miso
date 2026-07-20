@@ -243,7 +243,7 @@ find_nmds_yaml_node <- function(node, name) {
 }
 
 test_that("nMDS schema preserves the API and exposes the approved student contract", {
-    analysis <- yaml::read_yaml(test_path("..", "..", "jamovi", "nmds.a.yaml"))
+    analysis <- yaml::read_yaml(tofu_fixture_path("jamovi", "nmds.a.yaml"))
     options <- analysis$options
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     names_in_order <- vapply(options, `[[`, character(1), "name")
@@ -275,7 +275,7 @@ test_that("nMDS schema preserves the API and exposes the approved student contra
 })
 
 test_that("nMDS UI uses required-first progressive disclosure", {
-    ui_path <- test_path("..", "..", "jamovi", "nmds.u.yaml")
+    ui_path <- tofu_fixture_path("jamovi", "nmds.u.yaml")
     ui <- yaml::read_yaml(ui_path)
     expect_false(find_nmds_yaml_node(ui, "analysisChoices")$collapsed)
     expect_false(find_nmds_yaml_node(ui, "outputChoices")$collapsed)
@@ -291,7 +291,7 @@ test_that("nMDS UI uses required-first progressive disclosure", {
     expect_false(grepl("Fits descriptive vectors", ui_source, fixed=TRUE))
     expect_false(grepl("Dimensions: 2 for new analyses", ui_source, fixed=TRUE))
 
-    source_path <- test_path("..", "..", "jamovi", "js", "nmds.js")
+    source_path <- tofu_fixture_path("jamovi", "js", "nmds.js")
     expect_true(file.exists(source_path), info="compiled nMDS UI controller is missing")
     if (! file.exists(source_path))
         return(invisible())
@@ -308,7 +308,7 @@ test_that("nMDS UI uses required-first progressive disclosure", {
 
 test_that("nMDS result schema contains no initially visible shell", {
     items <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "nmds.r.yaml"))$items
+        tofu_fixture_path("jamovi", "nmds.r.yaml"))$items
     by_name <- setNames(items, vapply(items, `[[`, character(1), "name"))
 
     expect_true(all(vapply(items, function(x) identical(x$visible, FALSE), logical(1))))

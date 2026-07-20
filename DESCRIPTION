@@ -11,6 +11,8 @@ Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, and cluster
 License: GPL (>= 2)
 Encoding: UTF-8
 Imports: jmvcore (>= 0.8.5), R6, vegan, permute
-Suggests: testthat (>= 3.0.0)
+Suggests:
+    testthat (>= 3.0.0),
+    yaml
 Config/testthat/edition: 3
 RoxygenNote: 7.3.3

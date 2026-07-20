@@ -169,8 +169,8 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="dendrogram",
                 title="Group-average cluster dendrogram",
                 visible=FALSE,
-                width=650,
-                height=480,
+                width=540,
+                height=360,
                 renderFun=".plotDendrogram",
                 clearWith=list(
                     "vars",

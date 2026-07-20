@@ -56,8 +56,8 @@ find_anosim_yaml_node <- function(node, name) {
 }
 
 test_that("ANOSIM schema follows the approved required-first hierarchy", {
-    options <- yaml::read_yaml(test_path("..", "..", "jamovi", "anosim.a.yaml"))$options
-    ui <- yaml::read_yaml(test_path("..", "..", "jamovi", "anosim.u.yaml"))
+    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "anosim.a.yaml"))$options
+    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "anosim.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
 
     expect_identical(by_name$vars$title, "Feature variables (required)")
@@ -81,7 +81,7 @@ test_that("ANOSIM schema follows the approved required-first hierarchy", {
 
 test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(test_path("..", "..", "jamovi", "js", "anosim.js")),
+        readLines(tofu_fixture_path("jamovi", "js", "anosim.js")),
         collapse="\n")
 
     expect_match(
@@ -94,7 +94,7 @@ test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
 
 test_that("ANOSIM result schema hides every empty shell", {
     results <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "anosim.r.yaml"))$items
+        tofu_fixture_path("jamovi", "anosim.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))

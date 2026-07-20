@@ -31,8 +31,8 @@ find_permdisp_yaml_node <- function(node, name) {
 }
 
 test_that("PERMDISP schema follows the required-first option hierarchy", {
-    options <- yaml::read_yaml(test_path("..", "..", "jamovi", "permdisp.a.yaml"))$options
-    ui <- yaml::read_yaml(test_path("..", "..", "jamovi", "permdisp.u.yaml"))
+    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "permdisp.a.yaml"))$options
+    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "permdisp.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
 
     expect_identical(by_name$vars$title, "Feature variables (required)")
@@ -56,7 +56,7 @@ test_that("PERMDISP schema follows the required-first option hierarchy", {
 
 test_that("PERMDISP UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(test_path("..", "..", "jamovi", "js", "permdisp.js")),
+        readLines(tofu_fixture_path("jamovi", "js", "permdisp.js")),
         collapse="\n")
 
     expect_match(
@@ -69,7 +69,7 @@ test_that("PERMDISP UI dependencies and progressive disclosure are explicit", {
 
 test_that("PERMDISP result schema hides every empty shell", {
     results <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "permdisp.r.yaml"))$items
+        tofu_fixture_path("jamovi", "permdisp.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))

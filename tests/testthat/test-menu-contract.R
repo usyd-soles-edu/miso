@@ -1,5 +1,5 @@
 test_that("tofu uses one flat task-labelled analysis menu", {
-    module <- yaml::read_yaml(test_path("..", "..", "jamovi", "0000.yaml"))
+    module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
     analyses <- module$analyses
 
     expect_identical(

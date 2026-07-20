@@ -1,0 +1,90 @@
+---
+name: anosim
+title: ANOSIM
+jrs: '1.1'
+
+items:
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+  - name: warnings
+    title: Data handling warnings
+    type: Html
+    visible: false
+
+  - name: global
+    title: Global ANOSIM
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: statistic
+        title: Statistic
+        type: text
+      - name: value
+        title: R
+        type: number
+      - name: p
+        title: Permutation p
+        type: number
+        format: zto,pvalue
+      - name: permutations
+        title: Effective permutations
+        type: integer
+
+  - name: pairwise
+    title: Pairwise ANOSIM
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: r
+        title: R
+        type: number
+      - name: p
+        title: Permutation p
+        type: number
+        format: zto,pvalue
+
+      - name: padj
+        title: Adjusted p
+        type: number
+        format: zto,pvalue
+
+  - name: note
+    title: Interpretation
+    type: Html
+    visible: false
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+...

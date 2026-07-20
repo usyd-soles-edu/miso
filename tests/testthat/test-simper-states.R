@@ -31,8 +31,8 @@ find_simper_yaml_node <- function(node, name) {
 }
 
 test_that("SIMPER schema follows the approved required-first hierarchy", {
-    options <- yaml::read_yaml(test_path("..", "..", "jamovi", "simper.a.yaml"))$options
-    ui <- yaml::read_yaml(test_path("..", "..", "jamovi", "simper.u.yaml"))
+    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "simper.a.yaml"))$options
+    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "simper.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     option_names <- vapply(options, `[[`, character(1), "name")
 
@@ -74,7 +74,7 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
     expect_true(is.null(find_simper_yaml_node(ui, "distBinary")))
 
     ui_source <- paste(
-        readLines(test_path("..", "..", "jamovi", "simper.u.yaml")),
+        readLines(tofu_fixture_path("jamovi", "simper.u.yaml")),
         collapse="\n")
     compact_labels <- c(
         "Required: Feature variables",
@@ -124,7 +124,7 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
 
 test_that("SIMPER UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(test_path("..", "..", "jamovi", "js", "simper.js")),
+        readLines(tofu_fixture_path("jamovi", "js", "simper.js")),
         collapse="\n")
 
     expect_match(source, "simperN\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
@@ -155,7 +155,7 @@ test_that("SIMPER transform reference scenario requests the optional mean tables
 
 test_that("SIMPER result schema hides every empty shell and uses approved order", {
     results <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "simper.r.yaml"))$items
+        tofu_fixture_path("jamovi", "simper.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
@@ -269,12 +269,6 @@ test_that("default SIMPER is descriptive and hides optional empty output", {
     expect_identical(settings[["Permutation assessment"]], "Disabled")
     expect_false(any(c("Requested permutations", "Effective permutations") %in%
                      names(settings)))
-
-    source <- paste(
-        readLines(test_path("..", "..", "R", "simper.b.R")),
-        collapse="\n")
-    expect_match(source, "vegan::simper\\([^)]*permutations[[:space:]]*=[[:space:]]*0L",
-                 perl=TRUE)
 })
 
 test_that("compact and optional SIMPER tables exactly match the hidden legacy result", {
@@ -753,22 +747,17 @@ test_that("SIMPER plot details bound many long contrast labels", {
     expect_false(grepl(omitted_contrast, description, fixed=TRUE))
     expect_true(all(result$contrasts$asDF$contrast %in% result$table$asDF$contrast))
     expect_lte(nchar(description), 12000L)
-
-    source <- paste(
-        readLines(test_path("..", "..", "R", "simper.b.R")),
-        collapse="\n")
-    expect_match(source, "First contrasts described below:", fixed=TRUE)
+    descriptionText <- gsub("[[:space:]]+", " ", description)
+    expect_match(descriptionText, "First contrasts described below:", fixed=TRUE)
     expect_match(
-        source,
+        descriptionText,
         "further contrasts shown in the plot and listed in the results tables.",
         fixed=TRUE)
     expect_match(
-        source,
+        descriptionText,
         "Full labels and percentages for the contrasts described below.",
         fixed=TRUE)
-    expect_false(grepl("Contrasts shown:", source, fixed=TRUE))
-    expect_match(source, 'paste(describedContrasts, collapse=", ")', fixed=TRUE)
-    expect_false(grepl('paste(labels, collapse=", ")', source, fixed=TRUE))
+    expect_false(grepl("Contrasts shown:", descriptionText, fixed=TRUE))
 })
 
 test_that("saved small and large datasets independently confirm descriptive output", {

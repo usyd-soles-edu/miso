@@ -19,7 +19,7 @@ expect_result_visibility <- function(result, visible, hidden) {
 
 test_that("PERMANOVA study design controls use the full option width", {
     ui <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "permanova.u.yaml"))
+        tofu_fixture_path("jamovi", "permanova.u.yaml"))
     rootNames <- vapply(
         ui$children,
         function(node) if (is.null(node$name)) "" else node$name,
@@ -37,7 +37,7 @@ test_that("PERMANOVA study design controls use the full option width", {
 
 test_that("PERMANOVA narrative results use bounded HTML", {
     results <- yaml::read_yaml(
-        test_path("..", "..", "jamovi", "permanova.r.yaml"))$items
+        tofu_fixture_path("jamovi", "permanova.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_identical(by_name$guidance$type, "Html")

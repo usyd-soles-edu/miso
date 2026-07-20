@@ -1,0 +1,205 @@
+---
+name: permdisp
+title: PERMDISP
+menuGroup: tofu
+menuTitle: PERMDISP
+menuSubtitle: Check group dispersion
+version: '0.2.0'
+jas: '1.2'
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: Feature variables (required)
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: factor
+    title: Grouping variable (required)
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+      - title: Max
+        name: max
+      - title: Frequency
+        name: frequency
+      - title: Normalize
+        name: normalize
+      - title: Range
+        name: range
+      - title: Standardize
+        name: standardize
+      - title: Chi-square
+        name: chi.square
+      - title: Reverse CLR
+        name: rclr
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+      - title: Clark
+        name: clark
+      - title: Alternative Gower
+        name: altGower
+      - title: Mahalanobis
+        name: mahalanobis
+    default: bray
+
+  - name: distBinary
+    title: Binary (presence/absence)
+    type: Bool
+    default: false
+
+  - name: distSqrt
+    title: Square-root distances
+    type: Bool
+    default: false
+
+  - name: distAdd
+    title: Additive constant
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Cailliez
+        name: cailliez
+      - title: Lingoes
+        name: lingoes
+    default: none
+
+  - name: seed
+    title: Random seed
+    type: Number
+    default: 0
+    min: 0
+
+  - name: permN
+    title: Permutations
+    type: Number
+    default: 999
+    min: 1
+
+  - name: permRestriction
+    title: Permutation restriction
+    type: List
+    options:
+      - title: Free
+        name: free
+      - title: Series (rows in order)
+        name: series
+    default: free
+
+  - name: permScheme
+    title: Legacy permutation scheme
+    type: List
+    options:
+      - title: Free
+        name: free
+      - title: Stratified (within blocks)
+        name: stratified
+      - title: Series (ordered)
+        name: series
+    default: free
+    hidden: true
+
+  - name: useParallel
+    title: Parallel processing
+    type: Bool
+    default: false
+
+  - name: dispType
+    title: Group centre
+    type: List
+    options:
+      - title: Median
+        name: median
+      - title: Centroid
+        name: centroid
+    default: median
+
+  - name: dispBias
+    title: Bias adjustment
+    type: Bool
+    default: false
+
+  - name: dispPairwise
+    title: Pairwise dispersion comparisons
+    type: Bool
+    default: false
+
+  - name: dispAdjust
+    title: P-value adjustment
+    type: List
+    options:
+      - title: Holm
+        name: holm
+      - title: Bonferroni
+        name: bonferroni
+      - title: Benjamini-Hochberg
+        name: BH
+      - title: Benjamini-Yekutieli
+        name: BY
+      - title: None
+        name: none
+    default: holm
+
+...

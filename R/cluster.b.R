@@ -281,6 +281,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 ylab=paste(
                     private$.distanceLabel(self$options$distance),
                     "dissimilarity"))
+            TRUE
         }
 
     )

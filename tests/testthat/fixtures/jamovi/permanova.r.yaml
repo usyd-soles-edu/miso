@@ -1,0 +1,95 @@
+---
+name: permanova
+title: PERMANOVA
+jrs: '1.1'
+
+items:
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+  - name: warnings
+    title: Data handling warnings
+    type: Html
+    visible: false
+
+  - name: table
+    title: PERMANOVA Table
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: source
+        title: Source
+        type: text
+      - name: df
+        title: df
+        type: integer
+      - name: sumsqs
+        title: Sum Sq
+        type: number
+      - name: r2
+        title: R²
+        type: number
+      - name: f
+        title: Pseudo-F
+        type: number
+      - name: p
+        title: Permutation p
+        type: number
+        format: zto,pvalue
+
+  - name: pairwise
+    title: Pairwise PERMANOVA
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: f
+        title: Pseudo-F
+        type: number
+      - name: p
+        title: Permutation p
+        type: number
+        format: zto,pvalue
+      - name: padj
+        title: Adjusted p
+        type: number
+        format: zto,pvalue
+
+  - name: note
+    title: Interpretation
+    type: Html
+    visible: false
+
+  - name: settings
+    title: Analysis settings
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
+
+...

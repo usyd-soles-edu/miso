@@ -1,0 +1,165 @@
+---
+name: simper
+title: SIMPER
+menuGroup: tofu
+menuTitle: SIMPER
+menuSubtitle: Feature contributions
+version: '0.2.0'
+jas: '1.2'
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: Feature variables (required)
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: factor
+    title: Grouping variable (required)
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+      - title: Max
+        name: max
+      - title: Frequency
+        name: frequency
+      - title: Normalize
+        name: normalize
+      - title: Range
+        name: range
+      - title: Standardize
+        name: standardize
+      - title: Chi-square
+        name: chi.square
+      - title: Reverse CLR
+        name: rclr
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+      - title: Clark
+        name: clark
+      - title: Alternative Gower
+        name: altGower
+      - title: Mahalanobis
+        name: mahalanobis
+    default: bray
+    hidden: true
+
+  - name: distBinary
+    title: Binary (presence/absence)
+    type: Bool
+    default: false
+    hidden: true
+
+  - name: seed
+    title: Random seed (0 = random)
+    type: Number
+    default: 0
+    min: 0
+
+  - name: simperN
+    title: Permutations
+    type: Number
+    default: 999
+    min: 1
+
+  - name: simperTop
+    title: Top N features
+    type: Number
+    default: 10
+    min: 1
+
+  - name: simperCum
+    title: Cumulative contribution (%)
+    type: Number
+    default: 70
+    min: 1
+    max: 100
+
+  - name: simperAssess
+    title: Assess contributions with permutations
+    type: Bool
+    default: false
+
+  - name: simperAdjust
+    title: P-value adjustment
+    type: List
+    options:
+      - title: Holm
+        name: holm
+      - title: Bonferroni
+        name: bonferroni
+      - title: Benjamini-Hochberg
+        name: BH
+      - title: Benjamini-Yekutieli
+        name: BY
+      - title: None
+        name: none
+    default: holm
+
+  - name: simperDetails
+    title: Show detailed statistics
+    type: Bool
+    default: false
+
+...
