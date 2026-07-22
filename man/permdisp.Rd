@@ -21,7 +21,9 @@ permdisp(
   dispType = "median",
   dispBias = FALSE,
   dispPairwise = FALSE,
-  dispAdjust = "holm"
+  dispAdjust = "holm",
+  showDistancePlot = TRUE,
+  showOrdinationPlot = FALSE
 )
 }
 \arguments{
@@ -58,17 +60,25 @@ permdisp(
 \item{dispPairwise}{.}
 
 \item{dispAdjust}{.}
+
+\item{showDistancePlot}{.}
+
+\item{showOrdinationPlot}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$guidance} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
-  \code{results$distances} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$distances} \tab \tab \tab \tab \tab a table \cr
+  \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$ordinationScores} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }

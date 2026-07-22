@@ -12,13 +12,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: 'Required: Feature variables'
+        label: Feature variables (required)
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: 'Optional: Grouping variable'
+        label: Grouping variable (optional)
         children:
           - type: VariablesListBox
             name: factor
@@ -27,7 +27,7 @@ children:
             events:
               change: update_control_states
       - type: TargetLayoutBox
-        label: 'Optional: Environmental variables'
+        label: Environmental variables (optional)
         children:
           - type: VariablesListBox
             name: nmdsEnv
@@ -47,8 +47,8 @@ children:
         name: distance
 
   - type: CollapseBox
-    name: outputChoices
-    label: Output choices
+    name: plots
+    label: Plots
     collapsed: false
     stretchFactor: 1
     children:

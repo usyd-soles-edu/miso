@@ -40,6 +40,16 @@ children:
       - type: ComboBox
         name: dispAdjust
   - type: CollapseBox
+    name: plots
+    label: Plots
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: showDistancePlot
+      - type: CheckBox
+        name: showOrdinationPlot
+  - type: CollapseBox
     name: advancedOptions
     label: Advanced options
     collapsed: true

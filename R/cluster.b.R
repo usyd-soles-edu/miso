@@ -1,4 +1,3 @@
-
 # This file is a generated template, your changes will not be overwritten
 
 clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
@@ -6,12 +5,22 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = clusterBase,
     private = list(
         .state = list(),
+        .autoLabelLimit = 40L,
 
         .run = function() {
             private$.state <- list(
                 prep=NULL,
                 fit=NULL,
                 labels=character(),
+                labelSource="",
+                labelMode="auto",
+                labelModeSource="current",
+                showLabels=FALSE,
+                labelsShortened=FALSE,
+                membership=NULL,
+                cutLine=NULL,
+                cutDescription="No clusters were defined.",
+                clusterStyleAvailable=TRUE,
                 warnings=character())
             private$.resetResults()
 
@@ -52,33 +61,58 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             labelState <- private$.sampleLabels(prep)
             fit$labels <- labelState$labels
+            labelChoice <- private$.effectiveSampleLabelMode()
+            showLabels <- private$.labelsAreShown(
+                prep$rowsUsed,
+                labelChoice$mode)
+            labelsShortened <- showLabels && any(nchar(labelState$labels) > 24L)
+            clusterState <- private$.clusterDefinition(fit)
+            membership <- if (isTRUE(clusterState$valid))
+                clusterState$membership
+            else
+                NULL
+            clusterCount <- if (is.null(membership))
+                0L
+            else
+                length(unique(membership))
+
             private$.state <- list(
                 prep=prep,
                 fit=fit,
                 labels=labelState$labels,
+                labelSource=labelState$source,
+                labelMode=labelChoice$mode,
+                labelModeSource=labelChoice$source,
+                showLabels=showLabels,
+                labelsShortened=labelsShortened,
+                membership=membership,
+                cutLine=clusterState$cutLine,
+                cutDescription=clusterState$description,
+                clusterStyleAvailable=clusterCount <= 64L,
                 warnings=unique(c(
                     prep$warnings,
                     labelState$warnings,
-                    if (isTRUE(self$options$showLabels) &&
-                            any(nchar(labelState$labels) > 24L))
+                    if (labelsShortened)
                         paste(
-                            "Long sample labels are shortened with an ellipsis",
-                            "in the dendrogram; the source data are unchanged.")
+                            "Long sample labels are shortened only in the dendrogram;",
+                            "full labels are retained in the membership table.")
                     else
                         character(),
-                    if (isTRUE(self$options$showLabels) && prep$rowsUsed > 60L)
-                        paste(
-                            "Sample labels may be crowded with more than 60 samples.",
-                            "Turn off Show sample labels for a clearer overview.")
-                    else
-                        character())))
+                    clusterState$warning)))
 
             private$.populateSummary(prep)
             private$.populateSettings(prep, labelState$source)
+            private$.populateDendrogramStructure()
+            private$.populateMembership()
             private$.setWarnings(private$.state$warnings)
+            private$.populateDescription()
             self$results$interpretation$setContent(tofu_html_block(c(
-                "Samples joined at lower branch heights are more similar under the selected transformation and dissimilarity index.",
-                "Branch order can rotate without changing the clusters; use ANOSIM or PERMANOVA to test predefined groups.")))
+                paste(
+                    "Lower joins indicate more similar samples under the selected",
+                    "settings."),
+                paste(
+                    "The dendrogram is descriptive; branch order can rotate without",
+                    "changing the relationships."))))
             private$.showSuccessfulResults()
         },
 
@@ -86,12 +120,17 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setContent("")
             tofu_clear_table(self$results$summary)
             self$results$warnings$setContent("")
+            self$results$dendrogramDescription$setContent("")
+            tofu_clear_table(self$results$dendrogramStructure)
+            tofu_clear_table(self$results$membership)
             self$results$interpretation$setContent("")
             tofu_clear_table(self$results$settings)
 
             for (name in c(
                     "guidance", "summary", "warnings", "dendrogram",
-                    "interpretation", "settings"))
+                    "dendrogramDescription", "dendrogramStructure",
+                    "membership", "interpretation",
+                    "settings"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -103,12 +142,16 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function() {
             for (name in c(
-                    "summary", "dendrogram", "interpretation", "settings"))
+                    "summary", "dendrogram", "dendrogramDescription",
+                    "dendrogramStructure",
+                    "interpretation", "settings"))
                 self$results[[name]]$setVisible(TRUE)
+            if (!is.null(private$.state$membership))
+                self$results$membership$setVisible(TRUE)
         },
 
         .setWarnings = function(warnings) {
-            warnings <- unique(warnings[! is.na(warnings) & nzchar(warnings)])
+            warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
             if (length(warnings) == 0L)
                 return()
             self$results$warnings$setContent(tofu_html_block(warnings))
@@ -153,11 +196,170 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     " [row ", prep$rowIndex[duplicatedValues], "]")
                 warnings <- c(
                     warnings,
-                    paste(
-                        "Duplicate sample labels were distinguished using data row numbers."))
+                    "Duplicate sample labels were distinguished using data row numbers.")
             }
 
             list(labels=values, source=selected, warnings=warnings)
+        },
+
+        .effectiveSampleLabelMode = function() {
+            current <- self$options$sampleLabels
+            if (length(current) == 1L && current %in% c("show", "hide"))
+                return(list(mode=current, source="current"))
+            legacy <- self$options$showLabels
+            if (length(legacy) == 1L && is.logical(legacy) && !is.na(legacy))
+                return(list(
+                    mode=if (legacy) "show" else "hide",
+                    source="legacy"))
+            list(mode=current, source="current")
+        },
+
+        .labelsAreShown = function(sampleCount, mode) {
+            identical(mode, "show") ||
+                (identical(mode, "auto") && sampleCount <= private$.autoLabelLimit)
+        },
+
+        .clusterDefinition = function(fit) {
+            if (!isTRUE(self$options$defineClusters))
+                return(list(
+                    valid=FALSE,
+                    membership=NULL,
+                    cutLine=NULL,
+                    description="No clusters were defined.",
+                    warning=character()))
+
+            n <- length(fit$order)
+            mode <- self$options$cutMode
+            if (identical(mode, "number")) {
+                k <- self$options$numberClusters
+                valid <- length(k) == 1L && is.numeric(k) && is.finite(k) &&
+                    k == floor(k) && k >= 2L && k <= n
+                if (!valid)
+                    return(list(
+                        valid=FALSE,
+                        membership=NULL,
+                        cutLine=NULL,
+                        description="Clusters were not defined because the requested number is invalid.",
+                        warning=sprintf(
+                            "Number of clusters must be a whole number from 2 to %d.",
+                            n)))
+                k <- as.integer(k)
+                membership <- stats::cutree(fit, k=k)
+                lowerIndex <- n - k
+                lower <- if (lowerIndex > 0L) fit$height[[lowerIndex]] else 0
+                upper <- fit$height[[lowerIndex + 1L]]
+                cutLine <- NULL
+                if (is.finite(lower) && is.finite(upper) && upper > lower) {
+                    candidate <- mean(c(lower, upper))
+                    heightMembership <- tryCatch(
+                        stats::cutree(fit, h=candidate),
+                        error=function(e) NULL)
+                    samePartition <- !is.null(heightMembership) && identical(
+                        match(membership, unique(membership)),
+                        match(heightMembership, unique(heightMembership)))
+                    if (samePartition)
+                        cutLine <- candidate
+                }
+                description <- if (is.null(cutLine))
+                    sprintf(paste(
+                        "%d clusters were defined by number. The requested solution",
+                        "is shown by membership and cluster styling, but no single",
+                        "horizontal cut height represents it because merges are tied."),
+                        k)
+                else
+                    sprintf(
+                        "%d clusters were defined by number; the horizontal line marks height %s.",
+                        k,
+                        private$.formatHeight(cutLine))
+                return(list(
+                    valid=TRUE,
+                    membership=membership,
+                    cutLine=cutLine,
+                    description=description,
+                    warning=character()))
+            }
+
+            height <- self$options$cutHeight
+            maxHeight <- max(fit$height)
+            valid <- length(height) == 1L && is.numeric(height) &&
+                is.finite(height) && height >= 0 && height < maxHeight
+            if (!valid)
+                return(list(
+                    valid=FALSE,
+                    membership=NULL,
+                    cutLine=NULL,
+                    description="Clusters were not defined because the requested height is invalid.",
+                    warning=sprintf(
+                        "Dissimilarity height must be at least 0 and below %s.",
+                        private$.formatHeight(maxHeight))))
+            membership <- stats::cutree(fit, h=height)
+            list(
+                valid=TRUE,
+                membership=membership,
+                cutLine=height,
+                description=sprintf(
+                    paste(
+                        "%d clusters were defined at dissimilarity height %s;",
+                        "the horizontal line marks that cut."),
+                    length(unique(membership)),
+                    private$.formatHeight(height)),
+                warning=character())
+        },
+
+        .formatHeight = function(value) {
+            formatC(value, digits=4L, format="fg", flag="#")
+        },
+
+        .populateDescription = function() {
+            prep <- private$.state$prep
+            labelText <- if (private$.state$showLabels) {
+                if (private$.state$labelsShortened)
+                    "Sample labels are shown and long labels are shortened only in the plot."
+                else
+                    "Sample labels are shown."
+            } else if (identical(private$.state$labelMode, "auto") &&
+                    prep$rowsUsed > private$.autoLabelLimit) {
+                sprintf(
+                    "Sample labels were automatically hidden because more than %d samples were used.",
+                    private$.autoLabelLimit)
+            } else {
+                "Sample labels are hidden."
+            }
+            legacyText <- if (identical(
+                    private$.state$labelModeSource,
+                    "legacy")) {
+                paste(
+                    "This analysis inherited its sample-label setting from an",
+                    "earlier Tofu version.",
+                    "Choose Show or Hide under Sample labels to replace it.")
+            } else {
+                character()
+            }
+            clusterCount <- if (is.null(private$.state$membership))
+                0L
+            else
+                length(unique(private$.state$membership))
+            styleText <- if (clusterCount > 64L) {
+                paste(
+                    "Distinct colour-and-shape styling was omitted because more than",
+                    "64 clusters were defined; cluster numbers and the membership table remain.")
+            } else if (clusterCount > 8L) {
+                paste(
+                    "Cluster numbers supplement colour and shape because shapes repeat",
+                    "when more than 8 clusters are defined.")
+            } else {
+                character()
+            }
+            self$results$dendrogramDescription$setContent(tofu_html_block(c(
+                sprintf(
+                    "%d samples; %s dissimilarity after %s transformation.",
+                    prep$rowsUsed,
+                    private$.distanceLabel(self$options$distance),
+                    tolower(private$.transformLabel(self$options$transform))),
+                labelText,
+                legacyText,
+                private$.state$cutDescription,
+                styleText)))
         },
 
         .addSummary = function(item, value) {
@@ -181,6 +383,61 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep$featuresZeroExcluded)
         },
 
+        .populateMembership = function() {
+            membership <- private$.state$membership
+            if (is.null(membership))
+                return()
+            for (i in seq_along(membership))
+                self$results$membership$addRow(
+                    rowKey=as.character(i),
+                    values=list(
+                        sample=private$.state$labels[[i]],
+                        cluster=as.integer(membership[[i]])))
+        },
+
+        .populateDendrogramStructure = function() {
+            fit <- private$.state$fit
+            labels <- private$.state$labels
+            if (is.null(fit) || length(labels) == 0L)
+                return()
+
+            rowKey <- 1L
+            for (displayOrder in seq_along(fit$order)) {
+                observation <- fit$order[[displayOrder]]
+                self$results$dendrogramStructure$addRow(
+                    rowKey=as.character(rowKey),
+                    values=list(
+                        recordType="Leaf",
+                        displayOrder=as.integer(displayOrder),
+                        sample=as.character(labels[[observation]]),
+                        mergeStep="",
+                        leftChild="",
+                        rightChild="",
+                        height=""))
+                rowKey <- rowKey + 1L
+            }
+
+            childLabel <- function(child) {
+                if (child < 0L)
+                    return(as.character(labels[[-child]]))
+                paste0("Merge ", child)
+            }
+            for (mergeStep in seq_len(nrow(fit$merge))) {
+                children <- fit$merge[mergeStep, ]
+                self$results$dendrogramStructure$addRow(
+                    rowKey=as.character(rowKey),
+                    values=list(
+                        recordType="Merge",
+                        displayOrder="",
+                        sample="",
+                        mergeStep=as.integer(mergeStep),
+                        leftChild=childLabel(children[[1L]]),
+                        rightChild=childLabel(children[[2L]]),
+                        height=tofu_num_or_na(fit$height[[mergeStep]])))
+                rowKey <- rowKey + 1L
+            }
+        },
+
         .addSetting = function(setting, value) {
             key <- as.character(length(self$results$settings$rowKeys) + 1L)
             self$results$settings$addRow(
@@ -198,8 +455,26 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.addSetting("Linkage", "Group average (UPGMA)")
             private$.addSetting("Sample label source", labelSource)
             private$.addSetting(
-                "Sample labels shown",
-                if (isTRUE(self$options$showLabels)) "Yes" else "No")
+                "Sample labels",
+                sprintf(
+                    "%s%s (%s)",
+                    switch(private$.state$labelMode,
+                        auto="Automatic",
+                        show="Show",
+                        hide="Hide"),
+                    if (identical(
+                            private$.state$labelModeSource,
+                            "legacy"))
+                        " \u2014 inherited from an earlier version"
+                    else
+                        "",
+                    if (private$.state$showLabels) "shown" else "hidden"))
+            private$.addSetting(
+                "Clusters defined",
+                if (is.null(private$.state$membership))
+                    "No"
+                else
+                    private$.state$cutDescription)
         },
 
         .transformLabel = function(value) {
@@ -244,44 +519,158 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 value)
         },
 
-        .boundedPlotLabel = function(value, width=24L) {
-            value <- gsub("[[:space:]]+", " ", trimws(as.character(value)))
-            if (nchar(value) <= width)
-                return(value)
-            paste0(substr(value, 1L, width - 1L), "\u2026")
+        .dendrogramData = function(fit, labels, membership=NULL) {
+            n <- length(fit$order)
+            nodeX <- numeric(2L * n - 1L)
+            nodeHeight <- numeric(2L * n - 1L)
+            leafPosition <- match(seq_len(n), fit$order)
+            nodeX[seq_len(n)] <- leafPosition
+            rows <- vector("list", 3L * (n - 1L))
+            rowIndex <- 0L
+            for (i in seq_len(n - 1L)) {
+                children <- fit$merge[i, ]
+                childNodes <- ifelse(children < 0L, -children, n + children)
+                childX <- nodeX[childNodes]
+                childHeight <- nodeHeight[childNodes]
+                parentNode <- n + i
+                parentHeight <- fit$height[[i]]
+                nodeX[[parentNode]] <- mean(childX)
+                nodeHeight[[parentNode]] <- parentHeight
+                for (j in seq_len(2L)) {
+                    rowIndex <- rowIndex + 1L
+                    rows[[rowIndex]] <- data.frame(
+                        merge=i,
+                        segment="vertical",
+                        child=j,
+                        x=childX[[j]], xend=childX[[j]],
+                        y=childHeight[[j]], yend=parentHeight)
+                }
+                rowIndex <- rowIndex + 1L
+                rows[[rowIndex]] <- data.frame(
+                    merge=i,
+                    segment="horizontal",
+                    child=NA_integer_,
+                    x=min(childX), xend=max(childX),
+                    y=parentHeight, yend=parentHeight)
+            }
+            segments <- do.call(rbind, rows[seq_len(rowIndex)])
+            nodes <- data.frame(
+                node=seq_len(2L * n - 1L),
+                kind=c(rep("leaf", n), rep("merge", n - 1L)),
+                merge=c(rep(NA_integer_, n), seq_len(n - 1L)),
+                x=nodeX,
+                y=nodeHeight,
+                stringsAsFactors=FALSE)
+            labelMap <- .tofuUniqueShortLabels(labels, width=24L)
+            leaf <- data.frame(
+                sampleIndex=fit$order,
+                x=seq_len(n),
+                y=0,
+                fullLabel=labels[fit$order],
+                plotLabel=unname(labelMap[labels[fit$order]]),
+                stringsAsFactors=FALSE)
+            if (!is.null(membership)) {
+                leaf$cluster <- as.integer(membership[fit$order])
+                leaf$clusterKey <- as.character(leaf$cluster)
+            }
+            list(nodes=nodes, segments=segments, leaf=leaf)
+        },
+
+        .buildDendrogram = function(
+                fit=private$.state$fit,
+                labels=private$.state$labels,
+                showLabels=private$.state$showLabels,
+                membership=private$.state$membership,
+                cutLine=private$.state$cutLine) {
+            if (is.null(fit))
+                return(NULL)
+            plotData <- private$.dendrogramData(fit, labels, membership)
+            leaf <- plotData$leaf
+            plot <- ggplot2::ggplot() +
+                ggplot2::geom_segment(
+                    data=plotData$segments,
+                    ggplot2::aes(x=x, xend=xend, y=y, yend=yend),
+                    colour="#333333", linewidth=.55, lineend="square")
+
+            if (!is.null(cutLine))
+                plot <- plot + ggplot2::geom_hline(
+                    yintercept=cutLine,
+                    colour="#555555",
+                    linetype="dashed",
+                    linewidth=.65)
+
+            clusterCount <- if (is.null(membership))
+                0L
+            else
+                length(unique(membership))
+            if (clusterCount > 0L && clusterCount <= 64L) {
+                keys <- as.character(sort(unique(leaf$cluster)))
+                aesthetics <- .tofuGroupAesthetics(keys)
+                plot <- plot +
+                    ggplot2::geom_point(
+                        data=leaf,
+                        ggplot2::aes(
+                            x=x, y=y, colour=clusterKey, shape=clusterKey),
+                        size=2.2, stroke=.55) +
+                    ggplot2::scale_colour_manual(
+                        name="Cluster", values=aesthetics$colour[keys]) +
+                    ggplot2::scale_shape_manual(
+                        name="Cluster", values=aesthetics$shape[keys])
+                if (clusterCount > 8L)
+                    plot <- plot +
+                        ggplot2::geom_text(
+                            data=leaf,
+                            ggplot2::aes(x=x, y=y, label=cluster),
+                            nudge_y=max(fit$height) * .025,
+                            size=2.2,
+                            colour="#222222") +
+                        ggplot2::guides(colour="none", shape="none")
+            } else if (clusterCount > 64L) {
+                plot <- plot +
+                    ggplot2::geom_point(
+                        data=leaf,
+                        ggplot2::aes(x=x, y=y),
+                        shape=1L, colour="#555555", size=1.8) +
+                    ggplot2::geom_text(
+                        data=leaf,
+                        ggplot2::aes(x=x, y=y, label=cluster),
+                        nudge_y=max(fit$height) * .025,
+                        size=2.0,
+                        colour="#222222")
+            }
+
+            axisLabels <- if (isTRUE(showLabels)) leaf$plotLabel else NULL
+            plot +
+                ggplot2::scale_x_continuous(
+                    breaks=if (isTRUE(showLabels)) leaf$x else NULL,
+                    labels=axisLabels,
+                    expand=ggplot2::expansion(mult=c(.015, .015)),
+                    guide=ggplot2::guide_axis(check.overlap=FALSE)) +
+                ggplot2::scale_y_continuous(
+                    expand=ggplot2::expansion(mult=c(.02, .06))) +
+                ggplot2::labs(
+                    x="Samples",
+                    y=paste(
+                        private$.distanceLabel(self$options$distance),
+                        "dissimilarity")) +
+                .tofuPlotTheme(baseSize=10) +
+                ggplot2::theme(
+                    axis.text.x=if (isTRUE(showLabels))
+                        ggplot2::element_text(
+                            angle=55, hjust=1, vjust=1, size=7)
+                    else
+                        ggplot2::element_blank(),
+                    axis.ticks.x=ggplot2::element_blank(),
+                    panel.grid.major.x=ggplot2::element_blank(),
+                    plot.margin=ggplot2::margin(7, 8, 8, 8))
         },
 
         .plotDendrogram = function(image, ...) {
-            fit <- private$.state$fit
-            if (is.null(fit))
+            plot <- private$.buildDendrogram()
+            if (is.null(plot))
                 return()
-
-            plotted <- fit
-            if (isTRUE(self$options$showLabels))
-                plotted$labels <- vapply(
-                    private$.state$labels,
-                    private$.boundedPlotLabel,
-                    character(1))
-            else
-                plotted$labels <- rep("", length(private$.state$labels))
-
-            sampleCount <- length(plotted$order)
-            labelCex <- max(0.42, min(0.78, 18 / max(sampleCount, 1L)))
-            bottomMargin <- if (isTRUE(self$options$showLabels)) 7.5 else 3.5
-            op <- graphics::par(mar=c(bottomMargin, 4.5, 2.5, 1.5))
-            on.exit(graphics::par(op), add=TRUE)
-            graphics::plot(
-                plotted,
-                hang=-1,
-                labels=plotted$labels,
-                cex=labelCex,
-                main="",
-                xlab="Samples",
-                sub="",
-                ylab=paste(
-                    private$.distanceLabel(self$options$distance),
-                    "dissimilarity"))
-            TRUE
+            suppressWarnings(print(plot))
+            invisible(TRUE)
         }
 
     )

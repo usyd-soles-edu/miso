@@ -426,6 +426,64 @@ reference_simper <- function(
     do.call(rbind, rows)
 }
 
+reference_pcoa <- function(data, dataset, scenario_id) {
+    features <- as.data.frame(data[feature_columns(data)])
+    complete <- stats::complete.cases(features)
+    features <- features[complete, , drop = FALSE]
+    nonzero_features <- vapply(features, function(x) any(x != 0), logical(1))
+    features <- features[, nonzero_features, drop = FALSE]
+    nonzero_sites <- rowSums(features) > 0
+    features <- features[nonzero_sites, , drop = FALSE]
+
+    dissimilarity <- vegan::vegdist(features, method = "bray", binary = FALSE)
+    fit <- vegan::wcmdscale(
+        dissimilarity,
+        k = nrow(features) - 1L,
+        eig = TRUE,
+        add = FALSE,
+        x.ret = TRUE)
+    eigenvalues <- as.numeric(fit$eig)
+    positive <- eigenvalues > 0
+    negative <- eigenvalues < 0
+    positive_total <- sum(eigenvalues[positive])
+    explained <- 100 * eigenvalues[positive] / positive_total
+    points <- as.matrix(fit$points)
+
+    rows <- list(
+        reference_row(dataset, scenario_id, "PCoA", "Data Summary",
+            "rows used", nrow(features), display = as.character(nrow(features)),
+            abs_tolerance = 0, reference_function = "complete.cases + zero filtering"),
+        reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",
+            "PCoA1 eigenvalue", eigenvalues[positive][[1L]],
+            reference_function = "vegan::wcmdscale(add = FALSE)"),
+        reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",
+            "PCoA2 eigenvalue", eigenvalues[positive][[2L]],
+            reference_function = "vegan::wcmdscale(add = FALSE)"),
+        reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",
+            "PCoA1 explained percent", explained[[1L]],
+            reference_function = "vegan::wcmdscale positive eigenvalue sum"),
+        reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",
+            "PCoA2 explained percent", explained[[2L]],
+            reference_function = "vegan::wcmdscale positive eigenvalue sum"),
+        reference_row(dataset, scenario_id, "PCoA", "Site Coordinates",
+            "first site absolute PCoA1", abs(points[1L, 1L]),
+            reference_function = "abs(vegan::wcmdscale points[1, 1])",
+            note = "Axis signs are arbitrary; compare the absolute coordinate."),
+        reference_row(dataset, scenario_id, "PCoA", "Site Coordinates",
+            "first site absolute PCoA2", abs(points[1L, 2L]),
+            reference_function = "abs(vegan::wcmdscale points[1, 2])",
+            note = "Axis signs are arbitrary; compare the absolute coordinate."),
+        reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",
+            "negative eigenvalue count", sum(negative),
+            display = as.character(sum(negative)), abs_tolerance = 0,
+            reference_function = "vegan::wcmdscale eig"),
+        reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",
+            "negative eigenvalue sum", sum(eigenvalues[negative]),
+            reference_function = "vegan::wcmdscale eig")
+    )
+    do.call(rbind, rows)
+}
+
 generate_references <- function(output_dir) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     scenarios <- read.csv(file.path("tests", "manual", "scenarios.csv"), stringsAsFactors = FALSE, check.names = FALSE)
@@ -444,6 +502,7 @@ generate_references <- function(output_dir) {
         rows[[length(rows) + 1L]] <- reference_permdisp(current, dataset, paste0("permdisp-", size, "-baseline"), permutations)
         rows[[length(rows) + 1L]] <- reference_nmds(current, dataset, paste0("nmds-", size, "-baseline"))
         rows[[length(rows) + 1L]] <- reference_simper(current, dataset, paste0("simper-", size, "-baseline"))
+        rows[[length(rows) + 1L]] <- reference_pcoa(current, dataset, paste0("pcoa-", size, "-baseline"))
     }
 
     small <- data[["tofu-small.csv"]]
@@ -528,6 +587,19 @@ generate_references <- function(output_dir) {
                 "table rows") %in% current$metric))
     }
 
+    for (scenario in c("pcoa-small-baseline", "pcoa-large-baseline")) {
+        current <- result[result$scenario_id == scenario, ]
+        stopifnot(
+            nrow(current) == 9L,
+            all(current$reference_function != ".tofuPcoa"),
+            all(c(
+                "rows used", "PCoA1 eigenvalue", "PCoA2 eigenvalue",
+                "PCoA1 explained percent", "PCoA2 explained percent",
+                "first site absolute PCoA1", "first site absolute PCoA2",
+                "negative eigenvalue count", "negative eigenvalue sum") %in%
+                current$metric))
+    }
+
     write_stable_csv(result, file.path(output_dir, "reference-results.csv"))
 
     commit <- tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE), error = function(e) "unavailable")
@@ -551,7 +623,7 @@ generate_references <- function(output_dir) {
     )
     writeLines(metadata, file.path(output_dir, "reference-session-info.txt"), useBytes = TRUE)
 
-    for (analysis in c("PERMANOVA", "ANOSIM", "PERMDISP", "nMDS", "SIMPER")) {
+    for (analysis in c("PERMANOVA", "ANOSIM", "PERMDISP", "nMDS", "SIMPER", "PCoA")) {
         stopifnot(any(result$analysis == analysis & result$dataset == "tofu-small.csv"))
         stopifnot(any(result$analysis == analysis & result$dataset == "tofu-large.csv"))
         cat(analysis, "small and large references: PASS\n")

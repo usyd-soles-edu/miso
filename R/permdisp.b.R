@@ -11,6 +11,9 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state <- list(
                 warnings=character(),
                 distances=NULL,
+                fit=NULL,
+                distanceDiagnostic=NULL,
+                ordination=NULL,
                 pValue=NA_real_,
                 restriction=NULL,
                 cl=NULL)
@@ -88,6 +91,9 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$distances)
             tofu_clear_table(self$results$anova)
             tofu_clear_table(self$results$pairwise)
+            tofu_clear_table(self$results$ordinationScores)
+            ordinationScores <- self$results$ordinationScores
+            ordinationScores$.__enclos_env__$private$.rowNames <- character()
             self$results$anova$setNote(
                 key="structuralCells",
                 note="")
@@ -95,11 +101,15 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 key="scope",
                 note="")
             self$results$note$setContent("")
+            self$results$plotDescription$setContent("")
+            self$results$ordinationDescription$setContent("")
             tofu_clear_table(self$results$settings)
 
             for (name in c(
                     "guidance", "summary", "warnings", "distances",
-                    "anova", "pairwise", "plot", "note", "settings"))
+                    "anova", "pairwise", "plot", "plotDescription",
+                    "ordinationPlot", "ordinationDescription",
+                    "ordinationScores", "note", "settings"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -111,10 +121,24 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
             for (name in c(
-                    "summary", "distances", "anova", "plot",
-                    "note", "settings"))
+                    "summary", "distances", "anova", "note", "settings"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
+            showDistance <- isTRUE(self$options$showDistancePlot) &&
+                !is.null(private$.state$distanceDiagnostic)
+            for (name in c("plot", "plotDescription"))
+                self$results[[name]]$setVisible(showDistance)
+
+            requestedOrdination <- isTRUE(self$options$showOrdinationPlot)
+            ordinationAvailable <- requestedOrdination &&
+                !is.null(private$.state$ordination) &&
+                isTRUE(private$.state$ordination$available)
+            ordinationTableAvailable <- requestedOrdination &&
+                !is.null(private$.state$ordination) &&
+                isTRUE(private$.state$ordination$tableAvailable)
+            self$results$ordinationPlot$setVisible(ordinationAvailable)
+            self$results$ordinationScores$setVisible(ordinationTableAvailable)
+            self$results$ordinationDescription$setVisible(requestedOrdination)
         },
 
         .setWarnings = function(warnings) {
@@ -149,11 +173,27 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(list(success=FALSE, pairwiseShown=FALSE))
             }
 
+            private$.state$fit <- fit
             private$.state$distances <- data.frame(
-                group=prep$group,
+                group=fit$group,
                 distance=fit$distances,
                 check.names=FALSE)
-            private$.populateDistanceSummary(private$.state$distances)
+            private$.state$distanceDiagnostic <-
+                .preparePermdispDistanceDiagnostic(
+                    fit, centre=self$options$dispType)
+            if (is.null(private$.state$distanceDiagnostic)) {
+                private$.showGuidance(paste(
+                    "PERMDISP could not produce finite distances to group centres.",
+                    "Check that each group contains usable, non-identical samples."))
+                return(list(success=FALSE, pairwiseShown=FALSE))
+            }
+            private$.populateDistanceSummary(
+                private$.state$distanceDiagnostic$summaries)
+            private$.populateDistanceDescription()
+
+            private$.state$ordination <- .preparePermdispOrdination(
+                fit, rowIndex=prep$rowIndex)
+            private$.populateOrdination()
 
             restriction <- private$.state$restriction$effectiveCode
             perm <- tryCatch(
@@ -275,21 +315,151 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             TRUE
         },
 
-        .populateDistanceSummary = function(distances) {
-            groups <- split(distances$distance, distances$group, drop=TRUE)
-            for (group in names(groups)) {
-                values <- groups[[group]]
+        .populateDistanceSummary = function(summaries) {
+            for (i in seq_len(nrow(summaries))) {
+                values <- summaries[i, , drop=FALSE]
                 self$results$distances$addRow(
-                    rowKey=group,
+                    rowKey=as.character(i),
                     values=list(
-                        group=group,
-                        n=length(values),
-                        distance=tofu_num_or_na(mean(values, na.rm=TRUE)),
-                        median=tofu_num_or_na(stats::median(values, na.rm=TRUE)),
-                        sd=tofu_num_or_na(stats::sd(values, na.rm=TRUE)),
-                        min=tofu_num_or_na(min(values, na.rm=TRUE)),
-                        max=tofu_num_or_na(max(values, na.rm=TRUE))))
+                        group=values$group,
+                        n=values$n,
+                        centre=values$centre,
+                        distance=tofu_num_or_na(values$mean),
+                        median=tofu_num_or_na(values$median),
+                        q1=tofu_num_or_na(values$q1),
+                        q3=tofu_num_or_na(values$q3),
+                        sd=tofu_num_or_na(values$sd),
+                        min=tofu_num_or_na(values$min),
+                        max=tofu_num_or_na(values$max)))
             }
+        },
+
+        .populateDistanceDescription = function() {
+            diagnostic <- private$.state$distanceDiagnostic
+            if (is.null(diagnostic) || !isTRUE(self$options$showDistancePlot))
+                return()
+            styleDisclosure <- if (length(diagnostic$groups) > 64L)
+                paste(
+                    "Neutral point styling is used because the analysis has more",
+                    "than 64 groups; group positions and the summary table retain",
+                    "the full identities.")
+            else
+                character()
+            self$results$plotDescription$setContent(tofu_html_block(c(
+                sprintf(
+                    paste(
+                        "Marks are finite site distances to each group's %s;",
+                        "boxplots, n labels, and summaries use all finite distances."),
+                    tolower(diagnostic$centre)),
+                .tofuPlotDisclosure(
+                    diagnostic$displayed, diagnostic$total,
+                    noun="site distances"),
+                styleDisclosure,
+                paste(
+                    "This plot describes dispersion; the Dispersion Test table",
+                    "provides the hypothesis test."))))
+        },
+
+        .populateOrdination = function() {
+            ordination <- private$.state$ordination
+            if (!isTRUE(self$options$showOrdinationPlot))
+                return()
+
+            if (!is.null(ordination) &&
+                    isTRUE(ordination$tableAvailable)) {
+                coordinates <- rbind(
+                    ordination$sites[, c(
+                        "point", "pointType", "group", "plotKey",
+                        "axis1", "axis2")],
+                    ordination$centres[, c(
+                        "point", "pointType", "group", "plotKey",
+                        "axis1", "axis2")])
+                for (i in seq_len(nrow(coordinates))) {
+                    values <- coordinates[i, , drop=FALSE]
+                    self$results$ordinationScores$addRow(
+                        rowKey=as.character(i),
+                        values=list(
+                            point=values$point,
+                            pointType=values$pointType,
+                            group=values$group,
+                            plotKey=values$plotKey,
+                            axis1=tofu_num_or_na(values$axis1),
+                            axis2=tofu_num_or_na(values$axis2)))
+                }
+            }
+
+            if (is.null(ordination) || !isTRUE(ordination$available)) {
+                reason <- if (!is.null(ordination$reason))
+                    ordination$reason
+                else
+                    "Two fitted ordination axes were unavailable."
+                omitted <- if (!is.null(ordination) &&
+                        !is.null(ordination$total) && ordination$total > 0L)
+                    sprintf(
+                        paste(
+                            "%d of %d fitted sites could not be plotted because",
+                            "finite coordinates were unavailable for a site or",
+                            "its assigned group centre."),
+                        ordination$unplottable, ordination$total)
+                else
+                    character()
+                self$results$ordinationDescription$setContent(
+                    tofu_html_block(c(reason, omitted)))
+                return()
+            }
+            mappingDisclosure <- if (length(ordination$groups) > 64L)
+                paste(
+                    "Neutral styling is used because more than 64 groups exceed",
+                    "the display-style limit; the coordinate table gives every",
+                    "site and group centre identity.")
+            else if (length(ordination$groups) > 12L)
+                paste(
+                    "Compact keys label group centres instead of using a wide",
+                    "legend; the coordinate table maps each key to its full group",
+                    "name, and overlapping labels may be suppressed.")
+            else
+                character()
+            finiteDisclosure <- if (ordination$unplottable > 0L)
+                sprintf(
+                    paste(
+                        "%d of %d fitted sites could not be plotted because",
+                        "finite coordinates were unavailable for a site or its",
+                        "assigned group centre."),
+                    ordination$unplottable, ordination$total)
+            else
+                sprintf(
+                    "All %d fitted sites had finite site and centre coordinates.",
+                    ordination$total)
+            capDisclosure <- if (
+                    ordination$displayed == ordination$plotEligible)
+                sprintf(
+                    "All %d plot-eligible sites and connecting segments are shown.",
+                    ordination$plotEligible)
+            else
+                sprintf(
+                    paste(
+                        "%d of %d plot-eligible sites and connecting segments are",
+                        "shown; %d are omitted from the image by the deterministic",
+                        "display cap but retained in the coordinate table."),
+                    ordination$displayed,
+                    ordination$plotEligible,
+                    ordination$plotEligible - ordination$displayed)
+            self$results$ordinationDescription$setContent(tofu_html_block(c(
+                sprintf(
+                    paste(
+                        "The %s and %s coordinates come from the same fitted",
+                        "PERMDISP geometry."),
+                    ordination$axisNames[[1L]], ordination$axisNames[[2L]]),
+                paste(
+                    "Small colour-and-shape points are sites, open diamonds are",
+                    "fitted group centres, and segments connect each displayed",
+                    "site to its own centre."),
+                finiteDisclosure,
+                capDisclosure,
+                mappingDisclosure,
+                paste(
+                    "This is descriptive geometry of distances to centres; the",
+                    "Dispersion Test table provides the hypothesis test."))))
         },
 
         .restrictionState = function() {
@@ -499,28 +669,24 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotDistances = function(image, ...) {
-            dat <- private$.state$distances
-            if (is.null(dat) || nrow(dat) == 0L)
+            if (!isTRUE(self$options$showDistancePlot))
                 return()
+            plot <- .buildPermdispDistancePlot(
+                private$.state$distanceDiagnostic)
+            if (is.null(plot))
+                return()
+            suppressWarnings(print(plot))
+            invisible(TRUE)
+        },
 
-            graphics::boxplot(
-                distance ~ group,
-                data=dat,
-                xlab="Group",
-                ylab="Distance to group centre",
-                main="Distance Distributions",
-                col="grey92",
-                border="grey30",
-                outline=FALSE)
-            graphics::stripchart(
-                distance ~ group,
-                data=dat,
-                vertical=TRUE,
-                method="jitter",
-                pch=21,
-                bg="white",
-                col="black",
-                add=TRUE)
+        .plotOrdination = function(image, ...) {
+            if (!isTRUE(self$options$showOrdinationPlot))
+                return()
+            plot <- .buildPermdispOrdinationPlot(private$.state$ordination)
+            if (is.null(plot))
+                return()
+            suppressWarnings(print(plot))
+            invisible(TRUE)
         }
     )
 )

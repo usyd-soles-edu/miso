@@ -321,16 +321,25 @@ test_that("SIMPER returns stable contribution results and plot output", {
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
     expect_false(res$table$visible)
     expect_true(res$contributions$visible)
-    expect_identical(
-        res$contributions$asDF,
-        tab[c("contrast", "feature", "contribution", "cumulative")])
+    compact <- res$contributions$asDF
+    complete <- tab[c("contrast", "feature", "contribution", "cumulative")]
+    compact_key <- paste(compact$contrast, compact$feature, sep="\r")
+    complete_key <- paste(complete$contrast, complete$feature, sep="\r")
+    expected_compact <- complete[match(compact_key, complete_key), , drop=FALSE]
+    rownames(compact) <- NULL
+    rownames(expected_compact) <- NULL
+    expect_identical(compact, expected_compact)
     expect_false(res$variability$visible)
     expect_false(res$means$visible)
     expect_equal(nrow(res$contrasts$asDF), 3L)
     expect_false(res$assessment$visible)
     settings <- setNames(res$settings$asDF$value, res$settings$asDF$setting)
     expect_identical(settings[["Permutation assessment"]], "Disabled")
-    expect_false(is.null(res$plot))
+    expect_length(res$contributionPlots$items, 3L)
+    expect_true(all(vapply(
+        res$contributionPlots$items,
+        function(item) ! is.null(item$plot),
+        logical(1))))
 })
 
 test_that("nMDS returns stress results and plot outputs", {

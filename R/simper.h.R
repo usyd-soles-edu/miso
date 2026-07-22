@@ -15,6 +15,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             simperN = 999,
             simperTop = 10,
             simperCum = 70,
+            simperHeatmap = FALSE,
             simperAssess = FALSE,
             simperAdjust = "holm",
             simperDetails = FALSE, ...) {
@@ -109,6 +110,10 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 default=70,
                 min=1,
                 max=100)
+            private$..simperHeatmap <- jmvcore::OptionBool$new(
+                "simperHeatmap",
+                simperHeatmap,
+                default=FALSE)
             private$..simperAssess <- jmvcore::OptionBool$new(
                 "simperAssess",
                 simperAssess,
@@ -137,6 +142,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..simperN)
             self$.addOption(private$..simperTop)
             self$.addOption(private$..simperCum)
+            self$.addOption(private$..simperHeatmap)
             self$.addOption(private$..simperAssess)
             self$.addOption(private$..simperAdjust)
             self$.addOption(private$..simperDetails)
@@ -151,6 +157,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         simperN = function() private$..simperN$value,
         simperTop = function() private$..simperTop$value,
         simperCum = function() private$..simperCum$value,
+        simperHeatmap = function() private$..simperHeatmap$value,
         simperAssess = function() private$..simperAssess$value,
         simperAdjust = function() private$..simperAdjust$value,
         simperDetails = function() private$..simperDetails$value),
@@ -164,6 +171,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..simperN = NA,
         ..simperTop = NA,
         ..simperCum = NA,
+        ..simperHeatmap = NA,
         ..simperAssess = NA,
         ..simperAdjust = NA,
         ..simperDetails = NA)
@@ -181,8 +189,10 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         variability = function() private$.items[["variability"]],
         means = function() private$.items[["means"]],
         table = function() private$.items[["table"]],
-        plot = function() private$.items[["plot"]],
-        plotDescription = function() private$.items[["plotDescription"]],
+        contributionPlots = function() private$.items[["contributionPlots"]],
+        heatmap = function() private$.items[["heatmap"]],
+        heatmapDescription = function() private$.items[["heatmapDescription"]],
+        heatmapValues = function() private$.items[["heatmapValues"]],
         assessment = function() private$.items[["assessment"]],
         note = function() private$.items[["note"]],
         settings = function() private$.items[["settings"]]),
@@ -357,19 +367,113 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="cumulative",
                         `title`="Cumulative contribution (%)",
                         `type`="number"))))
+            self$add(jmvcore::Array$new(
+                options=options,
+                name="contributionPlots",
+                title="Contribution plots by contrast",
+                visible=FALSE,
+                template=R6::R6Class(
+                    inherit = jmvcore::Group,
+                    active = list(
+                        plot = function() private$.items[["plot"]],
+                        description = function() private$.items[["description"]],
+                        values = function() private$.items[["values"]]),
+                    private = list(),
+                    public=list(
+                        initialize=function(options) {
+                            super$initialize(
+                                options=options,
+                                name="undefined",
+                                title="Contrast contribution")
+                            self$add(jmvcore::Image$new(
+                                options=options,
+                                name="plot",
+                                title="Contribution to average dissimilarity",
+                                width=580,
+                                height=430,
+                                renderFun=".plotContribution"))
+                            self$add(jmvcore::Html$new(
+                                options=options,
+                                name="description",
+                                title="Plot details"))
+                            self$add(jmvcore::Table$new(
+                                options=options,
+                                name="values",
+                                title="Values shown in this plot",
+                                rows=0,
+                                columns=list(
+                                    list(
+                                        `name`="feature",
+                                        `title`="Feature",
+                                        `type`="text"),
+                                    list(
+                                        `name`="average",
+                                        `title`="Average contribution",
+                                        `type`="number"),
+                                    list(
+                                        `name`="contribution",
+                                        `title`="Contribution (%)",
+                                        `type`="number"),
+                                    list(
+                                        `name`="cumulative",
+                                        `title`="Cumulative (%)",
+                                        `type`="number"),
+                                    list(
+                                        `name`="firstGroup",
+                                        `title`="First group",
+                                        `type`="text"),
+                                    list(
+                                        `name`="meanFirst",
+                                        `title`="First mean",
+                                        `type`="number"),
+                                    list(
+                                        `name`="secondGroup",
+                                        `title`="Second group",
+                                        `type`="text"),
+                                    list(
+                                        `name`="meanSecond",
+                                        `title`="Second mean",
+                                        `type`="number"),
+                                    list(
+                                        `name`="direction",
+                                        `title`="Direction",
+                                        `type`="text"))))}))$new(options=options)))
             self$add(jmvcore::Image$new(
                 options=options,
-                name="plot",
-                title="SIMPER contribution percentages by group contrast",
+                name="heatmap",
+                title="Contrast overview heatmap",
                 visible=FALSE,
-                width=580,
-                height=450,
-                renderFun=".plotContributions"))
+                width=600,
+                height=500,
+                renderFun=".plotHeatmap"))
             self$add(jmvcore::Html$new(
                 options=options,
-                name="plotDescription",
-                title="Plot details",
+                name="heatmapDescription",
+                title="Heatmap details",
                 visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="heatmapValues",
+                title="Values shown in the heatmap",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="contrast",
+                        `title`="Contrast",
+                        `type`="text"),
+                    list(
+                        `name`="feature",
+                        `title`="Feature",
+                        `type`="text"),
+                    list(
+                        `name`="contribution",
+                        `title`="Contribution (%)",
+                        `type`="number"),
+                    list(
+                        `name`="selected",
+                        `title`="Selected for this contrast",
+                        `type`="text"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="assessment",
@@ -450,6 +554,7 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperN .
 #' @param simperTop .
 #' @param simperCum .
+#' @param simperHeatmap .
 #' @param simperAssess .
 #' @param simperAdjust .
 #' @param simperDetails .
@@ -463,8 +568,10 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   \code{results$variability} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$means} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
+#'   \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$heatmapValues} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
@@ -488,6 +595,7 @@ simper <- function(
     simperN = 999,
     simperTop = 10,
     simperCum = 70,
+    simperHeatmap = FALSE,
     simperAssess = FALSE,
     simperAdjust = "holm",
     simperDetails = FALSE) {
@@ -515,6 +623,7 @@ simper <- function(
         simperN = simperN,
         simperTop = simperTop,
         simperCum = simperCum,
+        simperHeatmap = simperHeatmap,
         simperAssess = simperAssess,
         simperAdjust = simperAdjust,
         simperDetails = simperDetails)

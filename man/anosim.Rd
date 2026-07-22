@@ -18,7 +18,8 @@ anosim(
   permScheme = "free",
   useParallel = FALSE,
   anosimPairwise = FALSE,
-  anosimAdjust = "holm"
+  anosimAdjust = "holm",
+  showRankPlot = TRUE
 )
 }
 \arguments{
@@ -49,15 +50,20 @@ anosim(
 \item{anosimPairwise}{.}
 
 \item{anosimAdjust}{.}
+
+\item{showRankPlot}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$global} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
+  \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }

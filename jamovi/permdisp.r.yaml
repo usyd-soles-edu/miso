@@ -27,34 +27,6 @@ items:
     type: Html
     visible: false
 
-  - name: distances
-    title: Distances to Group Centre
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: group
-        title: Group
-        type: text
-      - name: 'n'
-        title: n
-        type: integer
-      - name: distance
-        title: Mean distance
-        type: number
-      - name: median
-        title: Median distance
-        type: number
-      - name: sd
-        title: Standard deviation
-        type: number
-      - name: min
-        title: Minimum
-        type: number
-      - name: max
-        title: Maximum
-        type: number
-
   - name: anova
     title: Dispersion Test
     type: Table
@@ -103,12 +75,92 @@ items:
         format: zto,pvalue
 
   - name: plot
-    title: Distance Distributions
+    title: Distance to group centre
     type: Image
     visible: false
     width: 600
-    height: 450
+    height: 460
     renderFun: .plotDistances
+
+  - name: plotDescription
+    title: Plot details
+    type: Html
+    visible: false
+
+  - name: distances
+    title: Distance-to-centre summary
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: group
+        title: Group
+        type: text
+      - name: 'n'
+        title: n
+        type: integer
+      - name: centre
+        title: Group centre
+        type: text
+      - name: distance
+        title: Mean distance
+        type: number
+      - name: median
+        title: Median distance
+        type: number
+      - name: q1
+        title: Q1 distance
+        type: number
+      - name: q3
+        title: Q3 distance
+        type: number
+      - name: sd
+        title: Standard deviation
+        type: number
+      - name: min
+        title: Minimum
+        type: number
+      - name: max
+        title: Maximum
+        type: number
+
+  - name: ordinationPlot
+    title: Ordination with group centres
+    type: Image
+    visible: false
+    width: 600
+    height: 500
+    renderFun: .plotOrdination
+
+  - name: ordinationDescription
+    title: Ordination details
+    type: Html
+    visible: false
+
+  - name: ordinationScores
+    title: Ordination coordinates
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: point
+        title: Point
+        type: text
+      - name: pointType
+        title: Type
+        type: text
+      - name: group
+        title: Group
+        type: text
+      - name: plotKey
+        title: Plot key
+        type: text
+      - name: axis1
+        title: Axis 1
+        type: number
+      - name: axis2
+        title: Axis 2
+        type: number
 
   - name: note
     title: Interpretation

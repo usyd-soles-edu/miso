@@ -1,5 +1,5 @@
 Generated-at-UTC: 2026-07-15T00:00:00Z
-Source-commit: 9f99ceeb0823515a80f3102d71b1ca34bfb97283
+Source-commit: 8b0506432530223e6ed953b434233ddd785b2cf9
 R: 4.6.0
 vegan: 2.7.5
 Signed-input classifier: euclidean, manhattan, canberra, gower, mahalanobis (vegan 2.7.5)
@@ -8,5 +8,5 @@ RNGkind: Mersenne-Twister, Inversion, Rejection
 RNGversion: 4.0.0
 Platform: aarch64-apple-darwin23
 Locale: C
-Scenarios: 32
-Reference-rows: 409
+Scenarios: 34
+Reference-rows: 427

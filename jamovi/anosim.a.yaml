@@ -182,4 +182,9 @@ options:
         name: none
     default: holm
 
+  - name: showRankPlot
+    title: Ranked-dissimilarity diagnostic
+    type: Bool
+    default: true
+
 ...

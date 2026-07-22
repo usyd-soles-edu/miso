@@ -1,0 +1,14 @@
+utils::globalVariables(c(
+    "axis1",
+    "axis2",
+    "centre1",
+    "centre2",
+    "centroid1",
+    "centroid2",
+    "distance",
+    "group",
+    "groupIndex",
+    "label",
+    "site",
+    "x"
+))

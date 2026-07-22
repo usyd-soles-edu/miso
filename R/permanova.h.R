@@ -23,7 +23,11 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             useParallel = FALSE,
             permBy = "terms",
             permPairwise = FALSE,
-            permAdjust = "holm", ...) {
+            permAdjust = "holm",
+            showCompanionPcoa = FALSE,
+            pcoaDisplayFactor = NULL,
+            pcoaCentroids = FALSE,
+            pcoaSpiders = FALSE, ...) {
 
             super$initialize(
                 package="tofu",
@@ -178,6 +182,28 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "BY",
                     "none"),
                 default="holm")
+            private$..showCompanionPcoa <- jmvcore::OptionBool$new(
+                "showCompanionPcoa",
+                showCompanionPcoa,
+                default=FALSE)
+            private$..pcoaDisplayFactor <- jmvcore::OptionVariable$new(
+                "pcoaDisplayFactor",
+                pcoaDisplayFactor,
+                suggested=list(
+                    "nominal",
+                    "ordinal"),
+                permitted=list(
+                    "factor",
+                    "numeric"),
+                default=NULL)
+            private$..pcoaCentroids <- jmvcore::OptionBool$new(
+                "pcoaCentroids",
+                pcoaCentroids,
+                default=FALSE)
+            private$..pcoaSpiders <- jmvcore::OptionBool$new(
+                "pcoaSpiders",
+                pcoaSpiders,
+                default=FALSE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -197,6 +223,10 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..permBy)
             self$.addOption(private$..permPairwise)
             self$.addOption(private$..permAdjust)
+            self$.addOption(private$..showCompanionPcoa)
+            self$.addOption(private$..pcoaDisplayFactor)
+            self$.addOption(private$..pcoaCentroids)
+            self$.addOption(private$..pcoaSpiders)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -216,7 +246,11 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         useParallel = function() private$..useParallel$value,
         permBy = function() private$..permBy$value,
         permPairwise = function() private$..permPairwise$value,
-        permAdjust = function() private$..permAdjust$value),
+        permAdjust = function() private$..permAdjust$value,
+        showCompanionPcoa = function() private$..showCompanionPcoa$value,
+        pcoaDisplayFactor = function() private$..pcoaDisplayFactor$value,
+        pcoaCentroids = function() private$..pcoaCentroids$value,
+        pcoaSpiders = function() private$..pcoaSpiders$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -235,7 +269,11 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..useParallel = NA,
         ..permBy = NA,
         ..permPairwise = NA,
-        ..permAdjust = NA)
+        ..permAdjust = NA,
+        ..showCompanionPcoa = NA,
+        ..pcoaDisplayFactor = NA,
+        ..pcoaCentroids = NA,
+        ..pcoaSpiders = NA)
 )
 
 permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -246,6 +284,10 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
         table = function() private$.items[["table"]],
+        companionPcoa = function() private$.items[["companionPcoa"]],
+        companionPcoaDescription = function() private$.items[["companionPcoaDescription"]],
+        companionPcoaSites = function() private$.items[["companionPcoaSites"]],
+        companionPcoaCentroids = function() private$.items[["companionPcoaCentroids"]],
         pairwise = function() private$.items[["pairwise"]],
         note = function() private$.items[["note"]],
         settings = function() private$.items[["settings"]]),
@@ -313,6 +355,141 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"))))
+            self$add(jmvcore::Image$new(
+                options=options,
+                name="companionPcoa",
+                title="PERMANOVA companion PCoA",
+                width=600,
+                height=500,
+                renderFun=".plotCompanionPcoa",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "permFactors",
+                    "covariates",
+                    "strata",
+                    "permInteractions",
+                    "permBy",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "distSqrt",
+                    "distAdd",
+                    "showCompanionPcoa",
+                    "pcoaDisplayFactor",
+                    "pcoaCentroids",
+                    "pcoaSpiders")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="companionPcoaDescription",
+                title="Companion PCoA description",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "permFactors",
+                    "covariates",
+                    "strata",
+                    "permInteractions",
+                    "permBy",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "distSqrt",
+                    "distAdd",
+                    "showCompanionPcoa",
+                    "pcoaDisplayFactor",
+                    "pcoaCentroids",
+                    "pcoaSpiders")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="companionPcoaSites",
+                title="Companion PCoA Site Coordinates",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="site",
+                        `title`="Site",
+                        `type`="text"),
+                    list(
+                        `name`="sourceRow",
+                        `title`="Source row",
+                        `type`="integer"),
+                    list(
+                        `name`="group",
+                        `title`="Group",
+                        `type`="text"),
+                    list(
+                        `name`="PCoA1",
+                        `title`="PCoA1",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="PCoA2",
+                        `title`="PCoA2",
+                        `type`="number",
+                        `format`="zto")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "permFactors",
+                    "covariates",
+                    "strata",
+                    "permInteractions",
+                    "permBy",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "distSqrt",
+                    "distAdd",
+                    "showCompanionPcoa",
+                    "pcoaDisplayFactor",
+                    "pcoaCentroids",
+                    "pcoaSpiders")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="companionPcoaCentroids",
+                title="Companion PCoA Group Centroids",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="group",
+                        `title`="Group",
+                        `type`="text"),
+                    list(
+                        `name`="n",
+                        `title`="n",
+                        `type`="integer"),
+                    list(
+                        `name`="PCoA1",
+                        `title`="PCoA1",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="PCoA2",
+                        `title`="PCoA2",
+                        `type`="number",
+                        `format`="zto")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "permFactors",
+                    "covariates",
+                    "strata",
+                    "permInteractions",
+                    "permBy",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "distSqrt",
+                    "distAdd",
+                    "showCompanionPcoa",
+                    "pcoaDisplayFactor",
+                    "pcoaCentroids",
+                    "pcoaSpiders")))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
@@ -402,12 +579,25 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param permBy .
 #' @param permPairwise .
 #' @param permAdjust .
+#' @param showCompanionPcoa Whether to show a descriptive PCoA based on the
+#'   exact distance settings used by PERMANOVA.
+#' @param pcoaDisplayFactor For multifactor models, choose the same primary or
+#'   additional factor already included and retained in the fitted PERMANOVA
+#'   model; other variables are rejected.
+#' @param pcoaCentroids Whether to draw and tabulate group centroids in the
+#'   companion PCoA.
+#' @param pcoaSpiders Whether to connect displayed sites to their group
+#'   centroid; spiders also show centroids.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$companionPcoaDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$companionPcoaSites} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$companionPcoaCentroids} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
@@ -439,7 +629,11 @@ permanova <- function(
     useParallel = FALSE,
     permBy = "terms",
     permPairwise = FALSE,
-    permAdjust = "holm") {
+    permAdjust = "holm",
+    showCompanionPcoa = FALSE,
+    pcoaDisplayFactor = NULL,
+    pcoaCentroids = FALSE,
+    pcoaSpiders = FALSE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("permanova requires jmvcore to be installed (restart may be required)")
@@ -449,6 +643,7 @@ permanova <- function(
     if ( ! missing(permFactors)) permFactors <- jmvcore::resolveQuo(jmvcore::enquo(permFactors))
     if ( ! missing(strata)) strata <- jmvcore::resolveQuo(jmvcore::enquo(strata))
     if ( ! missing(covariates)) covariates <- jmvcore::resolveQuo(jmvcore::enquo(covariates))
+    if ( ! missing(pcoaDisplayFactor)) pcoaDisplayFactor <- jmvcore::resolveQuo(jmvcore::enquo(pcoaDisplayFactor))
     if (missing(data))
         data <- jmvcore::marshalData(
             parent.frame(),
@@ -456,7 +651,8 @@ permanova <- function(
             `if`( ! missing(factor), factor, NULL),
             `if`( ! missing(permFactors), permFactors, NULL),
             `if`( ! missing(strata), strata, NULL),
-            `if`( ! missing(covariates), covariates, NULL))
+            `if`( ! missing(covariates), covariates, NULL),
+            `if`( ! missing(pcoaDisplayFactor), pcoaDisplayFactor, NULL))
 
     for (v in factor) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
     for (v in permFactors) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
@@ -480,7 +676,11 @@ permanova <- function(
         useParallel = useParallel,
         permBy = permBy,
         permPairwise = permPairwise,
-        permAdjust = permAdjust)
+        permAdjust = permAdjust,
+        showCompanionPcoa = showCompanionPcoa,
+        pcoaDisplayFactor = pcoaDisplayFactor,
+        pcoaCentroids = pcoaCentroids,
+        pcoaSpiders = pcoaSpiders)
 
     analysis <- permanovaClass$new(
         options = options,

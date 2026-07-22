@@ -21,7 +21,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             dispType = "median",
             dispBias = FALSE,
             dispPairwise = FALSE,
-            dispAdjust = "holm", ...) {
+            dispAdjust = "holm",
+            showDistancePlot = TRUE,
+            showOrdinationPlot = FALSE, ...) {
 
             super$initialize(
                 package="tofu",
@@ -157,6 +159,14 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "BY",
                     "none"),
                 default="holm")
+            private$..showDistancePlot <- jmvcore::OptionBool$new(
+                "showDistancePlot",
+                showDistancePlot,
+                default=TRUE)
+            private$..showOrdinationPlot <- jmvcore::OptionBool$new(
+                "showOrdinationPlot",
+                showOrdinationPlot,
+                default=FALSE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -174,6 +184,8 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..dispBias)
             self$.addOption(private$..dispPairwise)
             self$.addOption(private$..dispAdjust)
+            self$.addOption(private$..showDistancePlot)
+            self$.addOption(private$..showOrdinationPlot)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -191,7 +203,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         dispType = function() private$..dispType$value,
         dispBias = function() private$..dispBias$value,
         dispPairwise = function() private$..dispPairwise$value,
-        dispAdjust = function() private$..dispAdjust$value),
+        dispAdjust = function() private$..dispAdjust$value,
+        showDistancePlot = function() private$..showDistancePlot$value,
+        showOrdinationPlot = function() private$..showOrdinationPlot$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -208,7 +222,9 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..dispType = NA,
         ..dispBias = NA,
         ..dispPairwise = NA,
-        ..dispAdjust = NA)
+        ..dispAdjust = NA,
+        ..showDistancePlot = NA,
+        ..showOrdinationPlot = NA)
 )
 
 permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -218,10 +234,14 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         guidance = function() private$.items[["guidance"]],
         summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
-        distances = function() private$.items[["distances"]],
         anova = function() private$.items[["anova"]],
         pairwise = function() private$.items[["pairwise"]],
         plot = function() private$.items[["plot"]],
+        plotDescription = function() private$.items[["plotDescription"]],
+        distances = function() private$.items[["distances"]],
+        ordinationPlot = function() private$.items[["ordinationPlot"]],
+        ordinationDescription = function() private$.items[["ordinationDescription"]],
+        ordinationScores = function() private$.items[["ordinationScores"]],
         note = function() private$.items[["note"]],
         settings = function() private$.items[["settings"]]),
     private = list(),
@@ -256,41 +276,6 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="warnings",
                 title="Data handling warnings",
                 visible=FALSE))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="distances",
-                title="Distances to Group Centre",
-                visible=FALSE,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="group",
-                        `title`="Group",
-                        `type`="text"),
-                    list(
-                        `name`="n",
-                        `title`="n",
-                        `type`="integer"),
-                    list(
-                        `name`="distance",
-                        `title`="Mean distance",
-                        `type`="number"),
-                    list(
-                        `name`="median",
-                        `title`="Median distance",
-                        `type`="number"),
-                    list(
-                        `name`="sd",
-                        `title`="Standard deviation",
-                        `type`="number"),
-                    list(
-                        `name`="min",
-                        `title`="Minimum",
-                        `type`="number"),
-                    list(
-                        `name`="max",
-                        `title`="Maximum",
-                        `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="anova",
@@ -351,11 +336,107 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Image$new(
                 options=options,
                 name="plot",
-                title="Distance Distributions",
+                title="Distance to group centre",
                 visible=FALSE,
                 width=600,
-                height=450,
+                height=460,
                 renderFun=".plotDistances"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="plotDescription",
+                title="Plot details",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="distances",
+                title="Distance-to-centre summary",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="group",
+                        `title`="Group",
+                        `type`="text"),
+                    list(
+                        `name`="n",
+                        `title`="n",
+                        `type`="integer"),
+                    list(
+                        `name`="centre",
+                        `title`="Group centre",
+                        `type`="text"),
+                    list(
+                        `name`="distance",
+                        `title`="Mean distance",
+                        `type`="number"),
+                    list(
+                        `name`="median",
+                        `title`="Median distance",
+                        `type`="number"),
+                    list(
+                        `name`="q1",
+                        `title`="Q1 distance",
+                        `type`="number"),
+                    list(
+                        `name`="q3",
+                        `title`="Q3 distance",
+                        `type`="number"),
+                    list(
+                        `name`="sd",
+                        `title`="Standard deviation",
+                        `type`="number"),
+                    list(
+                        `name`="min",
+                        `title`="Minimum",
+                        `type`="number"),
+                    list(
+                        `name`="max",
+                        `title`="Maximum",
+                        `type`="number"))))
+            self$add(jmvcore::Image$new(
+                options=options,
+                name="ordinationPlot",
+                title="Ordination with group centres",
+                visible=FALSE,
+                width=600,
+                height=500,
+                renderFun=".plotOrdination"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="ordinationDescription",
+                title="Ordination details",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="ordinationScores",
+                title="Ordination coordinates",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="point",
+                        `title`="Point",
+                        `type`="text"),
+                    list(
+                        `name`="pointType",
+                        `title`="Type",
+                        `type`="text"),
+                    list(
+                        `name`="group",
+                        `title`="Group",
+                        `type`="text"),
+                    list(
+                        `name`="plotKey",
+                        `title`="Plot key",
+                        `type`="text"),
+                    list(
+                        `name`="axis1",
+                        `title`="Axis 1",
+                        `type`="number"),
+                    list(
+                        `name`="axis2",
+                        `title`="Axis 2",
+                        `type`="number"))))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
@@ -418,15 +499,21 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param dispBias .
 #' @param dispPairwise .
 #' @param dispAdjust .
+#' @param showDistancePlot .
+#' @param showOrdinationPlot .
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$ordinationScores} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
@@ -455,7 +542,9 @@ permdisp <- function(
     dispType = "median",
     dispBias = FALSE,
     dispPairwise = FALSE,
-    dispAdjust = "holm") {
+    dispAdjust = "holm",
+    showDistancePlot = TRUE,
+    showOrdinationPlot = FALSE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("permdisp requires jmvcore to be installed (restart may be required)")
@@ -486,7 +575,9 @@ permdisp <- function(
         dispType = dispType,
         dispBias = dispBias,
         dispPairwise = dispPairwise,
-        dispAdjust = dispAdjust)
+        dispAdjust = dispAdjust,
+        showDistancePlot = showDistancePlot,
+        showOrdinationPlot = showOrdinationPlot)
 
     analysis <- permdispClass$new(
         options = options,

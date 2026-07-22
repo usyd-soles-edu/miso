@@ -12,7 +12,7 @@ options:
     type: Data
 
   - name: vars
-    title: 'Required: Feature variables'
+    title: Feature variables (required)
     type: Variables
     suggested:
       - continuous
@@ -20,7 +20,7 @@ options:
       - numeric
 
   - name: factor
-    title: 'Optional: Grouping variable'
+    title: Grouping variable (optional)
     type: Variable
     suggested:
       - nominal
@@ -148,7 +148,7 @@ options:
     default: true
 
   - name: nmdsEnv
-    title: 'Optional: Environmental variables'
+    title: Environmental variables (optional)
     type: Variables
     suggested:
       - continuous

@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: 'Required: Feature variables'
+        label: Feature variables (required)
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: 'Required: Grouping variable'
+        label: Grouping variable (required)
         children:
           - type: VariablesListBox
             name: factor
@@ -74,6 +74,22 @@ children:
             margin: none
       - type: Label
         label: "Dissimilarity: Bray-Curtis"
+      - type: CheckBox
+        name: simperDetails
+
+  - type: CollapseBox
+    name: plots
+    label: Plots
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: Label
+        label: Contrast shown
+        heading: true
+        margin: none
+      - type: Label
+        label: Each observed contrast appears in its own plot.
+        margin: none
       - type: LayoutBox
         style: list
         margin: small
@@ -103,7 +119,7 @@ children:
                 label: Keep the threshold-crossing feature.
                 margin: none
       - type: CheckBox
-        name: simperDetails
+        name: simperHeatmap
 
   - type: CollapseBox
     name: permutationAssessment

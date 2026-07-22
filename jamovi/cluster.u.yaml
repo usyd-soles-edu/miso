@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: 'Required: Feature variables'
+        label: Feature variables (required)
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: 'Optional: Sample labels'
+        label: Sample labels (optional)
         children:
           - type: VariablesListBox
             name: labels
@@ -35,26 +35,26 @@ children:
         name: distance
 
   - type: CollapseBox
-    name: outputChoices
-    label: Output choices
+    name: plots
+    label: Plots
     collapsed: false
     stretchFactor: 1
     children:
+      - type: ComboBox
+        name: sampleLabels
       - type: CheckBox
-        name: showLabels
-      - type: LayoutBox
-        style: list
-        margin: small
-        children:
-          - type: Label
-            label: Tip
-            heading: true
-            margin: none
-          - type: Label
-            label: For large datasets, turn off sample labels.
-            margin: none
-          - type: Label
-            label: 'No label variable: row numbers are used.'
-            margin: none
+        name: defineClusters
+        events:
+          change: update_control_states
+      - type: ComboBox
+        name: cutMode
+        events:
+          change: update_control_states
+      - type: TextBox
+        name: numberClusters
+        format: number
+      - type: TextBox
+        name: cutHeight
+        format: number
 
 ...

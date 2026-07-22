@@ -18,7 +18,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             permScheme = "free",
             useParallel = FALSE,
             anosimPairwise = FALSE,
-            anosimAdjust = "holm", ...) {
+            anosimAdjust = "holm",
+            showRankPlot = TRUE, ...) {
 
             super$initialize(
                 package="tofu",
@@ -141,6 +142,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "BY",
                     "none"),
                 default="holm")
+            private$..showRankPlot <- jmvcore::OptionBool$new(
+                "showRankPlot",
+                showRankPlot,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -155,6 +160,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..useParallel)
             self$.addOption(private$..anosimPairwise)
             self$.addOption(private$..anosimAdjust)
+            self$.addOption(private$..showRankPlot)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -169,7 +175,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         permScheme = function() private$..permScheme$value,
         useParallel = function() private$..useParallel$value,
         anosimPairwise = function() private$..anosimPairwise$value,
-        anosimAdjust = function() private$..anosimAdjust$value),
+        anosimAdjust = function() private$..anosimAdjust$value,
+        showRankPlot = function() private$..showRankPlot$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -183,7 +190,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..permScheme = NA,
         ..useParallel = NA,
         ..anosimPairwise = NA,
-        ..anosimAdjust = NA)
+        ..anosimAdjust = NA,
+        ..showRankPlot = NA)
 )
 
 anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -195,6 +203,9 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         warnings = function() private$.items[["warnings"]],
         global = function() private$.items[["global"]],
         pairwise = function() private$.items[["pairwise"]],
+        rankPlot = function() private$.items[["rankPlot"]],
+        rankPlotDescription = function() private$.items[["rankPlotDescription"]],
+        rankSummary = function() private$.items[["rankSummary"]],
         note = function() private$.items[["note"]],
         settings = function() private$.items[["settings"]]),
     private = list(),
@@ -278,6 +289,46 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `title`="Adjusted p",
                         `type`="number",
                         `format`="zto,pvalue"))))
+            self$add(jmvcore::Image$new(
+                options=options,
+                name="rankPlot",
+                title="Ranked dissimilarities by pair category",
+                visible=FALSE,
+                width=600,
+                height=480,
+                renderFun=".plotRank"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="rankPlotDescription",
+                title="Plot details",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="rankSummary",
+                title="Ranked-dissimilarity summary",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="category",
+                        `title`="Pair category",
+                        `type`="text"),
+                    list(
+                        `name`="pairs",
+                        `title`="Pairs",
+                        `type`="integer"),
+                    list(
+                        `name`="median",
+                        `title`="Median rank",
+                        `type`="number"),
+                    list(
+                        `name`="q1",
+                        `title`="Q1 rank",
+                        `type`="number"),
+                    list(
+                        `name`="q3",
+                        `title`="Q3 rank",
+                        `type`="number"))))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
@@ -337,6 +388,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param useParallel .
 #' @param anosimPairwise .
 #' @param anosimAdjust .
+#' @param showRankPlot .
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
@@ -344,6 +396,9 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$global} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
@@ -369,7 +424,8 @@ anosim <- function(
     permScheme = "free",
     useParallel = FALSE,
     anosimPairwise = FALSE,
-    anosimAdjust = "holm") {
+    anosimAdjust = "holm",
+    showRankPlot = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("anosim requires jmvcore to be installed (restart may be required)")
@@ -400,7 +456,8 @@ anosim <- function(
         permScheme = permScheme,
         useParallel = useParallel,
         anosimPairwise = anosimPairwise,
-        anosimAdjust = anosimAdjust)
+        anosimAdjust = anosimAdjust,
+        showRankPlot = showRankPlot)
 
     analysis <- anosimClass$new(
         options = options,

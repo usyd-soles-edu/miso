@@ -149,65 +149,43 @@ expect_nmds_plot_inside_frame <- function(data) {
         nmdsTrymax=20,
         nmdsMaxit=200)
     private <- analysis$.__enclos_env__$private
-    before <- list(
-        features=private$.state$features,
-        vectorEndpoints=private$.state$vectorEndpoints)
-    renderCalls <- new.env(parent=emptyenv())
-    renderCalls$arrows <- list()
-    renderCalls$text <- list()
-    testthat::local_mocked_bindings(
-        arrows=function(...) {
-            renderCalls$arrows[[length(renderCalls$arrows) + 1L]] <- list(...)
-            invisible(NULL)
-        },
-        text=function(...) {
-            renderCalls$text[[length(renderCalls$text) + 1L]] <- list(...)
-            invisible(NULL)
-        },
-        .package="graphics")
+    before <- unserialize(serialize(private$.state, NULL))
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
 
+    plot <- private$.buildNmdsPlot()
+    expect_s3_class(plot, "ggplot")
+    expect_true(
+        inherits(plot$coordinates, "CoordFixed") ||
+            identical(plot$coordinates$ratio, 1),
+        info="coord_equal must keep equal physical units on both axes")
+    expect_identical(plot$theme, .tofuPlotTheme())
+
+    limits <- plot$coordinates$limits
+    expect_true(all(is.finite(limits$x)))
+    expect_true(all(is.finite(limits$y)))
+    expect_gt(diff(limits$x), 0)
+    expect_gt(diff(limits$y), 0)
+
+    built <- ggplot2::ggplot_build(plot)
+    displayed <- do.call(rbind, lapply(built$data, function(layer) {
+        x <- intersect(c("x", "xend"), names(layer))
+        y <- intersect(c("y", "yend"), names(layer))
+        if (length(x) == 0L || length(y) == 0L)
+            return(NULL)
+        data.frame(
+            x=unlist(layer[x], use.names=FALSE),
+            y=unlist(layer[y], use.names=FALSE))
+    }))
+    displayed <- displayed[is.finite(displayed$x) & is.finite(displayed$y), ]
+    expect_true(all(displayed$x >= limits$x[[1L]] & displayed$x <= limits$x[[2L]]))
+    expect_true(all(displayed$y >= limits$y[[1L]] & displayed$y <= limits$y[[2L]]))
+
     grDevices::png(path, width=900, height=700)
     rendered <- private$.plotNmds(NULL)
-    usr <- graphics::par("usr")
-    rawVectors <- private$.state$vectorEndpoints[, 1:2, drop=FALSE]
-    expectedMultiplier <- vegan::ordiArrowMul(
-        rawVectors, fill=0.75 / 1.12)
     grDevices::dev.off()
     expect_true(isTRUE(rendered))
-
-    inside <- function(values, limits)
-        all(values >= min(limits) & values <= max(limits))
-    features <- private$.state$features[, 1:2, drop=FALSE]
-    featureRows <- is.finite(features[, 1L]) & is.finite(features[, 2L])
-    expect_true(inside(features[featureRows, 1L], usr[1:2]))
-    expect_true(inside(features[featureRows, 2L], usr[3:4]))
-    expect_length(renderCalls$arrows, 1L)
-    arrowCall <- renderCalls$arrows[[1L]]
-    renderedArrows <- cbind(x=arrowCall[[3L]], y=arrowCall[[4L]])
-    expect_equal(
-        unname(renderedArrows),
-        unname(rawVectors * expectedMultiplier),
-        tolerance=0)
-    expect_true(inside(renderedArrows[, 1L], usr[1:2]))
-    expect_true(inside(renderedArrows[, 2L], usr[3:4]))
-    vectorText <- Filter(
-        function(call) identical(call$col, "darkred"),
-        renderCalls$text)
-    expect_length(vectorText, 1L)
-    renderedLabels <- cbind(
-        x=vectorText[[1L]][[1L]],
-        y=vectorText[[1L]][[2L]])
-    expect_equal(
-        unname(renderedLabels),
-        unname(renderedArrows[
-            private$.state$vectorLabelSelection$shown, , drop=FALSE] * 1.12),
-        tolerance=0)
-    expect_true(inside(renderedLabels[, 1L], usr[1:2]))
-    expect_true(inside(renderedLabels[, 2L], usr[3:4]))
-    expect_identical(private$.state$features, before$features)
-    expect_identical(private$.state$vectorEndpoints, before$vectorEndpoints)
+    expect_identical(private$.state, before)
     expect_gt(file.info(path)$size, 0)
     invisible(analysis)
 }
@@ -248,7 +226,7 @@ test_that("nMDS schema preserves the API and exposes the approved student contra
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     names_in_order <- vapply(options, `[[`, character(1), "name")
 
-    expect_identical(by_name$vars$title, "Required: Feature variables")
+    expect_identical(by_name$vars$title, "Feature variables (required)")
     expect_match(by_name$factor$title, "optional", ignore.case=TRUE)
     expect_match(by_name$nmdsEnv$title, "optional", ignore.case=TRUE)
     expect_true(by_name$distBinary$hidden)
@@ -278,7 +256,7 @@ test_that("nMDS UI uses required-first progressive disclosure", {
     ui_path <- tofu_fixture_path("jamovi", "nmds.u.yaml")
     ui <- yaml::read_yaml(ui_path)
     expect_false(find_nmds_yaml_node(ui, "analysisChoices")$collapsed)
-    expect_false(find_nmds_yaml_node(ui, "outputChoices")$collapsed)
+    expect_false(find_nmds_yaml_node(ui, "plots")$collapsed)
     expect_true(find_nmds_yaml_node(ui, "groupOptions")$collapsed)
     expect_true(find_nmds_yaml_node(ui, "environmentAssessment")$collapsed)
     expect_true(find_nmds_yaml_node(ui, "reproducibility")$collapsed)
@@ -323,11 +301,13 @@ test_that("nMDS result schema contains no initially visible shell", {
         vapply(items, `[[`, character(1), "name"),
         c(
             "guidance", "summary", "warnings", "ordination",
-            "ordinationDescription", "stress", "shepard", "shepardDescription",
-            "envfit", "note", "sites", "features", "settings"))
+            "ordinationDescription", "sites", "stress", "shepard",
+            "shepardDescription", "shepardPairs", "envfit", "note",
+            "features", "settings"))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$ordinationDescription$type, "Html")
     expect_identical(by_name$shepardDescription$type, "Html")
+    expect_identical(by_name$shepardPairs$type, "Table")
     expect_identical(by_name$note$type, "Html")
     expect_identical(
         vapply(by_name$summary$columns, `[[`, character(1), "name"),
@@ -352,17 +332,21 @@ test_that("nMDS result schema contains no initially visible shell", {
 test_that("new and incomplete nMDS analyses show one actionable state", {
     data <- nmds_state_data()
 
-    none <- run_nmds_private(data, vars=character())$results
+    noneAnalysis <- run_nmds_private(data, vars=character())
+    none <- noneAnalysis$results
     expect_match(
         nmds_squish(none$guidance$asString()),
         "at least two numeric Feature variables")
     expect_only_nmds_guidance(none)
+    expect_null(noneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 
-    one <- run_nmds_private(data, vars="feature_01")$results
+    oneAnalysis <- run_nmds_private(data, vars="feature_01")
+    one <- oneAnalysis$results
     expect_match(
         nmds_squish(one$guidance$asString()),
         "at least two usable numeric Feature variables")
     expect_only_nmds_guidance(one)
+    expect_null(oneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 })
 
 test_that("nMDS report guidance stays compact", {
@@ -858,16 +842,70 @@ test_that("group overlays use unique styles and cached validated geometry", {
         logical(1))))
 })
 
-test_that("all group presentation toggles preserve exact core coordinates", {
+test_that("more than 64 groups retain results and use a neutral plot", {
+    n <- 130L
+    groupIndex <- rep(seq_len(65L), each=2L)
+    index <- seq_len(n)
+    data <- data.frame(
+        feature_01=1 + groupIndex + index %% 5L,
+        feature_02=2 + 2 * groupIndex + index %% 7L,
+        feature_03=3 + groupIndex + rev(index %% 6L),
+        feature_04=1 + (index %% 3L) * (1 + groupIndex %% 5L),
+        group=factor(sprintf("group-%02d", groupIndex)),
+        temperature=10 + index,
+        pH=6 + (index %% 5L) / 10,
+        check.names=FALSE)
+    analysis <- run_nmds_private(
+        data,
+        vars=paste0("feature_0", 1:4),
+        factor="group",
+        nmdsOverlay=TRUE,
+        nmdsHull=TRUE,
+        nmdsEllipse=TRUE,
+        nmdsSpider=TRUE,
+        nmdsSpecies=TRUE,
+        nmdsEnv=c("temperature", "pH"),
+        nmdsEnvPerm=99,
+        seed=123,
+        nmdsTrymax=5)
+    private <- analysis$.__enclos_env__$private
+    plot <- private$.buildNmdsPlot()
+    pointLayer <- plot$layers[[which(vapply(
+        plot$layers,
+        function(layer) inherits(layer$geom, "GeomPoint"),
+        logical(1)))[[1L]]]]
+    description <- nmds_squish(
+        analysis$results$ordinationDescription$asString())
+
+    expect_identical(nrow(analysis$results$sites$asDF), n)
+    expect_identical(nrow(analysis$results$features$asDF), 4L)
+    expect_identical(nrow(analysis$results$envfit$asDF), 2L)
+    expect_true(nrow(analysis$results$stress$asDF) > 0L)
+    expect_identical(length(private$.state$assignedGroupLevels), 65L)
+    expect_false(any(private$.state$overlays$effective))
+    expect_identical(nrow(private$.state$overlays$styles), 0L)
+    expect_false(any(c("colour", "shape") %in% names(pointLayer$mapping)))
+    expect_match(description, "65 groups exceed the 64-style display limit")
+    expect_true(any(grepl(
+        "at most 64 distinguishable group styles",
+        private$.state$warnings,
+        fixed=TRUE)))
+})
+
+test_that("all plot-only toggles preserve exact numerical results", {
     data <- nmds_state_data(n=30L, groups=5L)
     common <- list(
         data=data,
         vars=paste0("feature_0", 1:4),
+        factor="group",
+        nmdsEnv=c("temperature", "pH"),
+        nmdsEnvPerm=99,
+        nmdsSpecies=TRUE,
         seed=123,
         nmdsTrymax=5)
     baseline <- suppressWarnings(do.call(nmds, common))
     toggles <- list(
-        list(nmdsOverlay=TRUE),
+        list(nmdsOverlay=TRUE, nmdsShepard=FALSE),
         list(nmdsOverlay=FALSE, nmdsHull=TRUE),
         list(nmdsOverlay=FALSE, nmdsEllipse=TRUE),
         list(nmdsOverlay=FALSE, nmdsSpider=TRUE),
@@ -880,11 +918,9 @@ test_that("all group presentation toggles preserve exact core coordinates", {
     for (toggle in toggles) {
         layered <- suppressWarnings(do.call(
             nmds,
-            c(common, list(factor="group"), toggle)))
-        expect_equal(
-            layered$sites$asDF[c("NMDS1", "NMDS2")],
-            baseline$sites$asDF[c("NMDS1", "NMDS2")],
-            tolerance=0)
+            c(common, toggle)))
+        for (table in c("stress", "sites", "features", "envfit"))
+            expect_identical(layered[[table]]$asDF, baseline[[table]]$asDF)
     }
 })
 
@@ -924,30 +960,15 @@ test_that("overlay-only plots use independent group and layer encodings", {
     overlays <- private$.state$overlays
     before <- unserialize(serialize(overlays, NULL))
     assignedStyles <- overlays$styles[overlays$styles$assigned, ]
-    renderCalls <- new.env(parent=emptyenv())
-    renderCalls$lines <- list()
-    renderCalls$segments <- list()
-    renderCalls$legends <- list()
-    testthat::local_mocked_bindings(
-        lines=function(...) {
-            renderCalls$lines[[length(renderCalls$lines) + 1L]] <- list(...)
-            invisible(NULL)
-        },
-        segments=function(...) {
-            renderCalls$segments[[length(renderCalls$segments) + 1L]] <- list(...)
-            invisible(NULL)
-        },
-        legend=function(...) {
-            renderCalls$legends[[length(renderCalls$legends) + 1L]] <- list(...)
-            invisible(NULL)
-        },
-        .package="graphics")
-    path <- tempfile(fileext=".png")
-    on.exit(unlink(path), add=TRUE)
-
-    grDevices::png(path, width=900, height=700)
-    private$.plotNmds(NULL)
-    grDevices::dev.off()
+    plot <- private$.buildNmdsPlot()
+    geomClasses <- vapply(
+        plot$layers,
+        function(layer) class(layer$geom)[[1L]],
+        character(1))
+    shared <- .tofuGroupAesthetics(assignedStyles$group)
+    colourScale <- plot$scales$get_scales("colour")
+    linetypeScale <- plot$scales$get_scales("linetype")
+    linewidthScale <- plot$scales$get_scales("linewidth")
 
     expect_false(overlays$effective[["points"]])
     expect_true(all(overlays$effective[c("hull", "ellipse", "spider")]))
@@ -955,50 +976,40 @@ test_that("overlay-only plots use independent group and layer encodings", {
     expect_identical(nrow(assignedStyles), 5L)
     expect_identical(length(unique(assignedStyles$lineType)), 5L)
     expect_identical(length(unique(overlays$lineWidths)), 3L)
-    expect_identical(length(renderCalls$segments), 5L)
-    expect_identical(length(renderCalls$lines), 10L)
-
-    drawn <- c(renderCalls$segments, renderCalls$lines)
-    expectedGroupLineTypes <- setNames(
-        assignedStyles$lineType, assignedStyles$colour)
+    expect_true("GeomSegment" %in% geomClasses)
+    expect_gte(sum(geomClasses == "GeomPath"), 2L)
     expect_identical(
-        vapply(drawn, function(call) as.integer(call$lty), integer(1)),
-        as.integer(expectedGroupLineTypes[vapply(
-            drawn, function(call) as.character(call$col), character(1))]))
-    expect_identical(
-        unique(vapply(
-            renderCalls$segments,
-            function(call) as.numeric(call$lwd), numeric(1))),
-        unname(overlays$lineWidths[["spider"]]))
-    expect_identical(
-        unique(vapply(
-            renderCalls$lines[seq_len(5L)],
-            function(call) as.numeric(call$lwd), numeric(1))),
-        unname(overlays$lineWidths[["hull"]]))
-    expect_identical(
-        unique(vapply(
-            renderCalls$lines[6:10],
-            function(call) as.numeric(call$lwd), numeric(1))),
-        unname(overlays$lineWidths[["ellipse"]]))
-
-    legendPosition <- function(call)
-        if (is.null(call$x)) call[[1L]] else call$x
-    positions <- vapply(
-        renderCalls$legends, legendPosition, character(1))
-    groupLegend <- renderCalls$legends[[match("topright", positions)]]
-    layerLegend <- renderCalls$legends[[match("bottomright", positions)]]
-    expect_identical(groupLegend$legend, assignedStyles$group)
-    expect_identical(groupLegend$col, assignedStyles$colour)
-    expect_identical(groupLegend$lty, assignedStyles$lineType)
-    expect_identical(groupLegend$lwd, max(overlays$lineWidths))
-    expect_null(groupLegend$pch)
-    expect_identical(
-        unname(layerLegend$lwd),
-        unname(overlays$lineWidths[c("hull", "ellipse", "spider")]))
-    expect_identical(as.integer(layerLegend$lty), rep(1L, 3L))
+        stats::setNames(assignedStyles$colour, assignedStyles$group),
+        shared$colour[assignedStyles$group])
+    expect_identical(colourScale$name, "Group")
+    expect_identical(linetypeScale$name, "Group")
+    expect_identical(linewidthScale$name, "Layer")
+    expect_identical(colourScale$guide, "legend")
+    expect_identical(linetypeScale$guide, "legend")
+    expect_identical(linewidthScale$guide, "legend")
+    expect_s3_class(plot$guides$guides$colour, "GuideLegend")
+    expect_s3_class(plot$guides$guides$linetype, "GuideLegend")
+    expect_true(all(vapply(
+        plot$layers[geomClasses %in% c("GeomSegment", "GeomPath")],
+        function(layer) all(c("group", "layer") %in% names(layer$data)),
+        logical(1))))
 
     expect_identical(private$.state$overlays, before)
-    expect_gt(file.info(path)$size, 0)
+})
+
+test_that("overlay-only group colour and linetype pairs are unique to 64", {
+    analysis <- run_nmds_private(
+        nmds_state_data(),
+        vars=paste0("feature_0", 1:4),
+        seed=123,
+        nmdsTrymax=5)
+    groups <- sprintf("group-%02d", seq_len(64L))
+    styles <- analysis$.__enclos_env__$private$.groupStyles(groups)
+    pairs <- paste(styles$colour, styles$lineType)
+
+    expect_length(unique(styles$lineType), 8L)
+    expect_false(identical(pairs[[1L]], pairs[[25L]]))
+    expect_length(unique(pairs), 64L)
 })
 
 test_that("nMDS plot is a non-empty read-only rendering of cached state", {
@@ -1008,6 +1019,7 @@ test_that("nMDS plot is a non-empty read-only rendering of cached state", {
         factor="group",
         nmdsOverlay=TRUE,
         nmdsSpecies=TRUE,
+        nmdsEnv=c("temperature", "pH"),
         nmdsHull=TRUE,
         nmdsEllipse=TRUE,
         nmdsSpider=TRUE,
@@ -1019,7 +1031,13 @@ test_that("nMDS plot is a non-empty read-only rendering of cached state", {
         features=private$.state$features,
         vectorEndpoints=private$.state$vectorEndpoints,
         overlays=private$.state$overlays)
-    plotBody <- paste(deparse(body(private$.plotNmds)), collapse="\n")
+    plotBody <- paste(deparse(body(private$.buildNmdsPlot)), collapse="\n")
+    plot <- private$.buildNmdsPlot()
+    built <- ggplot2::ggplot_build(plot)
+    geomClasses <- vapply(
+        plot$layers,
+        function(layer) class(layer$geom)[[1L]],
+        character(1))
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
 
@@ -1032,6 +1050,19 @@ test_that("nMDS plot is a non-empty read-only rendering of cached state", {
     expect_identical(private$.state$features, before$features)
     expect_identical(private$.state$vectorEndpoints, before$vectorEndpoints)
     expect_identical(private$.state$overlays, before$overlays)
+    expect_null(plot$labels$title)
+    expect_true("GeomPoint" %in% geomClasses)
+    expect_true("GeomPath" %in% geomClasses)
+    expect_gte(sum(geomClasses == "GeomSegment"), 3L)
+    expect_gte(sum(geomClasses == "GeomText"), 2L)
+    expect_identical(plot$scales$get_scales("colour")$name, "Group")
+    expect_identical(plot$scales$get_scales("shape")$name, "Group")
+    expect_identical(plot$scales$get_scales("linetype")$name, "Layer")
+    expect_identical(plot$scales$get_scales("linewidth")$name, "Layer")
+    expect_s3_class(plot$guides$guides$colour, "GuideLegend")
+    expect_s3_class(plot$guides$guides$shape, "GuideLegend")
+    expect_s3_class(plot$guides$guides$linetype, "GuideLegend")
+    expect_true(length(built$plot$guides$guides) >= 2L)
     expect_false(grepl(
         "ordihull|ordiellipse|ordispider|vegan::scores",
         plotBody))
@@ -1147,7 +1178,7 @@ test_that("legacy 3D environmental endpoints are authoritative in table and plot
     private <- analysis$.__enclos_env__$private
     actual <- analysis$results$envfit$asDF
     endpoints <- private$.state$vectorEndpoints
-    plotBody <- paste(deparse(body(private$.plotNmds)), collapse="\n")
+    plotBody <- paste(deparse(body(private$.buildNmdsPlot)), collapse="\n")
 
     expect_true(analysis$results$envfit$getColumn("NMDS3")$visible)
     expect_true(all(is.finite(actual$NMDS3)))
@@ -1213,16 +1244,12 @@ test_that("Data Summary and semantic plot descriptions report the complete 2D co
     expect_identical(result$ordination$title, "Two-dimensional nMDS ordination")
     expect_match(description, "22 sites")
     expect_match(description, "stress")
-    expect_match(description, "Bray-Curtis")
-    expect_match(description, "after None")
-    expect_match(description, "Display:")
-    expect_match(description, "group colour and shape")
-    expect_match(description, "group hull")
-    expect_match(description, "1-SD dispersion ellipse")
-    expect_match(description, "group spider")
-    expect_match(description, "2 environmental vector\\(s\\)")
+    expect_match(description, "Bray-Curtis dissimilarity")
+    expect_match(description, "transformation: None")
+    expect_match(description, "grouped by group")
+    expect_false(grepl("Display:", description, fixed=TRUE))
     expect_false(grepl("uniformly rescaled", description, fixed=TRUE))
-    expect_lt(nchar(description), 700L)
+    expect_lt(nchar(description), 350L)
     expect_match(description, "overflow-wrap: anywhere")
     expect_match(description, "word-break: normal")
 })
@@ -1294,8 +1321,23 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     description <- nmds_squish(shown$results$shepardDescription$asString())
     before <- list(
         fit=shownPrivate$.state$fit,
+        data=shownPrivate$.state$shepardData,
         valid=shownPrivate$.state$shepardValid,
         warnings=shownPrivate$.state$warnings)
+    plot <- shownPrivate$.buildShepardPlot()
+    geomClasses <- vapply(
+        plot$layers,
+        function(layer) class(layer$geom)[[1L]],
+        character(1))
+    lineIndex <- which(geomClasses %in% c("GeomLine", "GeomPath"))[[1L]]
+    expectedData <- data.frame(
+        dissimilarity=as.numeric(shownPrivate$.state$fit$diss),
+        ordinationDistance=as.numeric(shownPrivate$.state$fit$dist),
+        monotonicFit=as.numeric(shownPrivate$.state$fit$dhat))
+    expectedLine <- expectedData[order(
+        expectedData$dissimilarity,
+        expectedData$monotonicFit,
+        method="radix"), , drop=FALSE]
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
     grDevices::png(path, width=900, height=700)
@@ -1303,15 +1345,32 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     grDevices::dev.off()
 
     expect_true(shownPrivate$.state$shepardValid)
+    expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme, .tofuPlotTheme())
+    expect_true("GeomPoint" %in% geomClasses)
+    expect_true(any(geomClasses %in% c("GeomLine", "GeomPath")))
+    expect_identical(shownPrivate$.state$shepardData, expectedData)
+    expect_identical(plot$data, expectedData)
+    expect_identical(plot$layers[[lineIndex]]$data, expectedLine)
+    expect_true(all(diff(plot$layers[[lineIndex]]$data$dissimilarity) >= 0))
+    expect_false(grepl(
+        "stressplot",
+        paste(deparse(body(shownPrivate$.plotShepard)), collapse="\n"),
+        fixed=TRUE))
     expect_true(isTRUE(rendered))
     expect_true(shown$results$shepard$visible)
     expect_true(shown$results$shepardDescription$visible)
+    expect_true(shown$results$shepardPairs$visible)
+    shownPairs <- shown$results$shepardPairs$asDF
+    rownames(shownPairs) <- NULL
+    expect_equal(shownPairs, expectedData, tolerance=0)
     expect_match(description, "observed dissimilarities", ignore.case=TRUE)
     expect_match(description, "ordination distances")
     expect_match(description, "stress")
     expect_lt(nchar(description), 350L)
     expect_gt(file.info(path)$size, 0)
     expect_identical(shownPrivate$.state$fit, before$fit)
+    expect_identical(shownPrivate$.state$shepardData, before$data)
     expect_identical(shownPrivate$.state$shepardValid, before$valid)
     expect_identical(shownPrivate$.state$warnings, before$warnings)
 
@@ -1323,12 +1382,58 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
         nmdsTrymax=5)
     expect_false(hidden$results$shepard$visible)
     expect_false(hidden$results$shepardDescription$visible)
+    expect_false(hidden$results$shepardPairs$visible)
+    expect_equal(length(hidden$results$shepardPairs$rowKeys), 0L)
     expect_false(grepl(
         "observed dissimilarities",
         nmds_squish(hidden$results$shepardDescription$asString())))
 
     shownPrivate$.state$fit$stress <- NaN
     expect_false(shownPrivate$.validateShepard())
+})
+
+test_that("Shepard point and table cap is deterministic and RNG-safe", {
+    analysis <- run_nmds_private(
+        nmds_state_data(n=18L),
+        vars=paste0("feature_0", 1:4),
+        nmdsShepard=TRUE,
+        seed=123,
+        nmdsTrymax=5)
+    private <- analysis$.__enclos_env__$private
+    synthetic <- data.frame(
+        dissimilarity=seq(0, 1, length.out=1500L),
+        ordinationDistance=rev(seq(0, 1, length.out=1500L)),
+        monotonicFit=seq(.1, .9, length.out=1500L))
+    set.seed(923L)
+    before <- .Random.seed
+    first <- private$.capShepardData(synthetic)
+    after <- .Random.seed
+    second <- private$.capShepardData(synthetic)
+
+    expect_identical(first, second)
+    expect_identical(nrow(first), 1000L)
+    expect_identical(after, before)
+    expect_true(all(first$dissimilarity %in% synthetic$dissimilarity))
+})
+
+test_that("Shepard data rejects fit vectors that do not match site pairs", {
+    analysis <- run_nmds_private(
+        nmds_state_data(n=18L),
+        vars=paste0("feature_0", 1:4),
+        nmdsShepard=TRUE,
+        seed=123,
+        nmdsTrymax=5)
+    private <- analysis$.__enclos_env__$private
+    original <- private$.state$fit
+    expectedLength <- as.integer(choose(nrow(private$.state$sites), 2L))
+
+    expect_identical(nrow(private$.state$shepardData), expectedLength)
+    for (field in c("diss", "dist", "dhat")) {
+        private$.state$fit <- original
+        private$.state$fit[[field]] <- original[[field]][-1L]
+        expect_null(private$.shepardData(), info=field)
+        expect_false(private$.validateShepard(), info=field)
+    }
 })
 
 test_that("Analysis settings report effective choices compactly", {

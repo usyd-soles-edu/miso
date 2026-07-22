@@ -130,6 +130,49 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
+  - name: sites
+    title: Site Scores
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: row
+        title: Row
+        type: integer
+      - name: NMDS1
+        title: NMDS1
+        type: number
+        format: zto
+      - name: NMDS2
+        title: NMDS2
+        type: number
+        format: zto
+      - name: NMDS3
+        title: NMDS3
+        type: number
+        format: zto
+      - name: group
+        title: Group
+        type: text
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
   - name: stress
     title: Stress and convergence diagnostics
     type: Table
@@ -210,6 +253,43 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
+  - name: shepardPairs
+    title: Pairs shown in the Shepard diagram
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: dissimilarity
+        title: Observed dissimilarity
+        type: number
+        format: zto
+      - name: ordinationDistance
+        title: Ordination distance
+        type: number
+        format: zto
+      - name: monotonicFit
+        title: Monotone fitted distance
+        type: number
+        format: zto
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
   - name: envfit
     title: Environmental Fit
     type: Table
@@ -268,49 +348,6 @@ items:
     title: Interpretation
     type: Html
     visible: false
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
-      - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
-      - nmdsEnvPerm
-
-  - name: sites
-    title: Site Scores
-    type: Table
-    rows: 0
-    visible: false
-    columns:
-      - name: row
-        title: Row
-        type: integer
-      - name: NMDS1
-        title: NMDS1
-        type: number
-        format: zto
-      - name: NMDS2
-        title: NMDS2
-        type: number
-        format: zto
-      - name: NMDS3
-        title: NMDS3
-        type: number
-        format: zto
-      - name: group
-        title: Group
-        type: text
     clearWith:
       - vars
       - factor

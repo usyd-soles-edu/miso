@@ -1,0 +1,146 @@
+---
+name: pcoa
+title: PCoA
+jrs: '1.1'
+
+items:
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
+    clearWith: &clearWith
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction
+      - showCentroids
+      - showSpiders
+
+  - name: summary
+    title: Data Summary
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith: *clearWith
+
+  - name: warnings
+    title: Warnings
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: ordination
+    title: Principal coordinates ordination
+    type: Image
+    width: 600
+    height: 500
+    renderFun: .plotPcoa
+    visible: false
+    clearWith: *clearWith
+
+  - name: ordinationDescription
+    title: Ordination description
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: sites
+    title: Site Coordinates
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: site
+        title: Site
+        type: text
+      - name: sourceRow
+        title: Source row
+        type: integer
+      - name: group
+        title: Group
+        type: text
+      - name: PCoA1
+        title: PCoA1
+        type: number
+        format: zto
+      - name: PCoA2
+        title: PCoA2
+        type: number
+        format: zto
+    clearWith: *clearWith
+
+  - name: centroids
+    title: Group Centroids
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: group
+        title: Group
+        type: text
+      - name: n
+        title: n
+        type: integer
+      - name: PCoA1
+        title: PCoA1
+        type: number
+        format: zto
+      - name: PCoA2
+        title: PCoA2
+        type: number
+        format: zto
+    clearWith: *clearWith
+
+  - name: eigenvalues
+    title: Eigenvalues
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: axis
+        title: Axis
+        type: text
+      - name: eigenvalue
+        title: Eigenvalue
+        type: number
+        format: zto
+      - name: sign
+        title: Sign
+        type: text
+      - name: explained
+        title: Explained (%)
+        type: number
+        format: zto
+    clearWith: *clearWith
+
+  - name: interpretation
+    title: Interpretation
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: settings
+    title: Settings
+    type: Table
+    rows: 0
+    visible: false
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith: *clearWith
+
+...

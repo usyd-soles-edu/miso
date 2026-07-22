@@ -12,7 +12,7 @@ options:
     type: Data
 
   - name: vars
-    title: 'Required: Feature variables'
+    title: Feature variables (required)
     type: Variables
     suggested:
       - continuous
@@ -20,7 +20,7 @@ options:
       - numeric
 
   - name: labels
-    title: 'Optional: Sample labels'
+    title: Sample labels (optional)
     type: Variable
     suggested:
       - nominal
@@ -108,9 +108,50 @@ options:
         name: mahalanobis
     default: bray
 
+  - name: sampleLabels
+    title: Sample labels
+    type: List
+    options:
+      - title: Automatic
+        name: auto
+      - title: Show
+        name: show
+      - title: Hide
+        name: hide
+    default: auto
+
   - name: showLabels
-    title: Show sample labels
+    title: Legacy sample labels
+    type: String
+    default: __tofu_unset__
+    hidden: true
+    description: Compatibility value for analyses saved before sample label modes were introduced.
+
+  - name: defineClusters
+    title: Define clusters
     type: Bool
-    default: true
+    default: false
+
+  - name: cutMode
+    title: Define clusters by
+    type: List
+    options:
+      - title: Number of clusters
+        name: number
+      - title: Dissimilarity height
+        name: height
+    default: number
+
+  - name: numberClusters
+    title: Number of clusters
+    type: Number
+    default: 3
+    min: 2
+
+  - name: cutHeight
+    title: Dissimilarity height
+    type: Number
+    default: 0.5
+    min: 0
 
 ...

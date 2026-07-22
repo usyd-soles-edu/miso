@@ -2,8 +2,10 @@
 ^\.Rproj\.user$
 ^\.Rhistory$
 ^\.gitignore$
+^\.git$
 ^\.pre-commit-config\.yaml$
 ^\.\.Rcheck$
 ^build$
 ^tofu_.*\.jmo$
 ^tests/manual/workbooks$
+^LICENSE$

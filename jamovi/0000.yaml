@@ -9,9 +9,9 @@ maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
 date: '2026-06-30'
 type: R
 description: >-
-  Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, and cluster analysis
+  Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and cluster analysis
   workflows for multivariate abundance and community-style data using vegan and
-  base R.
+  ggplot2.
 analyses:
   - title: PERMANOVA
     name: permanova
@@ -41,6 +41,18 @@ analyses:
     menuGroup: tofu
     menuTitle: nMDS
     menuSubtitle: Visualise sample patterns
+  - title: PCoA
+    name: pcoa
+    ns: tofu
+    category: analyses
+    menuGroup: tofu
+    menuTitle: PCoA
+    menuSubtitle: Visualise distance structure
+    description: >-
+      Performs descriptive principal coordinates analysis (PCoA) of pairwise
+      dissimilarities among sites. The ordination visualises resemblance
+      structure and does not test group differences. When called from R, it
+      returns the jamovi analysis results object.
   - title: Cluster analysis
     name: cluster
     ns: tofu

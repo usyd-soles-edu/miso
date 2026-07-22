@@ -11,18 +11,20 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: "Required: Feature variables"
+        label: Feature variables (required)
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: "Required: Grouping variable"
+        label: Grouping variable (required)
         children:
           - type: VariablesListBox
             name: factor
             maxItemCount: 1
             isTarget: true
+            events:
+              change: update_control_states
   - type: CollapseBox
     name: studyDesign
     label: Study design and model
@@ -36,7 +38,7 @@ children:
         stretchFactor: 1
         children:
           - type: TargetLayoutBox
-            label: Additional factors
+            label: Additional factors (optional)
             children:
               - type: VariablesListBox
                 name: permFactors
@@ -44,14 +46,14 @@ children:
                 events:
                   change: update_control_states
           - type: TargetLayoutBox
-            label: Blocking variable
+            label: Blocking variable (optional)
             children:
               - type: VariablesListBox
                 name: strata
                 maxItemCount: 1
                 isTarget: true
           - type: TargetLayoutBox
-            label: Continuous covariates
+            label: Continuous covariates (optional)
             children:
               - type: VariablesListBox
                 name: covariates
@@ -88,6 +90,38 @@ children:
           change: update_control_states
       - type: ComboBox
         name: permAdjust
+  - type: CollapseBox
+    name: plots
+    label: Plots
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: showCompanionPcoa
+        events:
+          change: update_control_states
+      - type: VariableSupplier
+        name: pcoaDisplayVariables
+        label: Display groups by
+        persistentItems: false
+        stretchFactor: 1
+        children:
+          - type: TargetLayoutBox
+            label: Model factor
+            children:
+              - type: VariablesListBox
+                name: pcoaDisplayFactor
+                maxItemCount: 1
+                isTarget: true
+                events:
+                  change: update_control_states
+      - type: Label
+        label: Choose the same primary or additional factor retained in the fitted model.
+        margin: none
+      - type: CheckBox
+        name: pcoaCentroids
+      - type: CheckBox
+        name: pcoaSpiders
   - type: CollapseBox
     name: reproducibility
     label: Reproducibility and technical settings

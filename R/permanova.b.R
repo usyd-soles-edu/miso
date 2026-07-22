@@ -7,7 +7,11 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .state = list(),
 
         .run = function() {
-            private$.state <- list(warnings=character(), cl=NULL, permutation=NULL)
+            private$.state <- list(
+                warnings=character(), cl=NULL, permutation=NULL,
+                companion=list(
+                    requested=isTRUE(self$options$showCompanionPcoa),
+                    fit=NULL, plotData=NULL, displayFactor=NULL))
             private$.resetResults()
 
             if (length(self$options$vars) == 0) {
@@ -94,6 +98,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$options$transform,
                 self$options$distance)
 
+            private$.runCompanionPcoa(prep, main$model)
+
             pairwiseShown <- FALSE
             if (isTRUE(self$options$permPairwise)) {
                 if (isTRUE(self$options$permInteractions)) {
@@ -129,8 +135,11 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .resetResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
+            self$results$companionPcoaDescription$setContent("")
             tofu_clear_table(self$results$summary)
             tofu_clear_table(self$results$table)
+            tofu_clear_table(self$results$companionPcoaSites)
+            tofu_clear_table(self$results$companionPcoaCentroids)
             tofu_clear_table(self$results$pairwise)
             self$results$table$setNote(
                 key="structuralCells",
@@ -143,6 +152,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             for (name in c(
                     "guidance", "warnings", "summary", "table",
+                    "companionPcoa", "companionPcoaDescription",
+                    "companionPcoaSites", "companionPcoaCentroids",
                     "pairwise", "note", "settings"))
                 self$results[[name]]$setVisible(FALSE)
         },
@@ -168,6 +179,298 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$warnings$setContent(tofu_html_block(warnings))
             self$results$warnings$setVisible(TRUE)
+        },
+
+        .runCompanionPcoa = function(prep, model) {
+            if (!isTRUE(self$options$showCompanionPcoa))
+                return()
+
+            selection <- private$.companionDisplayFactor(prep, model)
+            if (!isTRUE(selection$valid)) {
+                private$.showCompanionInstruction(selection$message)
+                return()
+            }
+
+            fit <- tryCatch(
+                .tofuPcoa(
+                    prep$dist,
+                    sqrtDist=self$options$distSqrt,
+                    correction=self$options$distAdd,
+                    groups=selection$groups),
+                error=function(e) list(
+                    error=TRUE,
+                    message=paste0("PCoA could not be fitted: ",
+                        conditionMessage(e))))
+            private$.state$companion$displayFactor <- selection$name
+            private$.state$companion$fit <- fit
+            if (isTRUE(fit$error)) {
+                private$.showCompanionInstruction(paste(
+                    fit$message,
+                    "The PERMANOVA and pairwise results remain available."))
+                return()
+            }
+
+            plotData <- .tofuPcoaPlotData(
+                fit,
+                showCentroids=self$options$pcoaCentroids,
+                showSpiders=self$options$pcoaSpiders)
+            private$.state$companion$plotData <- plotData
+            private$.populateCompanionSites(prep, fit)
+            if (isTRUE(self$options$pcoaCentroids) ||
+                    isTRUE(self$options$pcoaSpiders))
+                private$.populateCompanionCentroids(fit)
+            private$.populateCompanionDescription(
+                prep, model, selection$name, fit, plotData,
+                selection$notice)
+
+            self$results$companionPcoaDescription$setVisible(TRUE)
+            self$results$companionPcoaSites$setVisible(TRUE)
+            self$results$companionPcoaCentroids$setVisible(
+                (isTRUE(self$options$pcoaCentroids) ||
+                    isTRUE(self$options$pcoaSpiders)) &&
+                !is.null(fit$centroids))
+            self$results$companionPcoa$setVisible(
+                !is.null(plotData) && isTRUE(plotData$available))
+        },
+
+        .companionDisplayFactor = function(prep, model) {
+            eligible <- names(model$factorColumns)
+            multifactor <- length(eligible) > 1L
+            requested <- tofu_clean_vars(self$options$pcoaDisplayFactor)
+            notice <- character()
+            if (!multifactor) {
+                selected <- eligible[[1L]]
+                if (length(requested) == 1L &&
+                        !identical(requested[[1L]], selected)) {
+                    stale <- requested[[1L]]
+                    if (stale %in% model$droppedFactorNames) {
+                        notice <- sprintf(
+                            paste(
+                                "Additional factor '%s' was not retained in",
+                                "the fitted PERMANOVA model after data",
+                                "filtering; the companion PCoA automatically",
+                                "displays '%s'."),
+                            stale, selected)
+                    } else {
+                        notice <- sprintf(
+                            paste(
+                                "The selected variable '%s' is not a",
+                                "categorical factor retained in the fitted",
+                                "PERMANOVA model; the companion PCoA",
+                                "automatically displays '%s'."),
+                            stale, selected)
+                    }
+                }
+            } else {
+                if (length(requested) != 1L ||
+                        !requested[[1L]] %in% eligible) {
+                    dropped <- if (length(requested) == 1L &&
+                            requested[[1L]] %in% model$droppedFactorNames) {
+                        sprintf(
+                            paste(
+                                "Additional factor '%s' was not retained after",
+                                "data filtering."),
+                            requested[[1L]])
+                    } else {
+                        character()
+                    }
+                    return(list(
+                        valid=FALSE,
+                        message=paste(
+                            dropped,
+                            "Choose one categorical model factor to display:",
+                            paste(eligible, collapse=", "),
+                            "Covariates, blocking variables, interactions, and",
+                            "variables outside the fitted model cannot be used.")))
+                }
+                selected <- requested[[1L]]
+            }
+
+            modelColumn <- unname(model$factorColumns[[selected]])
+            if (is.null(selected) || length(modelColumn) != 1L ||
+                    !modelColumn %in% names(model$data)) {
+                return(list(
+                    valid=FALSE,
+                    message="The model factor selected for the companion PCoA is unavailable."))
+            }
+            groups <- droplevels(as.factor(model$data[[modelColumn]]))
+            if (length(groups) != attr(prep$dist, "Size") || anyNA(groups)) {
+                return(list(
+                    valid=FALSE,
+                    message=paste(
+                        "The selected display factor does not align with the",
+                        "sites retained for PERMANOVA.")))
+            }
+            if (nlevels(groups) < 2L) {
+                return(list(
+                    valid=FALSE,
+                    message=paste0(
+                        "The selected display factor '", selected,
+                        "' has fewer than two groups after data filtering.")))
+            }
+            list(valid=TRUE, name=selected, groups=groups,
+                automatic=!multifactor, notice=notice)
+        },
+
+        .showCompanionInstruction = function(message) {
+            self$results$companionPcoaDescription$setContent(
+                tofu_html_block(c(
+                    paste(
+                        "Descriptive view of the distance structure; the",
+                        "PERMANOVA table is the hypothesis test."),
+                    message)))
+            self$results$companionPcoaDescription$setVisible(TRUE)
+        },
+
+        .addCompanionRow = function(table, values) {
+            key <- as.character(length(table$rowKeys) + 1L)
+            table$addRow(rowKey=key, values=values)
+        },
+
+        .populateCompanionSites = function(prep, fit) {
+            axis1 <- if (ncol(fit$points) >= 1L) {
+                fit$points[, 1L]
+            } else {
+                rep(NA_real_, nrow(fit$points))
+            }
+            axis2 <- if (ncol(fit$points) >= 2L) {
+                fit$points[, 2L]
+            } else {
+                rep(NA_real_, nrow(fit$points))
+            }
+            groups <- as.character(fit$groups)
+            for (i in seq_len(nrow(fit$points))) {
+                private$.addCompanionRow(
+                    self$results$companionPcoaSites,
+                    list(
+                        site=fit$siteNames[[i]],
+                        sourceRow=as.integer(prep$rowIndex[[i]]),
+                        group=groups[[i]],
+                        PCoA1=tofu_num_or_na(axis1[[i]]),
+                        PCoA2=tofu_num_or_na(axis2[[i]])))
+            }
+        },
+
+        .populateCompanionCentroids = function(fit) {
+            if (is.null(fit$centroids))
+                return()
+            axis2 <- if (ncol(fit$centroids) >= 2L) {
+                fit$centroids[, 2L]
+            } else {
+                rep(NA_real_, nrow(fit$centroids))
+            }
+            for (i in seq_len(nrow(fit$centroids))) {
+                group <- rownames(fit$centroids)[[i]]
+                private$.addCompanionRow(
+                    self$results$companionPcoaCentroids,
+                    list(
+                        group=group,
+                        n=as.integer(fit$groupSizes[[group]]),
+                        PCoA1=tofu_num_or_na(fit$centroids[i, 1L]),
+                        PCoA2=tofu_num_or_na(axis2[[i]])))
+            }
+        },
+
+        .populateCompanionDescription = function(
+                prep, model, displayFactor, fit, plotData,
+                selectionNotice=character()) {
+            opening <- paste(
+                "Descriptive view of the distance structure; the",
+                "PERMANOVA table is the hypothesis test.")
+            preprocessing <- sprintf(
+                paste(
+                    "%d sites were retained after the %s transformation and",
+                    "%s dissimilarity calculation; the same prepared distance",
+                    "object supplied to PERMANOVA was used."),
+                prep$rowsUsed,
+                tolower(private$.transformLabel(self$options$transform)),
+                private$.distanceLabel(self$options$distance))
+            sqrtText <- if (isTRUE(fit$sqrtDist)) {
+                "Distances were square-rooted for both PERMANOVA and this PCoA."
+            } else {
+                "Distances were not square-rooted."
+            }
+            correctionText <- if (identical(fit$correction, "none")) {
+                "No additive correction was applied."
+            } else {
+                sprintf(
+                    "%s correction was applied in both analyses (constant %.6g).",
+                    private$.additiveLabel(fit$correction),
+                    fit$correctionConstant)
+            }
+            axesText <- if (!is.null(plotData) &&
+                    isTRUE(plotData$available)) {
+                sprintf(
+                    paste(
+                        "The image displays PCoA1 (%.1f%%) and PCoA2 (%.1f%%)",
+                        "of the sum of positive eigenvalues for %s (%d groups)."),
+                    fit$explained[[1L]], fit$explained[[2L]],
+                    displayFactor, nlevels(fit$groups))
+            } else {
+                paste(
+                    "Fewer than two positive axes were available, so no blank",
+                    "image is shown; the coordinate tables retain the useful",
+                    "one-dimensional result.")
+            }
+            plotAvailable <- !is.null(plotData) &&
+                isTRUE(plotData$available)
+            overlays <- if (!plotAvailable) {
+                paste(
+                    "Because the image is unavailable, no site, centroid, or",
+                    "spider overlay is shown. Site and centroid coordinates",
+                    "are retained in tables where applicable.")
+            } else if (isTRUE(plotData$neutral)) {
+                paste(
+                    "Sites use neutral styling because more than 64 groups are",
+                    "present; centroids and spiders are omitted from the image",
+                    "while full group identities remain in the tables.")
+            } else {
+                sprintf(
+                    "Sites are shown; centroids are %s and spiders are %s.",
+                    if (isTRUE(plotData$showCentroids)) "shown" else
+                        "not shown",
+                    if (isTRUE(plotData$showSpiders)) "shown" else
+                        "not shown")
+            }
+            modelIsComplex <- length(model$extraNames) > 0L ||
+                length(model$covariateNames) > 0L ||
+                isTRUE(self$options$permInteractions)
+            modelCaveat <- if (modelIsComplex) {
+                paste(
+                    "The displayed grouping does not represent the complete",
+                    "model, and this two-dimensional view cannot display",
+                    "adjusted term effects.")
+            } else {
+                character()
+            }
+            content <- c(
+                opening,
+                preprocessing,
+                sqrtText,
+                correctionText,
+                axesText,
+                overlays,
+                selectionNotice,
+                if (!is.null(plotData) && isTRUE(plotData$available))
+                    .tofuPcoaSamplingDisclosure(plotData) else character(),
+                paste(
+                    "Complete site identities, source rows, and group labels",
+                    "are provided in the coordinate table."),
+                modelCaveat,
+                paste(
+                    "Apparent separation is descriptive and must not be used",
+                    "to infer p-values or effect significance."))
+            self$results$companionPcoaDescription$setContent(
+                tofu_html_block(content))
+        },
+
+        .plotCompanionPcoa = function(image, ...) {
+            plot <- .buildPcoaPlot(
+                private$.state$companion$plotData)
+            if (is.null(plot))
+                return()
+            suppressWarnings(print(plot))
+            invisible(TRUE)
         },
 
         .permutationState = function(prep) {
@@ -253,7 +556,10 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .runPermanova = function(prep) {
             tofu_set_seed(prep)
-            result <- tryCatch(private$.adonisModel(prep), error=function(e) e)
+            model <- private$.makeModelData(prep)
+            result <- tryCatch(
+                private$.adonisModel(prep, model),
+                error=function(e) e)
             if (inherits(result, "error"))
                 return(list(success=FALSE, error=result$message))
 
@@ -290,11 +596,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             list(
                 success=TRUE,
                 result=result,
-                model=private$.makeModelData(prep))
+                model=model)
         },
 
-        .adonisModel = function(prep) {
-            model <- private$.makeModelData(prep)
+        .adonisModel = function(prep, model=NULL) {
+            if (is.null(model))
+                model <- private$.makeModelData(prep)
             by <- self$options$permBy
             if (identical(by, "omnibus"))
                 by <- NULL
@@ -327,15 +634,21 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             data <- data.frame(.f1=droplevels(prep$group), check.names=FALSE)
             terms <- ".f1"
             extraNames <- character()
+            factorColumns <- stats::setNames(".f1", prep$primary)
+            droppedFactorNames <- character()
 
             if (length(prep$extra) > 0) {
                 for (i in seq_along(prep$extra)) {
                     f <- droplevels(as.factor(prep$data[[prep$extra[[i]]]]))
-                    if (nlevels(f) < 2)
+                    if (nlevels(f) < 2) {
+                        droppedFactorNames <- c(
+                            droppedFactorNames, prep$extra[[i]])
                         next
+                    }
                     nm <- paste0(".f", i + 1)
                     data[[nm]] <- f
                     extraNames <- c(extraNames, nm)
+                    factorColumns[[prep$extra[[i]]]] <- nm
                 }
                 if (length(extraNames) > 0) {
                     if (self$options$permInteractions)
@@ -366,7 +679,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 data=data,
                 strata=strata,
                 extraNames=extraNames,
-                covariateNames=covNames)
+                covariateNames=covNames,
+                factorColumns=factorColumns,
+                droppedFactorNames=droppedFactorNames)
         },
 
         .runPairwisePermanova = function(prep) {

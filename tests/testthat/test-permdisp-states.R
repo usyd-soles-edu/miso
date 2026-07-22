@@ -10,6 +10,30 @@ permdisp_state_data <- function(two_groups=FALSE) {
     data
 }
 
+permdisp_test_fit <- function(data=permdisp_state_data(), centre="median") {
+    suppressWarnings(vegan::betadisper(
+        vegan::vegdist(data[c("sp1", "sp2", "sp3")], method="bray"),
+        data$group,
+        type=centre))
+}
+
+permdisp_populate_test_ordination <- function(ordination) {
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        showOrdinationPlot=TRUE)
+    analysis <- permdispClass$new(
+        options=options, data=permdisp_state_data())
+    private <- analysis$.__enclos_env__$private
+    private$.resetResults()
+    private$.state <- list(
+        ordination=ordination,
+        distanceDiagnostic=NULL)
+    private$.populateOrdination()
+    private$.showSuccessfulResults(FALSE)
+    analysis
+}
+
 expect_permdisp_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
@@ -46,8 +70,11 @@ test_that("PERMDISP schema follows the required-first option hierarchy", {
     expect_identical(by_name$permScheme$default, "free")
     expect_identical(by_name$dispType$default, "median")
     expect_identical(by_name$dispAdjust$default, "holm")
+    expect_true(by_name$showDistancePlot$default)
+    expect_false(by_name$showOrdinationPlot$default)
 
     expect_false(find_permdisp_yaml_node(ui, "analysisChoices")$collapsed)
+    expect_false(find_permdisp_yaml_node(ui, "plots")$collapsed)
     expect_true(find_permdisp_yaml_node(ui, "advancedOptions")$collapsed)
     expect_true(find_permdisp_yaml_node(ui, "reproducibility")$collapsed)
     expect_false(is.null(find_permdisp_yaml_node(ui, "permRestriction")))
@@ -78,8 +105,22 @@ test_that("PERMDISP result schema hides every empty shell", {
     expect_identical(by_name$note$type, "Html")
     expect_identical(
         vapply(by_name$distances$columns, `[[`, character(1), "name"),
-        c("group", "n", "distance", "median", "sd", "min", "max")
+        c(
+            "group", "n", "centre", "distance", "median", "q1", "q3",
+            "sd", "min", "max")
     )
+    expect_identical(by_name$plot$type, "Image")
+    expect_identical(by_name$plot$width, 600L)
+    expect_identical(by_name$plot$height, 460L)
+    expect_identical(by_name$plotDescription$type, "Html")
+    expect_identical(by_name$ordinationPlot$type, "Image")
+    expect_identical(by_name$ordinationPlot$width, 600L)
+    expect_identical(by_name$ordinationPlot$height, 500L)
+    expect_identical(by_name$ordinationDescription$type, "Html")
+    expect_identical(by_name$ordinationScores$type, "Table")
+    expect_identical(
+        vapply(by_name$ordinationScores$columns, `[[`, character(1), "name"),
+        c("point", "pointType", "group", "plotKey", "axis1", "axis2"))
     expect_identical(by_name$anova$columns[[6L]]$title, "Permutation p")
     expect_identical(by_name$pairwise$title, "Pairwise Dispersion Comparisons")
 })
@@ -99,7 +140,10 @@ test_that("new PERMDISP shows only complete getting-started guidance", {
     expect_permdisp_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "distances", "anova", "pairwise", "plot", "note", "settings")
+        hidden=c(
+            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "plotDescription", "ordinationPlot", "ordinationDescription",
+            "ordinationScores", "note", "settings")
     )
 })
 
@@ -113,7 +157,10 @@ test_that("incomplete PERMDISP inputs show one actionable correction", {
     expect_permdisp_visibility(
         features_only,
         visible="guidance",
-        hidden=c("summary", "warnings", "distances", "anova", "pairwise", "plot", "note", "settings")
+        hidden=c(
+            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "plotDescription", "ordinationPlot", "ordinationDescription",
+            "ordinationScores", "note", "settings")
     )
 
     group_only <- permdisp(
@@ -125,7 +172,10 @@ test_that("incomplete PERMDISP inputs show one actionable correction", {
     expect_permdisp_visibility(
         group_only,
         visible="guidance",
-        hidden=c("summary", "warnings", "distances", "anova", "pairwise", "plot", "note", "settings")
+        hidden=c(
+            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "plotDescription", "ordinationPlot", "ordinationDescription",
+            "ordinationScores", "note", "settings")
     )
 })
 
@@ -142,7 +192,10 @@ test_that("PERMDISP preparation failure hides every result shell", {
     expect_permdisp_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "distances", "anova", "pairwise", "plot", "note", "settings")
+        hidden=c(
+            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "plotDescription", "ordinationPlot", "ordinationDescription",
+            "ordinationScores", "note", "settings")
     )
 })
 
@@ -157,8 +210,12 @@ test_that("successful PERMDISP hides guidance warnings and pairwise shells", {
 
     expect_permdisp_visibility(
         result,
-        visible=c("summary", "distances", "anova", "plot", "note", "settings"),
-        hidden=c("guidance", "warnings", "pairwise")
+        visible=c(
+            "summary", "distances", "anova", "plot", "plotDescription",
+            "note", "settings"),
+        hidden=c(
+            "guidance", "warnings", "pairwise", "ordinationPlot",
+            "ordinationDescription", "ordinationScores")
     )
 })
 
@@ -181,6 +238,10 @@ test_that("PERMDISP valid invalid valid transitions clear stale results", {
     expect_true(analysis$results$guidance$visible)
     expect_false(analysis$results$anova$visible)
     expect_false(analysis$results$plot$visible)
+    expect_false(analysis$results$plotDescription$visible)
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_false(analysis$results$ordinationDescription$visible)
+    expect_false(analysis$results$ordinationScores$visible)
     expect_equal(length(analysis$results$summary$rowKeys), 0L)
     expect_equal(length(analysis$results$distances$rowKeys), 0L)
     expect_equal(length(analysis$results$anova$rowKeys), 0L)
@@ -247,8 +308,12 @@ test_that("PERMDISP preprocessing warnings accompany valid results", {
     expect_match(as.character(result$warnings$asString()), "rows excluded")
     expect_permdisp_visibility(
         result,
-        visible=c("summary", "warnings", "distances", "anova", "plot", "note", "settings"),
-        hidden=c("guidance", "pairwise")
+        visible=c(
+            "summary", "warnings", "distances", "anova", "plot",
+            "plotDescription", "note", "settings"),
+        hidden=c(
+            "guidance", "pairwise", "ordinationPlot",
+            "ordinationDescription", "ordinationScores")
     )
 })
 
@@ -308,6 +373,12 @@ test_that("PERMDISP distance summary agrees with vegan distances", {
     expect_equal(actual$n, unname(vapply(expected, length, integer(1))))
     expect_equal(actual$distance, unname(vapply(expected, mean, numeric(1))))
     expect_equal(actual$median, unname(vapply(expected, stats::median, numeric(1))))
+    expect_equal(actual$q1, unname(vapply(expected, function(x) {
+        stats::quantile(x, .25, names=FALSE)
+    }, numeric(1))))
+    expect_equal(actual$q3, unname(vapply(expected, function(x) {
+        stats::quantile(x, .75, names=FALSE)
+    }, numeric(1))))
     expect_equal(actual$sd, unname(vapply(expected, stats::sd, numeric(1))))
     expect_equal(actual$min, unname(vapply(expected, min, numeric(1))))
     expect_equal(actual$max, unname(vapply(expected, max, numeric(1))))
@@ -380,4 +451,409 @@ test_that("legacy no-block Stratified PERMDISP is equivalent to Free", {
     expect_match(
         as.character(legacy$warnings$asString()),
         "equivalent for that design")
+})
+
+test_that("PERMDISP plot schemas and generated contracts stay synchronized", {
+    root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
+    if (!file.exists(file.path(root, "jamovi", "permdisp.a.yaml")))
+        skip("development source files are not present in the package-check tree")
+    for (name in c("permdisp.a.yaml", "permdisp.u.yaml", "permdisp.r.yaml")) {
+        expect_identical(
+            readLines(file.path(root, "jamovi", name), warn=FALSE),
+            readLines(tofu_fixture_path("jamovi", name), warn=FALSE))
+    }
+    expect_identical(
+        readLines(file.path(root, "jamovi", "js", "permdisp.js"), warn=FALSE),
+        readLines(tofu_fixture_path("jamovi", "js", "permdisp.js"), warn=FALSE))
+    generated <- paste(
+        readLines(file.path(root, "R", "permdisp.h.R"), warn=FALSE),
+        collapse="\n")
+    expect_match(generated, "showDistancePlot")
+    expect_match(generated, "showOrdinationPlot")
+    expect_match(generated, "plotDescription")
+    expect_match(generated, "ordinationScores")
+})
+
+test_that("distance diagnostic preserves fitted identity and all-value summaries", {
+    fit <- permdisp_test_fit()
+    diagnostic <- .preparePermdispDistanceDiagnostic(
+        fit, centre="median", maxRaw=4L)
+
+    expect_identical(as.numeric(diagnostic$all$distance), as.numeric(fit$distances))
+    expect_identical(as.character(diagnostic$all$group), as.character(fit$group))
+    expect_identical(diagnostic$groups, levels(fit$group))
+    expect_identical(diagnostic$displayed, 4L)
+    expect_identical(diagnostic$total, length(fit$distances))
+    expected <- split(fit$distances, fit$group, drop=TRUE)
+    expect_identical(diagnostic$summaries$group, names(expected))
+    expect_identical(
+        diagnostic$summaries$n,
+        unname(vapply(expected, length, integer(1))))
+    expect_true(all(diagnostic$summaries$centre == "Median"))
+    expect_equal(
+        diagnostic$summaries$median,
+        unname(vapply(expected, stats::median, numeric(1))))
+    expect_equal(
+        diagnostic$summaries$q1,
+        unname(vapply(expected, function(x) {
+            stats::quantile(x, .25, names=FALSE)
+        }, numeric(1))))
+    expect_equal(
+        diagnostic$summaries$q3,
+        unname(vapply(expected, function(x) {
+            stats::quantile(x, .75, names=FALSE)
+        }, numeric(1))))
+})
+
+test_that("distance marks are deterministic capped and RNG-safe", {
+    fit <- list(
+        distances=seq_len(900L) / 100,
+        group=factor(rep(c("A", "B", "C"), each=300L)))
+    set.seed(8243)
+    before <- .Random.seed
+    first <- .preparePermdispDistanceDiagnostic(
+        fit, centre="centroid", maxRaw=600L)
+    after <- .Random.seed
+    second <- .preparePermdispDistanceDiagnostic(
+        fit, centre="centroid", maxRaw=600L)
+
+    expect_identical(after, before)
+    expect_identical(first$raw, second$raw)
+    expect_identical(first$displayed, 600L)
+    expect_identical(first$total, 900L)
+    expect_identical(first$summaries$n, rep(300L, 3L))
+    expect_true(all(first$summaries$centre == "Centroid"))
+    expect_match(
+        .tofuPlotDisclosure(first$displayed, first$total, "site distances"),
+        "300.*omitted")
+})
+
+test_that("distance plot uses shared ggplot styling and collision-safe n labels", {
+    groups <- c(
+        "A very long treatment label sharing prefix alpha",
+        "A very long treatment label sharing prefix beta")
+    fit <- list(
+        distances=c(.1, .2, .3, .4),
+        group=factor(rep(groups, each=2L), levels=groups))
+    diagnostic <- .preparePermdispDistanceDiagnostic(fit, centre="median")
+    plot <- .buildPermdispDistancePlot(diagnostic)
+    built <- ggplot2::ggplot_build(plot)
+    labels <- built$layout$panel_params[[1L]]$x$get_labels()
+
+    expect_s3_class(plot, "ggplot")
+    expect_s3_class(plot$theme, "theme")
+    expect_identical(plot$labels$y, "Distance to group centre")
+    expect_length(unique(labels), 2L)
+    expect_true(all(grepl("n = 2", labels, fixed=TRUE)))
+    expect_identical(diagnostic$summaries$group, groups)
+    expect_true(any(vapply(plot$layers, function(layer) {
+        inherits(layer$geom, "GeomBoxplot")
+    }, logical(1))))
+    expect_true(any(vapply(plot$layers, function(layer) {
+        inherits(layer$geom, "GeomPoint")
+    }, logical(1))))
+})
+
+test_that("distance and ordination builders degrade safely beyond 64 groups", {
+    groups <- sprintf("Group %02d", seq_len(65L))
+    fit <- list(
+        distances=seq_along(groups) / 100,
+        group=factor(groups, levels=groups))
+    diagnostic <- .preparePermdispDistanceDiagnostic(fit, centre="median")
+    distancePlot <- .buildPermdispDistancePlot(diagnostic)
+
+    centres <- data.frame(
+        point=paste("Centre:", groups), pointType="Group centre",
+        group=groups, axis1=seq_along(groups), axis2=seq_along(groups) / 2)
+    sites <- data.frame(
+        point=paste("Row", seq_along(groups)), pointType="Site",
+        group=groups, axis1=seq_along(groups) + .1,
+        axis2=seq_along(groups) / 2 + .1,
+        centre1=centres$axis1, centre2=centres$axis2)
+    ordination <- list(
+        available=TRUE, tableAvailable=TRUE,
+        sites=sites, centres=centres, plotCentres=centres,
+        eligibleSites=sites, raw=sites,
+        groups=groups, axisNames=c("PCoA1", "PCoA2"),
+        displayed=65L, plotEligible=65L, unplottable=0L, total=65L)
+    ordinationPlot <- .buildPermdispOrdinationPlot(ordination)
+
+    expect_s3_class(distancePlot, "ggplot")
+    expect_s3_class(ordinationPlot, "ggplot")
+    expect_silent(ggplot2::ggplot_build(distancePlot))
+    expect_silent(ggplot2::ggplot_build(ordinationPlot))
+})
+
+test_that("ordination uses exact fitted site and centre coordinates", {
+    fit <- permdisp_test_fit()
+    expected <- vegan::scores(
+        fit, display=c("sites", "centroids"), choices=1:2)
+    ordination <- .preparePermdispOrdination(
+        fit, rowIndex=seq(11L, 19L))
+
+    expect_true(ordination$available)
+    expect_identical(ordination$axisNames, colnames(expected$sites))
+    expect_identical(ordination$sites$point, paste("Row", 11:19))
+    expect_identical(ordination$sites$group, as.character(fit$group))
+    expect_identical(ordination$sites$plotKey, as.character(fit$group))
+    expect_equal(
+        unname(as.matrix(ordination$sites[c("axis1", "axis2")])),
+        unname(expected$sites), tolerance=0)
+    expect_identical(ordination$centres$group, rownames(expected$centroids))
+    expect_identical(ordination$centres$plotKey, rownames(expected$centroids))
+    expect_equal(
+        unname(as.matrix(ordination$centres[c("axis1", "axis2")])),
+        unname(expected$centroids), tolerance=0)
+    centreRows <- match(ordination$sites$group, ordination$centres$group)
+    expect_equal(
+        ordination$sites$centre1,
+        ordination$centres$axis1[centreRows], tolerance=0)
+    expect_equal(
+        ordination$sites$centre2,
+        ordination$centres$axis2[centreRows], tolerance=0)
+})
+
+test_that("ordination plot has equal axes segments and no ellipse layer", {
+    ordination <- .preparePermdispOrdination(permdisp_test_fit())
+    plot <- .buildPermdispOrdinationPlot(ordination)
+    geomClasses <- vapply(plot$layers, function(layer) {
+        class(layer$geom)[[1L]]
+    }, character(1))
+
+    expect_s3_class(plot, "ggplot")
+    expect_identical(plot$coordinates$ratio, 1)
+    expect_true("GeomSegment" %in% geomClasses)
+    expect_false(any(grepl("Ellipse", geomClasses, ignore.case=TRUE)))
+    expect_identical(plot$labels$x, ordination$axisNames[[1L]])
+    expect_identical(plot$labels$y, ordination$axisNames[[2L]])
+
+    pointLayers <- Filter(function(layer) {
+        inherits(layer$geom, "GeomPoint")
+    }, plot$layers)
+    centreLayer <- pointLayers[[which(vapply(pointLayers, function(layer) {
+        identical(layer$aes_params$shape, 23L)
+    }, logical(1)))]]
+    siteLayer <- pointLayers[[which(vapply(pointLayers, function(layer) {
+        is.null(layer$aes_params$shape)
+    }, logical(1)))]]
+    expect_false(centreLayer$show.legend)
+    expect_false(identical(siteLayer$show.legend, FALSE))
+})
+
+test_that("one-axis geometry keeps accessible coordinates without plotting", {
+    fit <- permdisp_test_fit()
+    fit$vectors <- fit$vectors[, 1L, drop=FALSE]
+    fit$centroids <- fit$centroids[, 1L, drop=FALSE]
+    fit$eig <- fit$eig[[1L]]
+    names(fit$eig) <- "PCoA1"
+    ordination <- .preparePermdispOrdination(fit)
+
+    expect_false(ordination$available)
+    expect_true(ordination$tableAvailable)
+    expect_match(ordination$reason, "fewer than two usable axes")
+    expect_identical(ordination$sites$point, paste("Row", seq_len(9L)))
+    expect_equal(nrow(ordination$sites), 9L)
+    expect_true(all(is.na(ordination$sites$axis2)))
+    expect_null(.buildPermdispOrdinationPlot(ordination))
+
+    analysis <- permdisp_populate_test_ordination(ordination)
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_true(analysis$results$ordinationDescription$visible)
+    expect_true(analysis$results$ordinationScores$visible)
+    expect_equal(
+        sum(analysis$results$ordinationScores$asDF$pointType == "Site"),
+        9L)
+})
+
+test_that("non-finite fitted sites remain in coordinates and are disclosed", {
+    fit <- permdisp_test_fit()
+    fit$vectors[1L, 1L] <- NaN
+    ordination <- .preparePermdispOrdination(
+        fit, rowIndex=seq(11L, 19L), maxRaw=3L)
+
+    expect_true(ordination$available)
+    expect_true(ordination$tableAvailable)
+    expect_equal(ordination$total, 9L)
+    expect_equal(ordination$plotEligible, 8L)
+    expect_equal(ordination$unplottable, 1L)
+    expect_equal(ordination$displayed, 3L)
+    expect_identical(ordination$sites$point, paste("Row", 11:19))
+    expect_identical(ordination$sites$group, as.character(fit$group))
+    expect_equal(nrow(ordination$eligibleSites), 8L)
+    expect_true(all(is.finite(ordination$raw$axis1)))
+    expect_true(all(is.finite(ordination$raw$axis2)))
+    expect_true(all(is.finite(ordination$raw$centre1)))
+    expect_true(all(is.finite(ordination$raw$centre2)))
+
+    analysis <- permdisp_populate_test_ordination(ordination)
+    scores <- analysis$results$ordinationScores$asDF
+    siteScores <- scores[scores$pointType == "Site", , drop=FALSE]
+    description <- as.character(
+        analysis$results$ordinationDescription$asString())
+    description <- gsub("\\s+", " ", description)
+    expect_equal(nrow(siteScores), 9L)
+    expect_identical(siteScores$point, paste("Row", 11:19))
+    expect_identical(siteScores$group, as.character(fit$group))
+    expect_true(is.na(siteScores$axis1[[1L]]))
+    expect_false(any(is.nan(siteScores$axis1)))
+    expect_false(grepl("NaN", paste(as.matrix(scores), collapse=" "), fixed=TRUE))
+    expect_match(description, "1 of 9 fitted sites could not be plotted", fixed=TRUE)
+    expect_match(description, "3 of 8 plot-eligible sites", fixed=TRUE)
+    expect_match(
+        description,
+        "Small colour-and-shape points are sites, open diamonds are fitted group centres",
+        fixed=TRUE)
+    expect_match(
+        description,
+        "segments connect each displayed site to its own centre",
+        fixed=TRUE)
+})
+
+test_that("all non-finite fitted sites fail gracefully without losing rows", {
+    fit <- permdisp_test_fit()
+    fit$vectors[, 1:2] <- NaN
+    ordination <- .preparePermdispOrdination(fit)
+
+    expect_false(ordination$available)
+    expect_true(ordination$tableAvailable)
+    expect_equal(ordination$total, 9L)
+    expect_equal(ordination$plotEligible, 0L)
+    expect_equal(ordination$unplottable, 9L)
+    expect_equal(nrow(ordination$sites), 9L)
+    expect_equal(nrow(ordination$raw), 0L)
+    expect_match(ordination$reason, "No fitted sites had finite coordinates")
+    expect_null(.buildPermdispOrdinationPlot(ordination))
+
+    analysis <- permdisp_populate_test_ordination(ordination)
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_true(analysis$results$ordinationScores$visible)
+    expect_equal(
+        sum(analysis$results$ordinationScores$asDF$pointType == "Site"),
+        9L)
+    expect_match(
+        as.character(analysis$results$ordinationDescription$asString()),
+        "9 of 9 fitted sites could not be plotted",
+        fixed=TRUE)
+})
+
+test_that("positive and negative fitted axes are preserved exactly", {
+    fit <- permdisp_test_fit()
+    positive <- which(fit$eig > 0)[[1L]]
+    negative <- which(fit$eig < 0)[[1L]]
+    choices <- c(positive, negative)
+    expectedSites <- fit$vectors[, choices, drop=FALSE]
+    expectedCentres <- fit$centroids[, choices, drop=FALSE]
+    fit$vectors <- expectedSites
+    fit$centroids <- expectedCentres
+    fit$eig <- fit$eig[choices]
+
+    ordination <- .preparePermdispOrdination(fit)
+
+    expect_true(ordination$available)
+    expect_identical(ordination$axisNames, colnames(expectedSites))
+    expect_equal(
+        unname(as.matrix(ordination$sites[c("axis1", "axis2")])),
+        unname(expectedSites), tolerance=0)
+    expect_equal(
+        unname(as.matrix(ordination$centres[c("axis1", "axis2")])),
+        unname(expectedCentres), tolerance=0)
+})
+
+test_that("plot toggles preserve every numerical PERMDISP result", {
+    arguments <- list(
+        data=permdisp_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        dispPairwise=TRUE,
+        permN=19,
+        seed=123)
+    default <- suppressWarnings(suppressMessages(do.call(permdisp, arguments)))
+    hidden <- suppressWarnings(suppressMessages(do.call(
+        permdisp,
+        c(arguments, list(
+            showDistancePlot=FALSE, showOrdinationPlot=FALSE)))))
+    ordination <- suppressWarnings(suppressMessages(do.call(
+        permdisp,
+        c(arguments, list(
+            showDistancePlot=TRUE, showOrdinationPlot=TRUE)))))
+
+    for (name in c("anova", "pairwise", "distances")) {
+        expect_equal(hidden[[name]]$asDF, default[[name]]$asDF, tolerance=0)
+        expect_equal(ordination[[name]]$asDF, default[[name]]$asDF, tolerance=0)
+    }
+    expect_false(hidden$plot$visible)
+    expect_false(hidden$plotDescription$visible)
+    expect_false(hidden$ordinationPlot$visible)
+    expect_false(hidden$ordinationDescription$visible)
+    expect_false(hidden$ordinationScores$visible)
+    expect_true(ordination$plot$visible)
+    expect_true(ordination$plotDescription$visible)
+    expect_true(ordination$ordinationPlot$visible)
+    expect_true(ordination$ordinationDescription$visible)
+    expect_true(ordination$ordinationScores$visible)
+    expect_match(
+        as.character(ordination$plotDescription$asString()),
+        "Dispersion Test table")
+    expect_match(
+        as.character(ordination$ordinationDescription$asString()),
+        "same fitted")
+    expect_match(
+        gsub(
+            "\\s+", " ",
+            as.character(ordination$ordinationDescription$asString())),
+        "open diamonds are fitted group centres",
+        fixed=TRUE)
+})
+
+test_that("plot transitions clear stale descriptions and coordinates", {
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        showOrdinationPlot=TRUE,
+        permN=19,
+        seed=123)
+    analysis <- permdispClass$new(
+        options=options, data=permdisp_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$ordinationPlot$visible)
+    expect_gt(nrow(analysis$results$ordinationScores$asDF), 0L)
+
+    distanceOption <- options$option("showDistancePlot")
+    ordinationOption <- options$option("showOrdinationPlot")
+    distanceOption$.__enclos_env__$private$.value <- FALSE
+    ordinationOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(analysis$results$plot$visible)
+    expect_false(analysis$results$plotDescription$visible)
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_false(analysis$results$ordinationDescription$visible)
+    expect_false(analysis$results$ordinationScores$visible)
+    expect_false(grepl(
+        "Dispersion Test table",
+        as.character(analysis$results$plotDescription$asString())))
+    expect_false(grepl(
+        "same fitted",
+        as.character(analysis$results$ordinationDescription$asString())))
+    expect_equal(nrow(analysis$results$ordinationScores$asDF), 0L)
+})
+
+test_that("PERMDISP ggplots render to bounded PNG files", {
+    distance <- .buildPermdispDistancePlot(
+        .preparePermdispDistanceDiagnostic(
+            permdisp_test_fit(), centre="median"))
+    ordination <- .buildPermdispOrdinationPlot(
+        .preparePermdispOrdination(permdisp_test_fit()))
+    distanceFile <- tempfile(fileext=".png")
+    ordinationFile <- tempfile(fileext=".png")
+    on.exit(unlink(c(distanceFile, ordinationFile)), add=TRUE)
+
+    grDevices::png(distanceFile, width=600, height=460)
+    print(distance)
+    grDevices::dev.off()
+    grDevices::png(ordinationFile, width=600, height=500)
+    print(ordination)
+    grDevices::dev.off()
+
+    expect_gt(file.info(distanceFile)$size, 1000)
+    expect_gt(file.info(ordinationFile)$size, 1000)
 })

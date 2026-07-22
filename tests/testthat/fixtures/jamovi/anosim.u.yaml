@@ -41,6 +41,14 @@ children:
       - type: ComboBox
         name: anosimAdjust
   - type: CollapseBox
+    name: plots
+    label: Plots
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: showRankPlot
+  - type: CollapseBox
     name: studyDesign
     label: Study design and permutation restrictions
     collapsed: true

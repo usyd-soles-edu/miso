@@ -10,6 +10,19 @@ simper_state_data <- function(counts=c(3L, 3L, 3L), observed=c("B", "A", "C")) {
     )
 }
 
+simper_many_feature_data <- function(groups=LETTERS[1:2], per_group=4L) {
+    group <- rep(groups, each=per_group)
+    group_index <- match(group, groups) - 1L
+    row_index <- seq_along(group)
+    data <- as.data.frame(setNames(lapply(seq_len(12L), function(feature) {
+        1 + feature + group_index * (13 - feature) * 0.7 +
+            ((row_index * feature) %% 5) / 10
+    }), paste0("feature_", seq_len(12L))))
+    names(data)[[12L]] <- paste0("feature_12_", paste(rep("full_long_label", 5L), collapse="_"))
+    data$group <- factor(group, levels=rev(groups))
+    data
+}
+
 expect_simper_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
@@ -61,14 +74,16 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
             "vars", "factor", "transform", "distance", "distBinary", "seed",
             "simperN", "simperTop", "simperCum")
     )
-    expect_identical(option_names[match("simperCum", option_names) + 1:2],
-                     c("simperAssess", "simperAdjust"))
+    expect_identical(option_names[match("simperCum", option_names) + 1:3],
+                     c("simperHeatmap", "simperAssess", "simperAdjust"))
     expect_identical(tail(option_names, 1L), "simperDetails")
     expect_false(by_name$simperAssess$default)
     expect_identical(by_name$simperAdjust$default, "holm")
     expect_false(by_name$simperDetails$default)
+    expect_false(by_name$simperHeatmap$default)
 
     expect_false(find_simper_yaml_node(ui, "analysisChoices")$collapsed)
+    expect_false(find_simper_yaml_node(ui, "plots")$collapsed)
     expect_true(find_simper_yaml_node(ui, "permutationAssessment")$collapsed)
     expect_true(is.null(find_simper_yaml_node(ui, "distance")))
     expect_true(is.null(find_simper_yaml_node(ui, "distBinary")))
@@ -77,8 +92,8 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
         readLines(tofu_fixture_path("jamovi", "simper.u.yaml")),
         collapse="\n")
     compact_labels <- c(
-        "Required: Feature variables",
-        "Required: Grouping variable",
+        "Feature variables (required)",
+        "Grouping variable (required)",
         "Dissimilarity: Bray-Curtis",
         "Tip",
         "Transforms affect contributions.",
@@ -106,7 +121,10 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
         c("Tip", "Transforms affect contributions.", "Means use transformed values."))
     expect_true(transform_tip[[1L]]$heading)
 
-    features_group <- choices[[transform_index + 3L]]
+    plots <- find_simper_yaml_node(ui, "plots")$children
+    expect_identical(plots[[1L]]$label, "Contrast shown")
+    expect_match(plots[[2L]]$label, "Each observed contrast")
+    features_group <- plots[[3L]]
     expect_identical(features_group$type, "LayoutBox")
     expect_identical(features_group$children[[1L]]$label, "Features shown")
     expect_true(features_group$children[[1L]]$heading)
@@ -119,7 +137,8 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
         c("Tip", "Stop at Top N or cumulative %.",
           "Keep the threshold-crossing feature."))
     expect_true(limits_tip[[1L]]$heading)
-    expect_identical(choices[[transform_index + 4L]]$name, "simperDetails")
+    expect_identical(plots[[4L]]$name, "simperHeatmap")
+    expect_identical(choices[[transform_index + 3L]]$name, "simperDetails")
 })
 
 test_that("SIMPER UI dependencies and progressive disclosure are explicit", {
@@ -131,6 +150,8 @@ test_that("SIMPER UI dependencies and progressive disclosure are explicit", {
     expect_match(source, "simperAdjust\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
     expect_match(source, "seed\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
     expect_match(source, "permutationAssessment\\.expand\\(\\)")
+    expect_match(source, "plots\\.expand\\(\\)")
+    expect_match(source, "List choices are fixed by the analysis schema", fixed=TRUE)
 })
 
 test_that("SIMPER transform reference scenario requests the optional mean tables", {
@@ -163,8 +184,8 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
         vapply(results, `[[`, character(1), "name"),
         c(
             "guidance", "summary", "warnings", "contrasts", "contributions",
-            "variability", "means", "table", "plot", "plotDescription",
-            "assessment", "note", "settings")
+            "variability", "means", "table", "contributionPlots", "heatmap",
+            "heatmapDescription", "heatmapValues", "assessment", "note", "settings")
     )
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
@@ -174,7 +195,13 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
     expect_identical(by_name$variability$title, "Contribution variability")
     expect_identical(by_name$means$title, "Group means")
     expect_identical(by_name$table$title, "Descriptive feature contributions")
-    expect_identical(by_name$plot$title, "SIMPER contribution percentages by group contrast")
+    expect_identical(by_name$contributionPlots$title, "Contribution plots by contrast")
+    expect_identical(by_name$contributionPlots$type, "Array")
+    expect_identical(by_name$contributionPlots$template$type, "Group")
+    expect_identical(
+        vapply(by_name$contributionPlots$template$items, `[[`, character(1), "name"),
+        c("plot", "description", "values"))
+    expect_identical(by_name$heatmap$title, "Contrast overview heatmap")
     expect_identical(by_name$assessment$title, "Exploratory permutation assessment")
     expect_identical(by_name$note$type, "Html")
     expect_identical(by_name$settings$title, "Analysis settings")
@@ -201,14 +228,17 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
             "contrast", "feature", "average", "sd", "ratio", "meanFirst",
             "meanSecond", "contribution", "cumulative")
     )
-    default_visible <- c("summary", "contrasts", "contributions", "plot",
-                         "plotDescription", "note", "settings")
+    default_visible <- c("summary", "contrasts", "contributions",
+                         "contributionPlots", "note", "settings")
     expect_lte(max(vapply(by_name[default_visible], function(item) {
         if (is.null(item$columns)) 0L else length(item$columns)
     }, integer(1))), 5L)
     expect_lte(length(by_name$variability$columns), 5L)
     expect_lte(length(by_name$means$columns), 4L)
-    expect_identical(by_name$plot$width, 580L)
+    expect_lte(by_name$contributionPlots$template$items[[1L]]$width, 600L)
+    expect_lte(by_name$contributionPlots$template$items[[1L]]$height, 650L)
+    expect_lte(by_name$heatmap$width, 600L)
+    expect_lte(by_name$heatmap$height, 650L)
 })
 
 test_that("new and incomplete SIMPER analyses show one actionable state", {
@@ -226,8 +256,8 @@ test_that("new and incomplete SIMPER analyses show one actionable state", {
         visible="guidance",
         hidden=c(
             "summary", "warnings", "contrasts", "contributions", "variability",
-            "means", "table", "plot",
-            "plotDescription", "assessment", "note", "settings")
+            "means", "table", "contributionPlots", "heatmap",
+            "heatmapDescription", "heatmapValues", "assessment", "note", "settings")
     )
 
     features_only <- simper(
@@ -240,8 +270,8 @@ test_that("new and incomplete SIMPER analyses show one actionable state", {
         visible="guidance",
         hidden=c(
             "summary", "warnings", "contrasts", "contributions", "variability",
-            "means", "table", "plot",
-            "plotDescription", "assessment", "note", "settings")
+            "means", "table", "contributionPlots", "heatmap",
+            "heatmapDescription", "heatmapValues", "assessment", "note", "settings")
     )
 })
 
@@ -257,9 +287,11 @@ test_that("default SIMPER is descriptive and hides optional empty output", {
     expect_simper_visibility(
         result,
         visible=c(
-            "summary", "contrasts", "contributions", "plot", "plotDescription",
+            "summary", "contrasts", "contributions", "contributionPlots",
             "note", "settings"),
-        hidden=c("guidance", "warnings", "variability", "means", "table", "assessment")
+        hidden=c(
+            "guidance", "warnings", "variability", "means", "table",
+            "heatmap", "heatmapDescription", "heatmapValues", "assessment")
     )
     expect_gt(nrow(result$contrasts$asDF), 0L)
     expect_gt(nrow(result$contributions$asDF), 0L)
@@ -271,7 +303,7 @@ test_that("default SIMPER is descriptive and hides optional empty output", {
                      names(settings)))
 })
 
-test_that("compact and optional SIMPER tables exactly match the hidden legacy result", {
+test_that("compact SIMPER rows stay filtered while detailed tables are complete", {
     result <- suppressWarnings(suppressMessages(simper(
         data=simper_state_data(),
         vars=c("sp1", "sp2", "sp3"),
@@ -283,16 +315,17 @@ test_that("compact and optional SIMPER tables exactly match the hidden legacy re
     expect_true(result$contributions$visible)
     expect_true(result$variability$visible)
     expect_true(result$means$visible)
-    expect_identical(
-        result$contributions$asDF,
-        legacy[c("contrast", "feature", "contribution", "cumulative")])
+    compact <- result$contributions$asDF
+    expect_true(nrow(compact) <= nrow(legacy))
+    compact_key <- paste(compact$contrast, compact$feature, sep="\r")
+    legacy_key <- paste(legacy$contrast, legacy$feature, sep="\r")
+    expect_true(all(compact_key %in% legacy_key))
     expect_identical(
         result$variability$asDF,
         legacy[c("contrast", "feature", "average", "sd", "ratio")])
     expect_identical(
         result$means$asDF,
         legacy[c("contrast", "feature", "meanFirst", "meanSecond")])
-    expect_identical(result$contributions$rowKeys, result$table$rowKeys)
     expect_identical(result$variability$rowKeys, result$table$rowKeys)
     expect_identical(result$means$rowKeys, result$table$rowKeys)
 })
@@ -389,8 +422,9 @@ test_that("stopping rules include the crossing feature without renormalising", {
         simperCum=70
     )))
 
-    for (contrast in unique(result$table$asDF$contrast)) {
-        rows <- result$table$asDF[result$table$asDF$contrast == contrast, , drop=FALSE]
+    for (contrast in unique(result$contributions$asDF$contrast)) {
+        rows <- result$contributions$asDF[
+            result$contributions$asDF$contrast == contrast, , drop=FALSE]
         expect_gte(tail(rows$cumulative, 1L), 70)
         if (nrow(rows) > 1L)
             expect_lt(rows$cumulative[[nrow(rows) - 1L]], 70)
@@ -403,11 +437,11 @@ test_that("stopping rules include the crossing feature without renormalising", {
         simperTop=2,
         simperCum=100
     )))
-    counts <- table(capped$table$asDF$contrast)
+    counts <- table(capped$contributions$asDF$contrast)
     expect_true(all(counts == 2L))
     expect_true(all(tapply(
-        capped$table$asDF$cumulative,
-        capped$table$asDF$contrast,
+        capped$contributions$asDF$cumulative,
+        capped$contributions$asDF$contrast,
         max) < 100))
 })
 
@@ -561,7 +595,7 @@ test_that("assessment failure preserves valid descriptive output", {
     expect_true(result$contributions$visible)
     expect_false(result$table$visible)
     expect_gt(nrow(result$table$asDF), 0L)
-    expect_true(result$plot$visible)
+    expect_true(result$contributionPlots$visible)
     expect_false(result$assessment$visible)
     expect_equal(length(result$assessment$rowKeys), 0L)
     expect_match(
@@ -593,6 +627,7 @@ test_that("SIMPER valid invalid valid transitions clear stale output", {
         vars=c("sp1", "sp2", "sp3"),
         factor="group",
         simperDetails=TRUE,
+        simperHeatmap=TRUE,
         simperAssess=TRUE,
         simperN=19,
         seed=123)
@@ -604,6 +639,9 @@ test_that("SIMPER valid invalid valid transitions clear stale output", {
     expect_true(analysis$results$means$visible)
     expect_false(analysis$results$table$visible)
     expect_true(analysis$results$assessment$visible)
+    expect_true(analysis$results$contributionPlots$visible)
+    expect_true(analysis$results$heatmap$visible)
+    expect_true(analysis$results$heatmapValues$visible)
 
     factor_option <- options$option("factor")
     factor_option$.__enclos_env__$private$.value <- NULL
@@ -615,6 +653,12 @@ test_that("SIMPER valid invalid valid transitions clear stale output", {
     }
     expect_false(analysis$results$assessment$visible)
     expect_equal(length(analysis$results$assessment$rowKeys), 0L)
+    expect_false(analysis$results$contributionPlots$visible)
+    expect_length(analysis$results$contributionPlots$items, 0L)
+    expect_false(analysis$results$heatmap$visible)
+    expect_false(analysis$results$heatmapDescription$visible)
+    expect_false(analysis$results$heatmapValues$visible)
+    expect_equal(length(analysis$results$heatmapValues$rowKeys), 0L)
 
     factor_option$.__enclos_env__$private$.value <- "group"
     suppressWarnings(suppressMessages(analysis$run()))
@@ -624,9 +668,12 @@ test_that("SIMPER valid invalid valid transitions clear stale output", {
     expect_true(analysis$results$means$visible)
     expect_false(analysis$results$table$visible)
     expect_true(analysis$results$assessment$visible)
+    expect_true(analysis$results$contributionPlots$visible)
+    expect_true(analysis$results$heatmap$visible)
+    expect_true(analysis$results$heatmapValues$visible)
 })
 
-test_that("five groups produce ten readable plot facets", {
+test_that("five groups produce ten independently bounded contrast plots", {
     group <- rep(LETTERS[1:5], each=3L)
     index <- seq_along(group)
     effect <- rep(seq(0, 8, by=2), each=3L)
@@ -641,16 +688,149 @@ test_that("five groups produce ten readable plot facets", {
     )))
 
     expect_equal(nrow(result$contrasts$asDF), 10L)
-    expect_identical(result$plot$height, 2200)
-    expect_match(
-        as.character(result$plotDescription$asString()),
-        "First[[:space:]]+contrasts[[:space:]]+described[[:space:]]+below")
-    expect_match(
-        as.character(result$plotDescription$asString()),
-        "Descriptive[[:space:]]+feature[[:space:]]+contributions")
+    expect_length(result$contributionPlots$items, 10L)
+    expect_true(all(vapply(
+        result$contributionPlots$items,
+        function(item) item$plot$width <= 600 && item$plot$height <= 650,
+        logical(1))))
+    expect_true(all(vapply(
+        result$contributionPlots$items,
+        function(item) item$plot$height == 430,
+        logical(1))))
+    expect_identical(
+        vapply(
+            result$contributionPlots$items,
+            function(item) item$title,
+            character(1)),
+        result$contrasts$asDF$contrast)
+    expect_true(all(result$contrasts$asDF$contrast %in% result$table$asDF$contrast))
+    for (item in result$contributionPlots$items) {
+        values <- item$values$asDF
+        expectedFeatures <- result$contributions$asDF$feature[
+            result$contributions$asDF$contrast == item$title]
+        expect_identical(values$feature, expectedFeatures)
+        expect_true(all(values$firstGroup != ""))
+        expect_true(all(values$secondGroup != ""))
+        expect_false(grepl("NaN", as.character(item$values$asString())))
+    }
 })
 
-test_that("SIMPER plot bounds long visual labels and preserves full accessible names", {
+test_that("SIMPER plot alternatives contain exactly the displayed values", {
+    data <- simper_many_feature_data(groups=LETTERS[1:3])
+    vars <- names(data)[names(data) != "group"]
+    result <- suppressWarnings(suppressMessages(do.call(simper, list(
+        data=data, vars=vars, factor="group", simperTop=4,
+        simperCum=100, simperHeatmap=TRUE, simperDetails=TRUE))))
+
+    compact <- result$contributions$asDF
+    full <- result$table$asDF
+    for (item in result$contributionPlots$items) {
+        values <- item$values$asDF
+        plotted <- compact[compact$contrast == item$title, , drop=FALSE]
+        detailed <- full[
+            full$contrast == item$title &
+                full$feature %in% plotted$feature, , drop=FALSE]
+        detailed <- detailed[match(plotted$feature, detailed$feature), ]
+        expect_identical(values$feature, plotted$feature)
+        expect_equal(values$contribution, plotted$contribution, tolerance=0)
+        expect_equal(values$cumulative, plotted$cumulative, tolerance=0)
+        expect_equal(values$average, detailed$average, tolerance=0)
+        expect_equal(values$meanFirst, detailed$meanFirst, tolerance=0)
+        expect_equal(values$meanSecond, detailed$meanSecond, tolerance=0)
+        expect_true(all(nzchar(values$direction)))
+    }
+
+    heatmap <- result$heatmapValues$asDF
+    expectedCells <- length(unique(compact$feature)) *
+        length(unique(compact$contrast))
+    expect_identical(nrow(heatmap), expectedCells)
+    expect_identical(sum(heatmap$selected == "Yes"), nrow(compact))
+    expect_true(all(is.na(heatmap$contribution[heatmap$selected == "No"])))
+    omittedRows <- which(heatmap$selected == "No")
+    expect_true(all(vapply(omittedRows, function(i) {
+        identical(result$heatmapValues$getCell(
+            rowKey=as.character(i), col="contribution")$value, "")
+    }, logical(1))))
+    selectedKey <- paste(
+        heatmap$contrast[heatmap$selected == "Yes"],
+        heatmap$feature[heatmap$selected == "Yes"], sep="\r")
+    compactKey <- paste(compact$contrast, compact$feature, sep="\r")
+    expect_setequal(selectedKey, compactKey)
+    expect_false(grepl("NaN", as.character(result$heatmapValues$asString())))
+})
+
+test_that("two-group plots omit features only from images and compact rows", {
+    data <- simper_many_feature_data()
+    vars <- names(data)[names(data) != "group"]
+    result <- suppressWarnings(suppressMessages(do.call(simper, list(
+        data=data,
+        vars=vars,
+        factor="group",
+        simperTop=3,
+        simperCum=100,
+        simperDetails=TRUE))))
+    compact_only <- suppressWarnings(suppressMessages(do.call(simper, list(
+        data=data,
+        vars=vars,
+        factor="group",
+        simperTop=3,
+        simperCum=100,
+        simperDetails=FALSE))))
+
+    expect_length(result$contributionPlots$items, 1L)
+    expect_equal(nrow(result$contributions$asDF), 3L)
+    expect_equal(nrow(result$table$asDF), 12L)
+    expect_equal(nrow(result$variability$asDF), 12L)
+    expect_equal(nrow(result$means$asDF), 12L)
+    long_label <- vars[[12L]]
+    expect_true(long_label %in% result$table$asDF$feature)
+    expect_true(long_label %in% result$variability$asDF$feature)
+    description <- gsub(
+        "[[:space:]]+", " ",
+        as.character(result$contributionPlots$items[[1L]]$description$asString()))
+    expect_match(description, "3 features shown; 9 omitted", fixed=TRUE)
+    expect_match(description, "retained in the detailed tables", fixed=TRUE)
+    compact_description <- gsub(
+        "[[:space:]]+", " ",
+        as.character(
+            compact_only$contributionPlots$items[[1L]]$description$asString()))
+    expect_match(compact_description, "3 features shown; 9 omitted", fixed=TRUE)
+    expect_match(
+        compact_description,
+        "available by enabling Show detailed statistics",
+        fixed=TRUE)
+    expect_identical(result$table$asDF, compact_only$table$asDF)
+})
+
+test_that("ten contrast plots stay filtered while every detailed table is complete", {
+    data <- simper_many_feature_data(groups=LETTERS[1:5])
+    vars <- names(data)[names(data) != "group"]
+    result <- suppressWarnings(suppressMessages(do.call(simper, list(
+        data=data,
+        vars=vars,
+        factor="group",
+        simperTop=3,
+        simperCum=100,
+        simperDetails=TRUE))))
+
+    expect_equal(nrow(result$contrasts$asDF), 10L)
+    expect_length(result$contributionPlots$items, 10L)
+    expect_true(all(table(result$contributions$asDF$contrast) == 3L))
+    expect_true(all(table(result$table$asDF$contrast) == 12L))
+    expect_true(all(table(result$variability$asDF$contrast) == 12L))
+    expect_true(all(table(result$means$asDF$contrast) == 12L))
+    expect_true(vars[[12L]] %in% result$table$asDF$feature)
+
+    descriptions <- vapply(
+        result$contributionPlots$items,
+        function(item) gsub(
+            "[[:space:]]+", " ", as.character(item$description$asString())),
+        character(1))
+    expect_true(all(grepl("3 features shown; 9 omitted", descriptions, fixed=TRUE)))
+    expect_true(all(grepl("retained in the detailed tables", descriptions, fixed=TRUE)))
+})
+
+test_that("SIMPER ggplot builder bounds labels and preserves full table names", {
     first_group <- paste0("Group", paste(rep("AlphaUnbroken", 5L), collapse=""))
     second_group <- paste0("Group", paste(rep("BetaUnbroken", 5L), collapse=""))
     first_feature <- paste0("Feature", paste(rep("LongTokenOne", 5L), collapse=""))
@@ -670,94 +850,182 @@ test_that("SIMPER plot bounds long visual labels and preserves full accessible n
     suppressWarnings(suppressMessages(analysis$run()))
     private <- analysis$.__enclos_env__$private
     before <- unserialize(serialize(private$.state$plotData, NULL))
-    calls <- new.env(parent=emptyenv())
-    calls$barplot <- list()
-    testthat::local_mocked_bindings(
-        barplot=function(height, names.arg, main, ...) {
-            calls$barplot[[length(calls$barplot) + 1L]] <- list(
-                names.arg=names.arg, main=main)
-            seq_along(height)
-        },
-        .package="graphics")
-    path <- tempfile(fileext=".png")
-    on.exit(unlink(path), add=TRUE)
-    grDevices::png(path, width=700, height=500)
-    private$.plotContributions(NULL)
-    grDevices::dev.off()
+    contrast <- unique(private$.state$plotData$contrast)[[1L]]
+    rows <- private$.state$plotData[
+        private$.state$plotData$contrast == contrast, , drop=FALSE]
+    plot <- private$.buildContributionPlot(rows, contrast)
 
     legacy <- analysis$results$table$asDF
     expect_true(all(c(first_feature, second_feature) %in% legacy$feature))
     expect_match(legacy$contrast[[1L]], first_group, fixed=TRUE)
     expect_match(legacy$contrast[[1L]], second_group, fixed=TRUE)
     expect_identical(private$.state$plotData, before)
-    expect_length(calls$barplot, 1L)
-    feature_labels <- calls$barplot[[1L]]$names.arg
-    main_label <- calls$barplot[[1L]]$main
-    expect_true(all(vapply(
-        strsplit(feature_labels, "\n", fixed=TRUE), length, integer(1)) <= 2L))
-    expect_true(all(vapply(
-        strsplit(feature_labels, "\n", fixed=TRUE),
-        function(lines) max(nchar(lines)), integer(1)) <= 18L))
-    expect_lte(length(strsplit(main_label, "\n", fixed=TRUE)[[1L]]), 2L)
-    expect_lte(max(nchar(strsplit(main_label, "\n", fixed=TRUE)[[1L]])), 28L)
+    expect_s3_class(plot, "ggplot")
+    expect_identical(
+        sort(as.character(plot$data$feature)),
+        sort(c(first_feature, second_feature)))
+    feature_labels <- plot$scales$get_scales("y")$labels
+    expect_true(all(nchar(feature_labels) <= 24L))
     expect_true(any(grepl("\u2026", feature_labels, fixed=TRUE)))
-    expect_true(grepl("\u2026", main_label, fixed=TRUE))
+    expect_match(plot$labels$x, "Contribution to average dissimilarity")
+    expect_false(grepl("driver|responsible|significant", paste(plot$labels, collapse=" "), ignore.case=TRUE))
 
-    description <- as.character(analysis$results$plotDescription$asString())
-    expect_match(description, first_feature, fixed=TRUE)
-    expect_match(description, second_feature, fixed=TRUE)
+    description <- as.character(
+        analysis$results$contributionPlots$items[[1L]]$description$asString())
+    description_text <- gsub("[[:space:]]+", " ", description)
     expect_match(description, first_group, fixed=TRUE)
-    expect_match(
-        description,
-        "Full[[:space:]]+labels[[:space:]]+and[[:space:]]+percentages[[:space:]]+for[[:space:]]+the[[:space:]]+contrasts[[:space:]]+described[[:space:]]+below")
-    expect_match(description, "[0-9]+\\.[0-9]%")
-    expect_lte(nchar(description), 12000L)
+    expect_match(description, second_group, fixed=TRUE)
+    expect_match(description, "Top 2|100%")
+    expect_match(description, "features shown")
+    expect_match(description, "descriptive")
+    expect_match(description_text, "does not establish cause")
+    expect_match(description_text, "available by enabling Show detailed statistics")
+    expect_lte(nchar(description), 900L)
+    expect_false(grepl(first_feature, description, fixed=TRUE))
 })
 
-test_that("SIMPER plot details bound many long contrast labels", {
-    groups <- paste0(
-        "Group", LETTERS[1:6], "_",
-        vapply(LETTERS[1:6], function(letter) {
-            paste(rep(paste0(letter, "UnbrokenToken"), 4L), collapse="")
-        }, character(1)))
-    group <- rep(groups, each=3L)
-    index <- seq_along(group)
-    effect <- rep(seq(0, 10, by=2), each=3L)
+test_that("SIMPER direction uses redundant fill and border patterns", {
+    first_group <- "Alpha treatment group with full name"
+    second_group <- "Beta reference group with full name"
     data <- data.frame(
-        sp1=1 + effect + index %% 2,
-        sp2=2 + effect / 2 + index %% 3,
-        group=factor(group, levels=groups))
-    result <- suppressWarnings(suppressMessages(simper(
-        data=data,
-        vars=c("sp1", "sp2"),
-        factor="group",
-        simperTop=2,
-        simperCum=100)))
+        first_higher=c(9, 10, 11, 1, 2, 3),
+        second_higher=c(1, 2, 3, 9, 10, 11),
+        equal_means=c(1, 3, 5, 2, 3, 4),
+        group=factor(rep(c(first_group, second_group), each=3L)))
+    options <- simperOptions$new(
+        vars=c("first_higher", "second_higher", "equal_means"),
+        factor="group", simperTop=3, simperCum=100)
+    analysis <- simperClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    private <- analysis$.__enclos_env__$private
+    contrast <- unique(private$.state$plotData$contrast)[[1L]]
+    rows <- private$.state$plotData[
+        private$.state$plotData$contrast == contrast, , drop=FALSE]
+    before <- rows[, c("feature", "contribution", "cumulative"), drop=FALSE]
+    expected_order <- order(rows$contribution, rows$feature)
+    plot <- private$.buildContributionPlot(rows, contrast)
+    built <- ggplot2::ggplot_build(plot)
+    fill_scale <- plot$scales$get_scales("fill")
+    linetype_scale <- plot$scales$get_scales("linetype")
+    values <- analysis$results$contributionPlots$items[[1L]]$values$asDF
 
-    expect_equal(nrow(result$contrasts$asDF), 15L)
-    description <- as.character(result$plotDescription$asString())
-    expect_match(
-        description,
-        paste0(
-            "plus[[:space:]]+5[[:space:]]+further[[:space:]]+contrasts",
-            "[[:space:]]+shown[[:space:]]+in[[:space:]]+the[[:space:]]+plot",
-            "[[:space:]]+and[[:space:]]+listed[[:space:]]+in[[:space:]]+the",
-            "[[:space:]]+results[[:space:]]+tables\\."))
-    omitted_contrast <- result$contrasts$asDF$contrast[[11L]]
-    expect_false(grepl(omitted_contrast, description, fixed=TRUE))
-    expect_true(all(result$contrasts$asDF$contrast %in% result$table$asDF$contrast))
-    expect_lte(nchar(description), 12000L)
-    descriptionText <- gsub("[[:space:]]+", " ", description)
-    expect_match(descriptionText, "First contrasts described below:", fixed=TRUE)
-    expect_match(
-        descriptionText,
-        "further contrasts shown in the plot and listed in the results tables.",
-        fixed=TRUE)
-    expect_match(
-        descriptionText,
-        "Full labels and percentages for the contrasts described below.",
-        fixed=TRUE)
-    expect_false(grepl("Contrasts shown:", descriptionText, fixed=TRUE))
+    expect_s3_class(plot, "ggplot")
+    expect_identical(
+        as.character(plot$data$feature),
+        as.character(before$feature[expected_order]))
+    expect_equal(
+        plot$data$contribution,
+        before$contribution[expected_order], tolerance=0)
+    expect_equal(
+        plot$data$cumulative,
+        before$cumulative[expected_order], tolerance=0)
+    expect_identical(fill_scale$name, "Transformed group mean")
+    expect_identical(linetype_scale$name, fill_scale$name)
+    expect_identical(linetype_scale$breaks, fill_scale$breaks)
+    expect_identical(linetype_scale$labels, fill_scale$labels)
+    expect_length(fill_scale$breaks, 3L)
+    expect_length(unique(built$data[[1L]]$fill), 3L)
+    expect_length(unique(built$data[[1L]]$linetype), 3L)
+    expect_setequal(
+        values$direction,
+        c(
+            paste0(first_group, " higher"),
+            paste0(second_group, " higher"),
+            "Equal means"))
+    expect_identical(
+        analysis$results$contributionPlots$items[[1L]]$plot$width, 580)
+    expect_identical(
+        analysis$results$contributionPlots$items[[1L]]$plot$height, 430)
+    expect_false(grepl(
+        "driver|responsible|significant",
+        paste(plot$labels, collapse=" "), ignore.case=TRUE))
+})
+
+test_that("colliding shortened identities remain distinct plot coordinates", {
+    feature_prefix <- paste0("feature_", paste(rep("sharedprefix", 4L), collapse=""))
+    features <- paste0(feature_prefix, c("_alpha", "_beta"))
+    group_prefix <- paste0("Group", paste(rep("SharedPrefix", 4L), collapse=""))
+    groups <- paste0(group_prefix, c("_A", "_B", "_C"))
+    group <- rep(groups, each=4L)
+    group_index <- match(group, groups) - 1L
+    row_index <- seq_along(group)
+    data <- data.frame(
+        first=1 + 5 * group_index + row_index %% 3,
+        second=2 + 3 * group_index + (row_index * 2) %% 5,
+        group=factor(group, levels=rev(groups)),
+        check.names=FALSE)
+    names(data)[1:2] <- features
+    analysis <- simperClass$new(
+        options=simperOptions$new(
+            vars=features, factor="group", simperTop=2,
+            simperCum=100, simperHeatmap=TRUE),
+        data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    private <- analysis$.__enclos_env__$private
+    contrast <- private$.state$contrastLabels[[1L]]
+    rows <- private$.state$plotData[
+        private$.state$plotData$contrast == contrast, , drop=FALSE]
+    contribution_plot <- private$.buildContributionPlot(rows, contrast)
+    contribution_build <- ggplot2::ggplot_build(contribution_plot)
+    contribution_labels <- contribution_plot$scales$get_scales("y")$labels
+
+    expect_equal(length(unique(contribution_build$data[[1L]]$y)), 2L)
+    expect_length(unique(unname(contribution_labels)), 2L)
+    expect_true(all(nchar(contribution_labels) <= 24L))
+    expect_identical(sort(levels(contribution_plot$data$feature)), sort(features))
+
+    heatmap <- private$.buildHeatmapPlot()
+    heatmap_build <- ggplot2::ggplot_build(heatmap)
+    feature_labels <- heatmap$scales$get_scales("y")$labels
+    contrast_labels <- heatmap$scales$get_scales("x")$labels
+    expect_equal(length(unique(heatmap_build$data[[1L]]$y)), 2L)
+    expect_equal(length(unique(heatmap_build$data[[1L]]$x)), 3L)
+    expect_length(unique(unname(feature_labels)), 2L)
+    expect_length(unique(unname(contrast_labels)), 3L)
+    expect_true(all(nchar(feature_labels) <= 20L))
+    expect_true(all(nchar(contrast_labels) <= 24L))
+    expect_identical(sort(levels(heatmap$data$feature)), sort(features))
+    expect_identical(
+        sort(levels(heatmap$data$contrast)),
+        sort(private$.state$contrastLabels))
+})
+
+test_that("two groups default to one contrast plot and optional heatmap is bounded", {
+    data <- simper_state_data(counts=c(4L, 4L), observed=c("B", "A"))
+    base <- suppressWarnings(suppressMessages(simper(
+        data=data,
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group")))
+    with_heatmap <- suppressWarnings(suppressMessages(simper(
+        data=data,
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        simperHeatmap=TRUE)))
+
+    expect_length(base$contributionPlots$items, 1L)
+    expect_false(base$heatmap$visible)
+    expect_false(base$heatmapDescription$visible)
+    expect_false(base$heatmapValues$visible)
+    expect_true(with_heatmap$heatmap$visible)
+    expect_true(with_heatmap$heatmapDescription$visible)
+    expect_true(with_heatmap$heatmapValues$visible)
+    expect_lte(with_heatmap$heatmap$width, 600L)
+    expect_lte(with_heatmap$heatmap$height, 650L)
+    expect_equal(base$table$asDF, with_heatmap$table$asDF, tolerance=0)
+    expect_equal(base$contrasts$asDF, with_heatmap$contrasts$asDF, tolerance=0)
+
+    analysis <- simperClass$new(
+        options=simperOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group", simperHeatmap=TRUE),
+        data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    heatmap <- analysis$.__enclos_env__$private$.buildHeatmapPlot()
+    expect_s3_class(heatmap, "ggplot")
+    expect_true(inherits(heatmap$scales$get_scales("fill"), "ScaleContinuous"))
+    expect_type(heatmap$data$missing, "logical")
+    expect_false("contribution" %in% names(heatmap$data))
+    expect_true(all(is.finite(heatmap$layers[[2L]]$data$contribution)))
+    expect_identical(heatmap$scales$get_scales("fill")$na.value, "#D9D9D9")
 })
 
 test_that("saved small and large datasets independently confirm descriptive output", {

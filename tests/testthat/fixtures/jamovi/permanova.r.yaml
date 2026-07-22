@@ -53,6 +53,84 @@ items:
         type: number
         format: zto,pvalue
 
+  - name: companionPcoa
+    title: PERMANOVA companion PCoA
+    type: Image
+    width: 600
+    height: 500
+    renderFun: .plotCompanionPcoa
+    visible: false
+    clearWith: &companionClearWith
+      - vars
+      - factor
+      - permFactors
+      - covariates
+      - strata
+      - permInteractions
+      - permBy
+      - transform
+      - distance
+      - distBinary
+      - distSqrt
+      - distAdd
+      - showCompanionPcoa
+      - pcoaDisplayFactor
+      - pcoaCentroids
+      - pcoaSpiders
+
+  - name: companionPcoaDescription
+    title: Companion PCoA description
+    type: Html
+    visible: false
+    clearWith: *companionClearWith
+
+  - name: companionPcoaSites
+    title: Companion PCoA Site Coordinates
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: site
+        title: Site
+        type: text
+      - name: sourceRow
+        title: Source row
+        type: integer
+      - name: group
+        title: Group
+        type: text
+      - name: PCoA1
+        title: PCoA1
+        type: number
+        format: zto
+      - name: PCoA2
+        title: PCoA2
+        type: number
+        format: zto
+    clearWith: *companionClearWith
+
+  - name: companionPcoaCentroids
+    title: Companion PCoA Group Centroids
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: group
+        title: Group
+        type: text
+      - name: n
+        title: n
+        type: integer
+      - name: PCoA1
+        title: PCoA1
+        type: number
+        format: zto
+      - name: PCoA2
+        title: PCoA2
+        type: number
+        format: zto
+    clearWith: *companionClearWith
+
   - name: pairwise
     title: Pairwise PERMANOVA
     type: Table

@@ -218,12 +218,13 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         warnings = function() private$.items[["warnings"]],
         ordination = function() private$.items[["ordination"]],
         ordinationDescription = function() private$.items[["ordinationDescription"]],
+        sites = function() private$.items[["sites"]],
         stress = function() private$.items[["stress"]],
         shepard = function() private$.items[["shepard"]],
         shepardDescription = function() private$.items[["shepardDescription"]],
+        shepardPairs = function() private$.items[["shepardPairs"]],
         envfit = function() private$.items[["envfit"]],
         note = function() private$.items[["note"]],
-        sites = function() private$.items[["sites"]],
         features = function() private$.items[["features"]],
         settings = function() private$.items[["settings"]]),
     private = list(),
@@ -363,6 +364,54 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "nmdsEnvPerm")))
             self$add(jmvcore::Table$new(
                 options=options,
+                name="sites",
+                title="Site Scores",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="row",
+                        `title`="Row",
+                        `type`="integer"),
+                    list(
+                        `name`="NMDS1",
+                        `title`="NMDS1",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS2",
+                        `title`="NMDS2",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS3",
+                        `title`="NMDS3",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="group",
+                        `title`="Group",
+                        `type`="text")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
                 name="stress",
                 title="Stress and convergence diagnostics",
                 rows=0,
@@ -425,6 +474,46 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="shepardDescription",
                 title="Shepard diagram description",
                 visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="shepardPairs",
+                title="Pairs shown in the Shepard diagram",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="dissimilarity",
+                        `title`="Observed dissimilarity",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="ordinationDistance",
+                        `title`="Ordination distance",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="monotonicFit",
+                        `title`="Monotone fitted distance",
+                        `type`="number",
+                        `format`="zto")),
                 clearWith=list(
                     "vars",
                     "factor",
@@ -510,54 +599,6 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="note",
                 title="Interpretation",
                 visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "seed",
-                    "nmdsK",
-                    "nmdsTrymax",
-                    "nmdsMaxit",
-                    "nmdsShepard",
-                    "nmdsOverlay",
-                    "nmdsEnv",
-                    "nmdsSpecies",
-                    "nmdsHull",
-                    "nmdsEllipse",
-                    "nmdsSpider",
-                    "nmdsEnvPerm")))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="sites",
-                title="Site Scores",
-                rows=0,
-                visible=FALSE,
-                columns=list(
-                    list(
-                        `name`="row",
-                        `title`="Row",
-                        `type`="integer"),
-                    list(
-                        `name`="NMDS1",
-                        `title`="NMDS1",
-                        `type`="number",
-                        `format`="zto"),
-                    list(
-                        `name`="NMDS2",
-                        `title`="NMDS2",
-                        `type`="number",
-                        `format`="zto"),
-                    list(
-                        `name`="NMDS3",
-                        `title`="NMDS3",
-                        `type`="number",
-                        `format`="zto"),
-                    list(
-                        `name`="group",
-                        `title`="Group",
-                        `type`="text")),
                 clearWith=list(
                     "vars",
                     "factor",
@@ -703,12 +744,13 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
 #'   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$sites} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
 #'   \code{results$shepardDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$shepardPairs} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$sites} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$features} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }

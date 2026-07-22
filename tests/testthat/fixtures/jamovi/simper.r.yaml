@@ -140,18 +140,87 @@ items:
         title: Cumulative contribution (%)
         type: number
 
-  - name: plot
-    title: SIMPER contribution percentages by group contrast
+  - name: contributionPlots
+    title: Contribution plots by contrast
+    type: Array
+    visible: false
+    template:
+      type: Group
+      title: Contrast contribution
+      items:
+        - name: plot
+          title: Contribution to average dissimilarity
+          type: Image
+          width: 580
+          height: 430
+          renderFun: .plotContribution
+        - name: description
+          title: Plot details
+          type: Html
+        - name: values
+          title: Values shown in this plot
+          type: Table
+          rows: 0
+          columns:
+            - name: feature
+              title: Feature
+              type: text
+            - name: average
+              title: Average contribution
+              type: number
+            - name: contribution
+              title: Contribution (%)
+              type: number
+            - name: cumulative
+              title: Cumulative (%)
+              type: number
+            - name: firstGroup
+              title: First group
+              type: text
+            - name: meanFirst
+              title: First mean
+              type: number
+            - name: secondGroup
+              title: Second group
+              type: text
+            - name: meanSecond
+              title: Second mean
+              type: number
+            - name: direction
+              title: Direction
+              type: text
+
+  - name: heatmap
+    title: Contrast overview heatmap
     type: Image
     visible: false
-    width: 580
-    height: 450
-    renderFun: .plotContributions
+    width: 600
+    height: 500
+    renderFun: .plotHeatmap
 
-  - name: plotDescription
-    title: Plot details
+  - name: heatmapDescription
+    title: Heatmap details
     type: Html
     visible: false
+
+  - name: heatmapValues
+    title: Values shown in the heatmap
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: contrast
+        title: Contrast
+        type: text
+      - name: feature
+        title: Feature
+        type: text
+      - name: contribution
+        title: Contribution (%)
+        type: number
+      - name: selected
+        title: Selected for this contrast
+        type: text
 
   - name: assessment
     title: Exploratory permutation assessment

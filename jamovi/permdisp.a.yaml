@@ -202,4 +202,14 @@ options:
         name: none
     default: holm
 
+  - name: showDistancePlot
+    title: Distance-to-centre diagnostic
+    type: Bool
+    default: true
+
+  - name: showOrdinationPlot
+    title: Ordination with group centres
+    type: Bool
+    default: false
+
 ...

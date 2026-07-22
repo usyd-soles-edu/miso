@@ -23,7 +23,11 @@ permanova(
   useParallel = FALSE,
   permBy = "terms",
   permPairwise = FALSE,
-  permAdjust = "holm"
+  permAdjust = "holm",
+  showCompanionPcoa = FALSE,
+  pcoaDisplayFactor = NULL,
+  pcoaCentroids = FALSE,
+  pcoaSpiders = FALSE
 )
 }
 \arguments{
@@ -64,14 +68,30 @@ permanova(
 \item{permPairwise}{.}
 
 \item{permAdjust}{.}
+
+\item{showCompanionPcoa}{Whether to show a descriptive PCoA based on the
+exact distance settings used by PERMANOVA.}
+
+\item{pcoaDisplayFactor}{For multifactor models, the primary or additional
+categorical model factor used to identify groups in the companion PCoA.}
+
+\item{pcoaCentroids}{Whether to draw and tabulate group centroids in the
+companion PCoA.}
+
+\item{pcoaSpiders}{Whether to connect displayed sites to their group
+centroid; spiders also show centroids.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$guidance} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
+  \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
+  \code{results$companionPcoaDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$companionPcoaSites} \tab \tab \tab \tab \tab a table \cr
+  \code{results$companionPcoaCentroids} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr

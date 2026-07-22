@@ -4,11 +4,11 @@ test_that("tofu uses one flat task-labelled analysis menu", {
 
     expect_identical(
         vapply(analyses, `[[`, character(1), "name"),
-        c("permanova", "anosim", "permdisp", "nmds", "cluster", "simper")
+        c("permanova", "anosim", "permdisp", "nmds", "pcoa", "cluster", "simper")
     )
     expect_identical(
         vapply(analyses, `[[`, character(1), "menuTitle"),
-        c("PERMANOVA", "ANOSIM", "PERMDISP", "nMDS", "Cluster analysis", "SIMPER")
+        c("PERMANOVA", "ANOSIM", "PERMDISP", "nMDS", "PCoA", "Cluster analysis", "SIMPER")
     )
     expect_identical(
         vapply(analyses, `[[`, character(1), "menuSubtitle"),
@@ -17,6 +17,7 @@ test_that("tofu uses one flat task-labelled analysis menu", {
             "Rank-based alternative",
             "Check group dispersion",
             "Visualise sample patterns",
+            "Visualise distance structure",
             "Visualise sample similarity",
             "Feature contributions"
         )

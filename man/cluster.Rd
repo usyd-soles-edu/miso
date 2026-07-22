@@ -10,7 +10,12 @@ cluster(
   labels = NULL,
   transform = "none",
   distance = "bray",
-  showLabels = TRUE
+  sampleLabels = "auto",
+  showLabels = "__tofu_unset__",
+  defineClusters = FALSE,
+  cutMode = "number",
+  numberClusters = 3,
+  cutHeight = 0.5
 )
 }
 \arguments{
@@ -24,7 +29,18 @@ cluster(
 
 \item{distance}{.}
 
-\item{showLabels}{.}
+\item{sampleLabels}{.}
+
+\item{showLabels}{Compatibility value for analyses saved before sample
+label modes were introduced.}
+
+\item{defineClusters}{.}
+
+\item{cutMode}{.}
+
+\item{numberClusters}{.}
+
+\item{cutHeight}{.}
 }
 \value{
 A results object containing:
@@ -33,6 +49,8 @@ A results object containing:
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
+  \code{results$dendrogramDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$membership} \tab \tab \tab \tab \tab a table \cr
   \code{results$interpretation} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }

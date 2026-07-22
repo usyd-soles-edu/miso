@@ -9,6 +9,7 @@ const updateControlStates = ui => {
 };
 
 const revealActiveSections = ui => {
+    ui.plots.expand();
     const studyIsActive =
         hasSelection(ui.strata.value()) ||
         ui.permRestriction.value() !== 'free';

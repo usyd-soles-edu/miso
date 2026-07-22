@@ -15,7 +15,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 globalR=NA_real_,
                 globalP=NA_real_,
                 effectivePermutations=NA_integer_,
-                pairwisePermutations=integer())
+                pairwisePermutations=integer(),
+                rankPlotData=NULL)
             private$.resetResults()
 
             hasVars <- length(self$options$vars) > 0L
@@ -101,14 +102,19 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$summary)
             tofu_clear_table(self$results$global)
             tofu_clear_table(self$results$pairwise)
+            tofu_clear_table(self$results$rankSummary)
+            rankSummary <- self$results$rankSummary
+            rankSummary$.__enclos_env__$private$.rowNames <- character()
             self$results$global$setNote(key="meaning", note="")
             self$results$pairwise$setNote(key="scope", note="")
+            self$results$rankPlotDescription$setContent("")
             self$results$note$setContent("")
             tofu_clear_table(self$results$settings)
 
             for (name in c(
                     "guidance", "summary", "warnings", "global",
-                    "pairwise", "note", "settings"))
+                    "pairwise", "rankPlot", "rankPlotDescription",
+                    "rankSummary", "note", "settings"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -122,6 +128,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             for (name in c("summary", "global", "note", "settings"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
+            hasRank <- !is.null(private$.state$rankPlotData)
+            showRank <- isTRUE(self$options$showRankPlot) && hasRank
+            for (name in c("rankPlot", "rankPlotDescription"))
+                self$results[[name]]$setVisible(showRank)
+            self$results$rankSummary$setVisible(hasRank)
         },
 
         .setWarnings = function(warnings) {
@@ -288,6 +299,9 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 else
                     as.integer(self$options$anosimN)
 
+            private$.state$rankPlotData <- private$.prepareRankPlotData(fit)
+            private$.populateRankDiagnostic()
+
             self$results$global$addRow(
                 rowKey="r",
                 values=list(
@@ -302,6 +316,181 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "dissimilarities. Permutation p uses the displayed",
                     "restriction in Analysis settings."))
             TRUE
+        },
+
+        .prepareRankPlotData = function(fit, maxRaw=600L) {
+            ranks <- as.numeric(fit$dis.rank)
+            classes <- as.character(fit$class.vec)
+            classLevels <- levels(fit$class.vec)
+            if (length(ranks) != length(classes) || length(ranks) == 0L)
+                return(NULL)
+
+            categoryLevels <- c(
+                "Between",
+                paste("Within", classLevels[classLevels != "Between"]))
+            categories <- ifelse(
+                classes == "Between", "Between", paste("Within", classes))
+            all <- data.frame(
+                rank=ranks,
+                sourceClass=classes,
+                category=factor(categories, levels=categoryLevels),
+                stringsAsFactors=FALSE)
+
+            finite <- which(is.finite(all$rank) & !is.na(all$category))
+            counts <- vapply(categoryLevels, function(category) {
+                sum(all$category[finite] == category)
+            }, integer(1))
+            targets <- pmin(counts, maxRaw %/% length(categoryLevels))
+            while (sum(targets) < min(maxRaw, sum(counts))) {
+                available <- which(targets < counts)
+                add <- available[seq_len(min(
+                    length(available),
+                    min(maxRaw, sum(counts)) - sum(targets)))]
+                targets[add] <- targets[add] + 1L
+            }
+
+            selected <- vector("list", length(categoryLevels))
+            for (i in seq_along(categoryLevels)) {
+                candidates <- finite[all$category[finite] == categoryLevels[[i]]]
+                take <- targets[[i]]
+                if (take > 0L) {
+                    candidates <- candidates[order(
+                        all$rank[candidates],
+                        all$sourceClass[candidates],
+                        method="radix")]
+                    positions <- unique(as.integer(round(seq(
+                        1, length(candidates), length.out=take))))
+                    selected[[i]] <- candidates[positions]
+                }
+            }
+            selected <- unlist(selected, use.names=FALSE)
+            raw <- all[selected, , drop=FALSE]
+            raw$categoryIndex <- match(
+                as.character(raw$category), categoryLevels)
+            raw$x <- raw$categoryIndex + .tofuJitter(
+                nrow(raw), width=.16, seed=104729L)
+            rownames(raw) <- NULL
+
+            list(
+                all=all,
+                raw=raw,
+                displayed=nrow(raw),
+                total=length(finite))
+        },
+
+        .populateRankDiagnostic = function() {
+            diagnostic <- private$.state$rankPlotData
+            if (is.null(diagnostic))
+                return()
+            categories <- levels(diagnostic$all$category)
+            for (i in seq_along(categories)) {
+                category <- categories[[i]]
+                values <- diagnostic$all$rank[
+                    diagnostic$all$category == category &
+                    is.finite(diagnostic$all$rank)]
+                self$results$rankSummary$addRow(
+                    rowKey=as.character(i),
+                    values=list(
+                        category=category,
+                        pairs=length(values),
+                        median=unname(stats::median(values)),
+                        q1=unname(stats::quantile(
+                            values, .25, names=FALSE)),
+                        q3=unname(stats::quantile(
+                            values, .75, names=FALSE))))
+            }
+            disclosure <- .tofuPlotDisclosure(
+                diagnostic$displayed,
+                diagnostic$total,
+                noun="raw pair ranks")
+            if (isTRUE(self$options$showRankPlot)) {
+                groupCount <- length(categories) - 1L
+                styleDisclosure <- if (groupCount > 64L)
+                    sprintf(
+                        paste(
+                            "Group-specific styling was omitted because %d groups",
+                            "exceed the 64-style display limit."),
+                        groupCount)
+                else
+                    character()
+                self$results$rankPlotDescription$setContent(tofu_html_block(c(
+                    paste(
+                        "Between ranks compare samples from different groups, while",
+                        "each Within category compares samples from the named group."),
+                    disclosure,
+                    styleDisclosure,
+                    paste(
+                        "Pairwise dissimilarities are dependent, so this plot is a",
+                        "diagnostic rather than additional inference; both location and",
+                        "dispersion can affect ANOSIM R."))))
+            }
+        },
+
+        .buildRankPlot = function() {
+            diagnostic <- private$.state$rankPlotData
+            if (is.null(diagnostic) || !isTRUE(self$options$showRankPlot))
+                return(NULL)
+            all <- diagnostic$all
+            all <- all[is.finite(all$rank) & !is.na(all$category), , drop=FALSE]
+            if (nrow(all) == 0L)
+                return(NULL)
+            categories <- levels(all$category)
+            all$categoryIndex <- match(as.character(all$category), categories)
+            labels <- .tofuUniqueShortLabels(categories, width=28L)
+            withinCategories <- categories[categories != "Between"]
+            if (length(withinCategories) <= 64L) {
+                withinAesthetics <- .tofuGroupAesthetics(withinCategories)
+                colours <- c(
+                    Between="#222222",
+                    withinAesthetics$colour[withinCategories])
+                shapes <- c(
+                    Between=1L,
+                    withinAesthetics$shape[withinCategories])
+            } else {
+                colours <- stats::setNames(
+                    c("#222222", rep("#777777", length(withinCategories))),
+                    categories)
+                shapes <- stats::setNames(
+                    c(1L, rep(16L, length(withinCategories))),
+                    categories)
+            }
+
+            ggplot2::ggplot(
+                all,
+                ggplot2::aes(
+                    x=categoryIndex, y=rank, group=category,
+                    fill=category)) +
+                ggplot2::geom_boxplot(
+                    width=.58, outlier.shape=NA, alpha=.28,
+                    colour="#333333", linewidth=.55) +
+                ggplot2::geom_point(
+                    data=diagnostic$raw,
+                    ggplot2::aes(
+                        x=x, y=rank, colour=category, shape=category),
+                    inherit.aes=FALSE, size=1.65, alpha=.62, stroke=.35) +
+                ggplot2::scale_x_continuous(
+                    breaks=seq_along(categories),
+                    labels=unname(labels[categories]),
+                    expand=ggplot2::expansion(mult=c(.06, .06)),
+                    guide=ggplot2::guide_axis(n.dodge=2L)) +
+                ggplot2::scale_fill_manual(
+                    values=colours[categories], guide="none") +
+                ggplot2::scale_colour_manual(
+                    values=colours[categories], guide="none") +
+                ggplot2::scale_shape_manual(
+                    values=shapes[categories], guide="none") +
+                ggplot2::labs(
+                    x="Pair category",
+                    y="Ranked dissimilarity") +
+                .tofuPlotTheme(baseSize=10)
+        },
+
+        .plotRank = function(image, ...) {
+            plot <- private$.buildRankPlot()
+            if (is.null(plot))
+                return()
+            suppressWarnings(print(plot))
+            invisible(TRUE)
         },
 
         .runPairwise = function(prep) {

@@ -1,0 +1,65 @@
+---
+title: PCoA
+name: pcoa
+jus: '3.0'
+stage: 0
+compilerMode: tame
+events:
+  loaded: view_loaded
+children:
+  - type: VariableSupplier
+    persistentItems: false
+    stretchFactor: 1
+    children:
+      - type: TargetLayoutBox
+        label: Feature variables (required)
+        children:
+          - type: VariablesListBox
+            name: vars
+            isTarget: true
+      - type: TargetLayoutBox
+        label: Grouping variable (optional)
+        children:
+          - type: VariablesListBox
+            name: factor
+            maxItemCount: 1
+            isTarget: true
+            events:
+              change: update_control_states
+
+  - type: CollapseBox
+    name: analysisChoices
+    label: Analysis choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: transform
+      - type: ComboBox
+        name: distance
+      - type: CheckBox
+        name: distBinary
+
+  - type: CollapseBox
+    name: plotChoices
+    label: Plots
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: showCentroids
+      - type: CheckBox
+        name: showSpiders
+
+  - type: CollapseBox
+    name: corrections
+    label: Advanced corrections
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: sqrtDist
+      - type: ComboBox
+        name: correction
+
+...

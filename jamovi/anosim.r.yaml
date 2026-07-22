@@ -69,6 +69,41 @@ items:
         type: number
         format: zto,pvalue
 
+  - name: rankPlot
+    title: Ranked dissimilarities by pair category
+    type: Image
+    visible: false
+    width: 600
+    height: 480
+    renderFun: .plotRank
+
+  - name: rankPlotDescription
+    title: Plot details
+    type: Html
+    visible: false
+
+  - name: rankSummary
+    title: Ranked-dissimilarity summary
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: category
+        title: Pair category
+        type: text
+      - name: pairs
+        title: Pairs
+        type: integer
+      - name: median
+        title: Median rank
+        type: number
+      - name: q1
+        title: Q1 rank
+        type: number
+      - name: q3
+        title: Q3 rank
+        type: number
+
   - name: note
     title: Interpretation
     type: Html

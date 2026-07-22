@@ -13,7 +13,11 @@ items:
       - labels
       - transform
       - distance
-      - showLabels
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
 
   - name: summary
     title: Data summary
@@ -32,7 +36,11 @@ items:
       - labels
       - transform
       - distance
-      - showLabels
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
 
   - name: warnings
     title: Data handling warnings
@@ -43,21 +51,104 @@ items:
       - labels
       - transform
       - distance
-      - showLabels
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
 
   - name: dendrogram
     title: Group-average cluster dendrogram
     type: Image
     visible: false
-    width: 540
-    height: 360
+    width: 600
+    height: 500
     renderFun: .plotDendrogram
     clearWith:
       - vars
       - labels
       - transform
       - distance
-      - showLabels
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: dendrogramDescription
+    title: Plot details
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: dendrogramStructure
+    title: Dendrogram structure
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: recordType
+        title: Record
+        type: text
+      - name: displayOrder
+        title: Display order
+        type: integer
+      - name: sample
+        title: Sample
+        type: text
+      - name: mergeStep
+        title: Merge step
+        type: integer
+      - name: leftChild
+        title: Left child
+        type: text
+      - name: rightChild
+        title: Right child
+        type: text
+      - name: height
+        title: Height
+        type: number
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: membership
+    title: Cluster membership
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: sample
+        title: Sample
+        type: text
+      - name: cluster
+        title: Cluster
+        type: integer
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
 
   - name: interpretation
     title: How to read this dendrogram
@@ -68,7 +159,11 @@ items:
       - labels
       - transform
       - distance
-      - showLabels
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
 
   - name: settings
     title: Analysis settings
@@ -87,6 +182,10 @@ items:
       - labels
       - transform
       - distance
-      - showLabels
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
 
 ...

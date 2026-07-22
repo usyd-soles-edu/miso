@@ -1,0 +1,152 @@
+---
+name: pcoa
+title: PCoA
+menuGroup: tofu
+menuTitle: PCoA
+menuSubtitle: Visualise distance structure
+version: '0.2.0'
+jas: '1.2'
+description:
+  main: Performs descriptive principal coordinates analysis (PCoA) of pairwise dissimilarities among sites. The ordination visualises resemblance structure and does not test group differences. When called from R, it returns the jamovi analysis results object.
+
+options:
+  - name: data
+    type: Data
+    description: The data frame containing the feature and grouping variables.
+
+  - name: vars
+    title: Feature variables (required)
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+    description: Two or more numeric feature variables used to calculate dissimilarities among sites.
+
+  - name: factor
+    title: Grouping variable (optional)
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+    permitted:
+      - factor
+    default: null
+    description: An optional factor used to identify groups in the plot and centroid table.
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+      - title: Max
+        name: max
+      - title: Frequency
+        name: frequency
+      - title: Normalize
+        name: normalize
+      - title: Range
+        name: range
+      - title: Standardize
+        name: standardize
+      - title: Chi-square
+        name: chi.square
+      - title: Reverse CLR
+        name: rclr
+    default: none
+    description: The transformation applied before calculating dissimilarities; one of `none`, `sqrt`, `fourthroot`, `log`, `pa`, `wisconsin`, `hellinger`, `total`, `max`, `frequency`, `normalize`, `range`, `standardize`, `chi.square`, or `rclr`.
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+      - title: Clark
+        name: clark
+      - title: Alternative Gower
+        name: altGower
+      - title: Mahalanobis
+        name: mahalanobis
+    default: bray
+    description: The dissimilarity index; one of `bray`, `jaccard`, `euclidean`, `manhattan`, `canberra`, `kulczynski`, `gower`, `morisita`, `horn`, `mountford`, `raup`, `binomial`, `chao`, `cao`, `clark`, `altGower`, or `mahalanobis`.
+
+  - name: distBinary
+    title: Binary (presence/absence)
+    type: Bool
+    default: false
+    description: Whether to convert feature values to presence or absence when calculating dissimilarities.
+
+  - name: sqrtDist
+    title: Square-root distances
+    type: Bool
+    default: false
+    description: Whether to square-root the calculated dissimilarities before ordination.
+
+  - name: correction
+    title: Additive correction
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Lingoes
+        name: lingoes
+      - title: Cailliez
+        name: cailliez
+    default: none
+    description: The additive correction for negative eigenvalues; one of `none`, `lingoes`, or `cailliez`.
+
+  - name: showCentroids
+    title: Show group centroids
+    type: Bool
+    default: false
+    description: Whether to draw group centroids when a grouping variable is selected.
+
+  - name: showSpiders
+    title: Connect sites to centroids
+    type: Bool
+    default: false
+    description: Whether to connect each site to its group centroid; enabling spiders also draws the centroids.
+
+...

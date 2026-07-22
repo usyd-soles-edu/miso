@@ -10,6 +10,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state <- list(
                 warnings=character(),
                 plotData=NULL,
+                contrastTotals=integer(),
                 contrastLabels=character(),
                 requestedPermutations=NA_integer_,
                 effectivePermutations=NA_integer_)
@@ -96,7 +97,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 assessmentShown <- private$.runAssessment(prep, descriptive$displayRows)
 
             private$.setTableNotes(prep)
-            private$.setPlotDescription(descriptive$displayRows)
             private$.setInterpretation(prep, assessmentShown)
             private$.populateSettings(prep, assessmentShown)
             private$.setWarnings(private$.state$warnings)
@@ -113,23 +113,25 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$means)
             tofu_clear_table(self$results$table)
             tofu_clear_table(self$results$assessment)
+            tofu_clear_table(self$results$heatmapValues)
+            self$results$contributionPlots$clear()
             self$results$contrasts$setNote(key="meaning", note="")
             self$results$contributions$setNote(key="meaning", note="")
             self$results$variability$setNote(key="meaning", note="")
             self$results$means$setNote(key="meaning", note="")
             self$results$table$setNote(key="meaning", note="")
             self$results$assessment$setNote(key="scope", note="")
-            self$results$plotDescription$setContent("")
+            self$results$heatmapDescription$setContent("")
             self$results$note$setContent("")
             tofu_clear_table(self$results$settings)
-            self$results$plot$setTitle(
-                "SIMPER contribution percentages by group contrast")
-            self$results$plot$setSize(580, 450)
+            self$results$heatmap$setSize(600, 500)
 
             for (name in c(
                     "guidance", "summary", "warnings", "contrasts",
-                    "contributions", "variability", "means", "table", "plot",
-                    "plotDescription", "assessment", "note", "settings"))
+                    "contributions", "variability", "means", "table",
+                    "contributionPlots", "heatmap", "heatmapDescription",
+                    "heatmapValues",
+                    "assessment", "note", "settings"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -141,9 +143,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(assessmentShown=FALSE) {
             for (name in c(
-                    "summary", "contrasts", "contributions", "plot",
-                    "plotDescription", "note", "settings"))
+                    "summary", "contrasts", "contributions",
+                    "contributionPlots", "note", "settings"))
                 self$results[[name]]$setVisible(TRUE)
+            self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap))
+            self$results$heatmapDescription$setVisible(
+                isTRUE(self$options$simperHeatmap))
+            self$results$heatmapValues$setVisible(
+                isTRUE(self$options$simperHeatmap))
             self$results$variability$setVisible(isTRUE(self$options$simperDetails))
             self$results$means$setVisible(isTRUE(self$options$simperDetails))
             self$results$table$setVisible(FALSE)
@@ -187,6 +194,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             threshold <- as.numeric(self$options$simperCum) / 100
             contrastRows <- list()
             displayRows <- list()
+            fullRows <- list()
+            contrastTotals <- integer()
             failed <- character()
 
             for (index in seq_along(pairs)) {
@@ -226,7 +235,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 if (is.na(crossing))
                     crossing <- nrow(tab)
                 displayN <- min(topN, crossing, nrow(tab))
-                shown <- tab[seq_len(displayN), , drop=FALSE]
+                contrastTotals[[label]] <- nrow(tab)
 
                 contrastRows[[length(contrastRows) + 1L]] <- list(
                     contrast=label,
@@ -234,19 +243,25 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     nSecond=sum(as.character(prep$group) == pair[[2L]]),
                     overall=tofu_num_or_na(fit[[index]]$overall))
 
-                for (row in seq_len(nrow(shown))) {
-                    displayRows[[length(displayRows) + 1L]] <- list(
+                contrastFeatureRows <- lapply(seq_len(nrow(tab)), function(row) {
+                    list(
                         contrastIndex=index,
                         contrast=label,
-                        feature=shown$feature[[row]],
-                        average=tofu_num_or_na(shown$average[[row]]),
-                        sd=tofu_num_or_na(shown$sd[[row]]),
-                        ratio=tofu_num_or_na(shown$ratio[[row]]),
-                        meanFirst=tofu_num_or_na(shown$ava[[row]]),
-                        meanSecond=tofu_num_or_na(shown$avb[[row]]),
-                        contribution=100 * shown$contribution[[row]],
-                        cumulative=100 * shown$cumulative[[row]])
-                }
+                        firstGroup=pair[[1L]],
+                        secondGroup=pair[[2L]],
+                        feature=tab$feature[[row]],
+                        average=tofu_num_or_na(tab$average[[row]]),
+                        sd=tofu_num_or_na(tab$sd[[row]]),
+                        ratio=tofu_num_or_na(tab$ratio[[row]]),
+                        meanFirst=tofu_num_or_na(tab$ava[[row]]),
+                        meanSecond=tofu_num_or_na(tab$avb[[row]]),
+                        contribution=100 * tab$contribution[[row]],
+                        cumulative=100 * tab$cumulative[[row]])
+                })
+                fullRows <- c(fullRows, contrastFeatureRows)
+                displayRows <- c(
+                    displayRows,
+                    contrastFeatureRows[seq_len(displayN)])
             }
 
             if (length(failed) > 0L)
@@ -266,7 +281,9 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 fit=fit,
                 pairs=pairs,
                 contrastRows=contrastRows,
-                displayRows=displayRows)
+                fullRows=fullRows,
+                displayRows=displayRows,
+                contrastTotals=contrastTotals)
         },
 
         .populateSummary = function(prep, contrastCount) {
@@ -288,16 +305,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     rowKey=as.character(index),
                     values=descriptive$contrastRows[[index]])
 
-            for (index in seq_along(descriptive$displayRows)) {
-                values <- descriptive$displayRows[[index]]
+            for (index in seq_along(descriptive$fullRows)) {
+                values <- descriptive$fullRows[[index]]
                 values$contrastIndex <- NULL
+                values$firstGroup <- NULL
+                values$secondGroup <- NULL
                 self$results$table$addRow(
                     rowKey=as.character(index),
                     values=values)
-                self$results$contributions$addRow(
-                    rowKey=as.character(index),
-                    values=values[c(
-                        "contrast", "feature", "contribution", "cumulative")])
                 self$results$variability$addRow(
                     rowKey=as.character(index),
                     values=values[c(
@@ -308,12 +323,72 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "contrast", "feature", "meanFirst", "meanSecond")])
             }
 
+            for (index in seq_along(descriptive$displayRows)) {
+                values <- descriptive$displayRows[[index]]
+                self$results$contributions$addRow(
+                    rowKey=as.character(index),
+                    values=values[c(
+                        "contrast", "feature", "contribution", "cumulative")])
+            }
+
             private$.state$plotData <- do.call(
                 rbind,
                 lapply(descriptive$displayRows, as.data.frame, stringsAsFactors=FALSE))
             private$.state$contrastLabels <- unique(private$.state$plotData$contrast)
-            height <- max(450, 220 * length(private$.state$contrastLabels))
-            self$results$plot$setSize(580, height)
+            private$.state$contrastTotals <- descriptive$contrastTotals
+            for (contrast in private$.state$contrastLabels) {
+                item <- self$results$contributionPlots$addItem(contrast)
+                item$setTitle(contrast)
+                item$plot$setSize(580, 430)
+                item$description$setContent(
+                    private$.plotDescription(contrast))
+                rows <- private$.state$plotData[
+                    private$.state$plotData$contrast == contrast, , drop=FALSE]
+                for (row in seq_len(nrow(rows))) {
+                    direction <- if (!is.finite(rows$meanFirst[[row]]) ||
+                            !is.finite(rows$meanSecond[[row]])) {
+                        "Mean unavailable"
+                    } else if (rows$meanFirst[[row]] > rows$meanSecond[[row]]) {
+                        paste0(rows$firstGroup[[row]], " higher")
+                    } else if (rows$meanSecond[[row]] > rows$meanFirst[[row]]) {
+                        paste0(rows$secondGroup[[row]], " higher")
+                    } else {
+                        "Equal means"
+                    }
+                    item$values$addRow(
+                        rowKey=as.character(row),
+                        values=list(
+                            feature=as.character(rows$feature[[row]]),
+                            average=tofu_num_or_na(rows$average[[row]]),
+                            contribution=tofu_num_or_na(
+                                rows$contribution[[row]]),
+                            cumulative=tofu_num_or_na(rows$cumulative[[row]]),
+                            firstGroup=as.character(rows$firstGroup[[row]]),
+                            meanFirst=tofu_num_or_na(rows$meanFirst[[row]]),
+                            secondGroup=as.character(rows$secondGroup[[row]]),
+                            meanSecond=tofu_num_or_na(rows$meanSecond[[row]]),
+                            direction=direction))
+                }
+            }
+            self$results$heatmapDescription$setContent(
+                private$.heatmapDescription())
+            heatmapData <- private$.heatmapData()
+            if (!is.null(heatmapData))
+                for (row in seq_len(nrow(heatmapData)))
+                    self$results$heatmapValues$addRow(
+                        rowKey=as.character(row),
+                        values=list(
+                            contrast=as.character(
+                                heatmapData$contrast[[row]]),
+                            feature=as.character(heatmapData$feature[[row]]),
+                            contribution=if (
+                                    isTRUE(heatmapData$missing[[row]]))
+                                ""
+                            else
+                                tofu_num_or_na(
+                                    heatmapData$contribution[[row]]),
+                            selected=if (isTRUE(heatmapData$missing[[row]]))
+                                "No" else "Yes"))
         },
 
         .runAssessment = function(prep, displayRows) {
@@ -442,55 +517,52 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             private$.adjustLabel(self$options$simperAdjust))))
         },
 
-        .setPlotDescription = function(displayRows) {
-            labels <- unique(vapply(displayRows, `[[`, character(1), "contrast"))
-            describedContrasts <- utils::head(labels, 10L)
-            omittedContrasts <- length(labels) - length(describedContrasts)
-            labelDetails <- character()
-            for (contrast in describedContrasts) {
-                rows <- displayRows[vapply(
-                    displayRows, `[[`, character(1), "contrast") == contrast]
-                describedRows <- utils::head(rows, 10L)
-                entries <- vapply(
-                    describedRows,
-                    function(row) paste0(
-                        private$.htmlEscape(row$feature), ": ",
-                        sprintf("%.1f%%", row$contribution)),
-                    character(1))
-                omitted <- length(rows) - length(describedRows)
-                suffix <- if (omitted > 0L)
-                    sprintf("; %s more shown in the table", omitted)
-                else
-                    ""
-                labelDetails <- c(
-                    labelDetails,
-                    paste0(
-                        '<p style="margin: 0 0 0.4em 0;"><strong>',
-                        private$.htmlEscape(contrast), ':</strong> ',
-                        paste(entries, collapse="; "), suffix, '.</p>'))
-            }
-            content <- paste0(
-                '<div style="margin: 0; max-width: 44em; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; word-break: normal;">',
-                '<p style="margin: 0 0 0.65em 0;">',
-                'First contrasts described below: ',
-                private$.htmlEscape(paste(describedContrasts, collapse=", ")),
-                if (omittedContrasts > 0L)
-                    paste0('; plus ', omittedContrasts,
-                           ' further contrasts shown in the plot and listed in the results tables.')
-                else
-                    '.',
-                ' ',
-                'The plot uses the same rows as Descriptive feature contributions. ',
-                'Features stop when the cumulative contribution reaches ',
-                private$.htmlEscape(as.character(self$options$simperCum)),
-                '% or the Top features cap of ',
+        .plotDescription = function(contrast) {
+            rows <- private$.state$plotData[
+                private$.state$plotData$contrast == contrast, , drop=FALSE]
+            shown <- nrow(rows)
+            total <- unname(private$.state$contrastTotals[[contrast]])
+            omitted <- max(0L, total - shown)
+            detailAvailability <- if (isTRUE(self$options$simperDetails))
+                paste(
+                    "retained in the detailed tables below",
+                    "(Contribution variability and Group means)")
+            else
+                paste(
+                    "available by enabling Show detailed statistics",
+                    "for the Contribution variability and Group means tables")
+            paste0(
+                '<div style="margin: 0; max-width: 44em; line-height: 1.45; white-space: normal; overflow-wrap: anywhere;">',
+                '<p style="margin: 0;">Selected contrast: <strong>',
+                private$.htmlEscape(contrast), '</strong>. ',
+                'Stopping rule: Top ',
                 private$.htmlEscape(as.character(self$options$simperTop)),
-                ' is reached, whichever occurs first; the threshold-crossing feature is included.',
-                '</p>',
-                '<p style="margin: 0 0 0.4em 0;"><strong>Full labels and percentages for the contrasts described below.</strong></p>',
-                paste(labelDetails, collapse=""),
-                '</div>')
-            self$results$plotDescription$setContent(content)
+                ' or ',
+                private$.htmlEscape(as.character(self$options$simperCum)),
+                '% cumulative contribution, whichever came first; the threshold-crossing feature is included. ',
+                shown, ' features shown; ', omitted,
+                ' omitted from this image and ', detailAvailability, '. ',
+                'This is a descriptive view of contribution to average dissimilarity and does not establish cause or significance.',
+                '</p></div>')
+        },
+
+        .heatmapDescription = function() {
+            data <- private$.heatmapData()
+            if (is.null(data))
+                return("")
+            paste0(
+                '<div style="margin: 0; max-width: 44em; line-height: 1.45; white-space: normal; overflow-wrap: anywhere;">',
+                '<p style="margin: 0;">All ',
+                length(unique(data$contrast)),
+                ' observed contrasts are shown. The feature union follows the Top ',
+                private$.htmlEscape(as.character(self$options$simperTop)),
+                ' or ',
+                private$.htmlEscape(as.character(self$options$simperCum)),
+                '% cumulative stopping rule. ',
+                length(unique(data$feature)),
+                ' features are shown; grey cells are features omitted by that rule for a contrast. ',
+                'Colours describe contribution to average dissimilarity and do not establish cause or significance.',
+                '</p></div>')
         },
 
         .setInterpretation = function(prep, assessmentShown) {
@@ -555,71 +627,160 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
         },
 
-        .boundedPlotLabel = function(value, width=18L, maxLines=2L) {
-            value <- gsub("[[:space:]]+", " ", trimws(as.character(value)))
-            if (! nzchar(value))
-                return("")
-            width <- max(2L, as.integer(width))
-            maxLines <- max(1L, as.integer(maxLines))
-            remaining <- value
-            lines <- character()
-            while (nzchar(remaining) && length(lines) < maxLines) {
-                if (nchar(remaining) <= width) {
-                    lines <- c(lines, remaining)
-                    remaining <- ""
-                    next
-                }
-                candidate <- substr(remaining, 1L, width)
-                spaces <- gregexpr("[[:space:]]", candidate)[[1L]]
-                spaces <- spaces[spaces > 1L]
-                if (length(spaces) > 0L) {
-                    splitAt <- max(spaces)
-                    lines <- c(lines, trimws(substr(remaining, 1L, splitAt - 1L)))
-                    remaining <- trimws(substr(
-                        remaining, splitAt + 1L, nchar(remaining)))
-                } else {
-                    lines <- c(lines, candidate)
-                    remaining <- substr(remaining, width + 1L, nchar(remaining))
-                }
-            }
-            if (nzchar(remaining)) {
-                last <- lines[[length(lines)]]
-                last <- substr(last, 1L, min(nchar(last), width - 1L))
-                lines[[length(lines)]] <- paste0(last, "\u2026")
-            }
-            paste(lines, collapse="\n")
+        .buildContributionPlot = function(rows, contrast) {
+            if (is.null(rows) || nrow(rows) == 0L)
+                return(NULL)
+            rows <- rows[order(rows$contribution, rows$feature), , drop=FALSE]
+            rows$feature <- factor(
+                as.character(rows$feature),
+                levels=unique(as.character(rows$feature)))
+            featureLabels <- .tofuUniqueShortLabels(
+                levels(rows$feature), width=24L)
+            groupLabels <- .tofuUniqueShortLabels(
+                c(
+                    as.character(rows$firstGroup[[1L]]),
+                    as.character(rows$secondGroup[[1L]])),
+                width=18L)
+            first <- unname(groupLabels[[1L]])
+            second <- unname(groupLabels[[2L]])
+            firstDirection <- paste0(first, " higher")
+            secondDirection <- paste0(second, " higher")
+            directionLevels <- c(
+                firstDirection,
+                secondDirection,
+                "Equal means",
+                "Mean unavailable")
+            rows$direction <- ifelse(
+                ! is.finite(rows$meanFirst) | ! is.finite(rows$meanSecond),
+                "Mean unavailable",
+                ifelse(
+                    rows$meanFirst > rows$meanSecond,
+                    firstDirection,
+                    ifelse(
+                        rows$meanSecond > rows$meanFirst,
+                        secondDirection,
+                        "Equal means")))
+            rows$direction <- factor(rows$direction, levels=directionLevels)
+            rows$valueLabel <- sprintf(
+                "%.1f%% (cumulative %.1f%%)",
+                rows$contribution, rows$cumulative)
+            directions <- directionLevels[directionLevels %in% rows$direction]
+            palette <- stats::setNames(
+                c("#0072B2", "#D55E00", "#666666", "#B3B3B3"),
+                directionLevels)
+            lineTypes <- stats::setNames(
+                c("solid", "longdash", "dotted", "dotdash"),
+                directionLevels)
+
+            ggplot2::ggplot(
+                rows,
+                ggplot2::aes(
+                    x=contribution, y=feature,
+                    fill=direction, linetype=direction)) +
+                ggplot2::geom_col(width=0.72, colour="#222222", linewidth=0.7) +
+                ggplot2::geom_text(
+                    ggplot2::aes(label=valueLabel),
+                    hjust=-0.05, size=3.1, colour="#222222") +
+                ggplot2::scale_fill_manual(
+                    values=palette, breaks=directions, labels=directions,
+                    drop=FALSE,
+                    name="Transformed group mean") +
+                ggplot2::scale_linetype_manual(
+                    values=lineTypes, breaks=directions, labels=directions,
+                    drop=FALSE,
+                    name="Transformed group mean") +
+                ggplot2::scale_x_continuous(
+                    labels=function(x) paste0(x, "%"),
+                    expand=ggplot2::expansion(mult=c(0, 0.42))) +
+                ggplot2::scale_y_discrete(labels=featureLabels) +
+                ggplot2::labs(
+                    x="Contribution to average dissimilarity (%)",
+                    y=NULL,
+                    subtitle=sprintf(
+                        "Top %s or %s%% cumulative; threshold-crossing feature included",
+                        self$options$simperTop,
+                        self$options$simperCum)) +
+                .tofuPlotTheme() +
+                ggplot2::theme(
+                    legend.position="bottom",
+                    plot.subtitle=ggplot2::element_text(size=9, colour="#444444"))
         },
 
-        .plotContributions = function(image, ...) {
+        .plotContribution = function(image, ...) {
+            contrast <- as.character(image$key)
+            rows <- private$.state$plotData[
+                private$.state$plotData$contrast == contrast, , drop=FALSE]
+            plot <- private$.buildContributionPlot(rows, contrast)
+            if (is.null(plot))
+                return()
+            suppressWarnings(print(plot))
+            invisible(TRUE)
+        },
+
+        .heatmapData = function() {
             dat <- private$.state$plotData
             if (is.null(dat) || nrow(dat) == 0L)
-                return()
+                return(NULL)
+            features <- unique(dat$feature)
+            contrasts <- private$.state$contrastLabels
+            grid <- expand.grid(
+                feature=features,
+                contrast=contrasts,
+                stringsAsFactors=FALSE)
+            key <- paste(dat$feature, dat$contrast, sep="\r")
+            gridKey <- paste(grid$feature, grid$contrast, sep="\r")
+            matched <- match(gridKey, key)
+            grid$contribution <- dat$contribution[matched]
+            grid$missing <- is.na(matched)
+            grid
+        },
 
-            contrasts <- unique(dat$contrast)
-            op <- graphics::par(
-                mfrow=c(length(contrasts), 1L),
-                mar=c(4.5, 10, 3.2, 1.5),
-                oma=c(0, 0, 0, 0))
-            on.exit(graphics::par(op), add=TRUE)
-            for (contrast in contrasts) {
-                rows <- dat[dat$contrast == contrast, , drop=FALSE]
-                rows <- rows[rev(seq_len(nrow(rows))), , drop=FALSE]
-                graphics::barplot(
-                    height=rows$contribution,
-                    names.arg=vapply(
-                        rows$feature,
-                        private$.boundedPlotLabel,
-                        character(1),
-                        width=18L,
-                        maxLines=2L),
-                    horiz=TRUE,
-                    las=1,
-                    col="#277da1",
-                    border="#1b566f",
-                    xlab="Contribution (%)",
-                    main=private$.boundedPlotLabel(
-                        contrast, width=28L, maxLines=2L))
-            }
+        .buildHeatmapPlot = function() {
+            dat <- private$.heatmapData()
+            if (is.null(dat))
+                return(NULL)
+            dat$feature <- factor(
+                dat$feature,
+                levels=unique(dat$feature))
+            dat$contrast <- factor(
+                dat$contrast,
+                levels=unique(dat$contrast))
+            featureLabels <- .tofuUniqueShortLabels(
+                levels(dat$feature), width=20L)
+            contrastLabels <- .tofuUniqueShortLabels(
+                levels(dat$contrast), width=24L)
+            grid <- dat[, c("feature", "contrast", "missing"), drop=FALSE]
+            selected <- dat[! dat$missing, , drop=FALSE]
+            ggplot2::ggplot(
+                grid,
+                ggplot2::aes(x=contrast, y=feature)) +
+                ggplot2::geom_tile(
+                    fill="#D9D9D9", colour="white", linewidth=0.35) +
+                ggplot2::geom_tile(
+                    data=selected,
+                    ggplot2::aes(fill=contribution),
+                    colour="white", linewidth=0.35) +
+                ggplot2::scale_fill_viridis_c(
+                    option="C", direction=-1,
+                    na.value="#D9D9D9",
+                    name="Contribution (%)") +
+                ggplot2::scale_x_discrete(labels=contrastLabels) +
+                ggplot2::scale_y_discrete(labels=featureLabels) +
+                ggplot2::labs(x="Contrast", y="Feature") +
+                .tofuPlotTheme(baseSize=10) +
+                ggplot2::theme(
+                    axis.text.x=ggplot2::element_text(
+                        angle=35, hjust=1, vjust=1))
+        },
+
+        .plotHeatmap = function(image, ...) {
+            if (! isTRUE(self$options$simperHeatmap))
+                return()
+            plot <- private$.buildHeatmapPlot()
+            if (is.null(plot))
+                return()
+            suppressWarnings(print(plot))
+            invisible(TRUE)
         },
 
         .contrastPairs = function(group) {
