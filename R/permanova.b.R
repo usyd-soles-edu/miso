@@ -141,9 +141,6 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$companionPcoaSites)
             tofu_clear_table(self$results$companionPcoaCentroids)
             tofu_clear_table(self$results$pairwise)
-            self$results$table$setNote(
-                key="structuralCells",
-                note="")
             self$results$pairwise$setNote(
                 key="scope",
                 note="")
@@ -576,22 +573,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     f=if (notApplicable) "" else tofu_num_or_na(tab[i, "F"]),
                     p=if (notApplicable) "" else tofu_num_or_na(tab[i, "Pr(>F)"]))
                 self$results$table$addRow(rowKey=rowKey, values=values)
-                if (notApplicable) {
-                    self$results$table$getCell(
-                        rowKey=rowKey,
-                        col="f")$addFootnote(
-                            "Not applicable for Residual and Total rows.")
-                    self$results$table$getCell(
-                        rowKey=rowKey,
-                        col="p")$addFootnote(
-                            "Not applicable for Residual and Total rows.")
-                }
             }
-            self$results$table$setNote(
-                key="structuralCells",
-                note=paste(
-                    "Blank Pseudo-F and Permutation p cells for Residual and Total",
-                    "are structurally not applicable."))
 
             list(
                 success=TRUE,
@@ -813,7 +795,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             private$.adjustmentLabel(self$options$permAdjust)))
 
             self$results$note$setContent(paste0(
-                '<h2>Interpretation</h2>',
+                '<h2>How to read these results</h2>',
                 tofu_html_block(text)))
         },
 

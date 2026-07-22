@@ -242,13 +242,14 @@ test_that("PERMANOVA returns stable numeric results", {
         expect_true(is.na(tab$p[tab$source == source]))
         expect_identical(res$table$getCell(rowKey=rowKey, col="f")$value, "")
         expect_identical(res$table$getCell(rowKey=rowKey, col="p")$value, "")
-        expect_match(
-            paste(unlist(res$table$getCell(rowKey=rowKey, col="f")$footnotes), collapse=" "),
-            "Not applicable")
-        expect_match(
-            paste(unlist(res$table$getCell(rowKey=rowKey, col="p")$footnotes), collapse=" "),
-            "Not applicable")
+        expect_length(
+            res$table$getCell(rowKey=rowKey, col="f")$footnotes,
+            0L)
+        expect_length(
+            res$table$getCell(rowKey=rowKey, col="p")$footnotes,
+            0L)
     }
+    expect_length(res$table$notes, 0L)
     expect_false(grepl("NaN", res$asString(), fixed=TRUE))
 })
 

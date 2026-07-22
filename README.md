@@ -139,16 +139,16 @@ Expected **PERMANOVA Table** values for `group`:
 |---:|---:|---:|
 | approximately 6.3747 | approximately 0.3778 | .001 |
 
-The **Pseudo-F** and **Permutation p** cells for the `Residual` and `Total` rows should be blank and identified as not applicable by the table note or footnote. `NaN` must not appear.
+The **Pseudo-F** and **Permutation p** cells for the `Residual` and `Total` rows should be plain blanks without superscripts or explanatory notes. `NaN` must not appear.
 
-Pass when **Data Summary**, **PERMANOVA Table**, **Interpretation**, and **Analysis settings** appear; the values match above to the displayed precision; **Data handling warnings** and **Pairwise PERMANOVA** do not appear; and the settings report **Free**, no block, **Sequential terms**, seed 123, and serial execution.
+Pass when **Data Summary**, **PERMANOVA Table**, **How to read these results**, and **Analysis settings** appear; the values match above to the displayed precision; **Data handling warnings** and **Pairwise PERMANOVA** do not appear; and the settings report **Free**, no block, **Sequential terms**, seed 123, and serial execution.
 
 <details>
 <summary>PERMANOVA functionality regression checks</summary>
 
 - **Pairwise dependency:** confirm **P-value adjustment** is disabled while **Pairwise comparisons** is cleared. Select **Pairwise comparisons**, leave the adjustment at **Holm**, and confirm that a populated **Pairwise PERMANOVA** table appears. Clear Pairwise and confirm that the table disappears rather than leaving an empty heading.
 - **Additional factor and interactions:** expand **Study design and model**, move `treatment` to **Additional factors (optional)**, and confirm both model terms appear. Clear Pairwise, select **Include interactions**, and confirm the interaction row appears. Pairwise should be unavailable until interactions are cleared.
-- **Covariates:** move `temperature` and `pH` to **Continuous covariates (optional)** and confirm both appear as model terms. Change **Test type** between **Sequential terms** and **Marginal terms** and confirm the Interpretation explains the selected model-term test.
+- **Covariates:** move `temperature` and `pH` to **Continuous covariates (optional)** and confirm both appear as model terms. Change **Test type** between **Sequential terms** and **Marginal terms** and confirm **How to read these results** explains the selected model-term test.
 - **Free with an assigned block:** move `block` to **Blocking variable (optional)** while leaving **Permutation restrictions: Free**. The main result should remain, **Data handling warnings** should say the block is unused, and **Analysis settings** should report **Block used: No**.
 - **Within blocks without a block:** remove `block`, select **Within blocks — requires a Blocking variable**, and confirm that only the actionable correction appears, with no inferential table.
 - **Blocked permutations:** assign `block` and keep **Within blocks — requires a Blocking variable**. The analysis should run and **Analysis settings** should report that the block is used.

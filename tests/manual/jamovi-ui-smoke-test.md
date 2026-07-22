@@ -264,7 +264,7 @@ Assert these rendered rows:
 | `Residual` | `Residual`, `21`, `0.913`, `0.622` |
 | `Total` | `Total`, `23`, `1.467`, `1.000` |
 
-The shortened Residual and Total rows are intentional. Their missing Pseudo-F and Permutation p entries must be blank, and the table note or cell footnote must identify them as not applicable. Fail if `NaN` appears anywhere in the PERMANOVA table.
+The shortened Residual and Total rows are intentional. Their missing Pseudo-F and Permutation p entries must be plain blank cells without superscripts, cell footnotes, or a table note. Fail if `NaN` appears anywhere in the PERMANOVA table.
 
 ### 5. Open and recalculate the large workbook
 
@@ -293,7 +293,7 @@ Again, Residual and Total must have blank F and p cells, and `NaN` must not appe
 
 Open `tests/manual/tofu-small.csv`, create a new **Analyses → tofu → PERMANOVA — Test group differences**, and fetch a fresh accessibility state after every change.
 
-1. With no variables assigned, assert that **Getting started** contains both required steps. Assert that `Data Summary`, `PERMANOVA Table`, `Pairwise PERMANOVA`, `Interpretation`, and `Analysis settings` are absent from the accessibility tree.
+1. With no variables assigned, assert that **Getting started** contains both required steps. Assert that `Data Summary`, `PERMANOVA Table`, `Pairwise PERMANOVA`, `How to read these results`, and `Analysis settings` are absent from the accessibility tree.
 2. Assign `feature_01`–`feature_08` to **Feature variables (required)** using keyboard selection and the transfer arrow. Assert that **Action needed** asks for a categorical Grouping variable and that result tables remain absent.
 3. Assign `group` to **Grouping variable (required)**. Wait for `table PERMANOVA Table`, then assert that `table Pairwise PERMANOVA` and `Data handling warnings` are absent.
 4. Select **Pairwise comparisons**. Wait for a populated `table Pairwise PERMANOVA`. Clear Pairwise and assert that the table is removed from the accessibility tree.
@@ -318,7 +318,7 @@ Do not save the CSV as a workbook.
 
 1. At 200% display or text scaling, confirm all controls remain readable, reachable, and unclipped.
 2. At 400% macOS magnification, confirm keyboard focus remains visible and every control/result remains reachable; do not claim browser-style reflow.
-3. With VoiceOver, navigate the PERMANOVA table and confirm it announces the table title, column heading, Source-row context, and the not-applicable meaning of Residual/Total structural cells.
+3. With VoiceOver, navigate the PERMANOVA table and confirm it announces the table title, column heading, Source-row context, and the blank Residual/Total cells without adding superscript markers.
 4. Record Windows NVDA as unverified unless the same checks are physically run on Windows.
 
 ### 10. Run the SIMPER workflow

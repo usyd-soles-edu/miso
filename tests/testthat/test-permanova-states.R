@@ -43,6 +43,7 @@ test_that("PERMANOVA narrative results use bounded HTML", {
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
     expect_identical(by_name$note$type, "Html")
+    expect_identical(by_name$note$title, "How to read these results")
 })
 
 test_that("new PERMANOVA shows only complete getting-started guidance", {
@@ -500,6 +501,12 @@ test_that("interpretation distinguishes simple sequential and marginal models", 
 
     expect_match(tofu_squish_result(simple$note), "R² is the proportion")
     expect_match(tofu_squish_result(simple$note), "Examine PERMDISP")
+    expect_match(
+        tofu_squish_result(simple$note),
+        "How to read these results",
+        fixed=TRUE)
+    expect_length(simple$table$notes, 0L)
+    expect_length(simple$table$footnotes, 0L)
     expect_false(grepl("Sequential tests", tofu_squish_result(simple$note)))
     expect_match(tofu_squish_result(sequential$note), "Sequential tests depend on model-term order")
     expect_match(tofu_squish_result(marginal$note), "Marginal tests assess each term")

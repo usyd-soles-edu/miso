@@ -518,7 +518,7 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Interpretation",
+                title="How to read these results",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
