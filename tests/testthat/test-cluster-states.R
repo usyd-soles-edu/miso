@@ -87,9 +87,11 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_identical(
         names(result_by_name),
         c(
-            "guidance", "summary", "warnings", "dendrogram",
-            "dendrogramDescription", "dendrogramStructure", "membership", "interpretation",
-            "settings"))
+            "guidance", "summaryPurpose", "summary", "warnings",
+            "dendrogramDescription", "dendrogram",
+            "dendrogramStructurePurpose", "dendrogramStructure",
+            "membershipPurpose", "membership", "interpretation",
+            "settingsPurpose", "settings"))
     expect_true(all(vapply(
         results, function(item) identical(item$visible, FALSE), logical(1))))
     expect_identical(result_by_name$dendrogram$type, "Image")
@@ -155,10 +157,10 @@ test_that("default cluster output is explicitly uncut", {
     expect_null(private$.state$cutLine)
     expect_match(
         tofu_squish_result(result$dendrogramDescription),
-        "No clusters were defined")
+        "merge into clusters as dissimilarity increases")
     expect_match(
         tofu_squish_result(result$interpretation),
-        "dendrogram is descriptive")
+        "Merge height shows dissimilarity")
     plot <- private$.buildDendrogram()
     expect_s3_class(plot, "ggplot")
     geom_classes <- vapply(
@@ -213,9 +215,6 @@ test_that("automatic sample labels use the documented forty-sample threshold", {
             sampleLabels=case$mode)
         private <- cluster_private(analysis)
         expect_identical(private$.state$showLabels, case$shown)
-        expect_match(
-            tofu_squish_result(analysis$results$dendrogramDescription),
-            case$phrase)
         plot <- private$.buildDendrogram()
         x_scale <- plot$scales$get_scales("x")
         if (case$shown)
@@ -267,10 +266,6 @@ test_that("legacy Boolean sample-label options survive constructor and saved dec
         expect_identical(
             cluster_private(constructor)$.state$labelModeSource,
             "legacy")
-        expect_match(
-            tofu_squish_result(
-                constructor$results$dendrogramDescription),
-            "inherited its sample-label setting")
         constructorBreaks <- cluster_private(constructor)$.buildDendrogram()$
             scales$get_scales("x")$breaks
         if (case$shown)
@@ -536,10 +531,6 @@ test_that("number cuts match cutree and expose an actual cut line", {
     table <- analysis$results$membership$asDF
     expect_identical(table$sample, private$.state$labels)
     expect_identical(table$cluster, as.integer(expected))
-    expect_match(
-        tofu_squish_result(analysis$results$dendrogramDescription),
-        "4 clusters were defined by number")
-
     plot <- private$.buildDendrogram()
     geom_classes <- vapply(
         plot$layers, function(layer) class(layer$geom)[[1L]], character(1))
@@ -591,11 +582,9 @@ test_that("tied merges retain number membership without a misleading cut line", 
     state$cutLine <- definition$cutLine
     state$cutDescription <- definition$description
     private$.state <- state
-    private$.populateDescription()
-    description <- tofu_squish_result(
-        analysis$results$dendrogramDescription)
-    expect_match(description, "no single horizontal cut height represents it")
-    expect_match(description, "because merges are tied")
+    expect_match(definition$description,
+        "no single horizontal cut height represents it")
+    expect_match(definition$description, "because merges are tied")
 
     plot <- private$.buildDendrogram()
     geom_classes <- vapply(
@@ -624,9 +613,6 @@ test_that("height cuts match cutree exactly", {
         private$.state$membership,
         stats::cutree(private$.state$fit, h=height))
     expect_equal(private$.state$cutLine, height, tolerance=0)
-    expect_match(
-        tofu_squish_result(analysis$results$dendrogramDescription),
-        "dissimilarity height")
     expect_equal(
         nrow(analysis$results$membership$asDF),
         nrow(cluster_state_data(28L)))
@@ -697,9 +683,6 @@ test_that("full labels are preserved while plot labels are collision safe", {
     expect_true(all(nchar(plotData$leaf$plotLabel) <= 24L))
     expect_length(unique(plotData$leaf$plotLabel), nrow(data))
     expect_match(
-        tofu_squish_result(analysis$results$dendrogramDescription),
-        "shortened only in the plot")
-    expect_match(
         tofu_squish_result(analysis$results$warnings),
         "full labels are retained")
 })
@@ -739,16 +722,11 @@ test_that("more than 64 defined clusters use the disclosed fallback", {
     expect_gt(clusterCount, 64L)
     expect_false(private$.state$clusterStyleAvailable)
     expect_false(private$.state$showLabels)
-    expect_match(
-        tofu_squish_result(analysis$results$dendrogramDescription),
-        "more than 64 clusters")
-    expect_match(
-        tofu_squish_result(analysis$results$dendrogramDescription),
-        "cluster numbers and the membership table remain")
     plot <- private$.buildDendrogram()
     geom_classes <- vapply(
         plot$layers, function(layer) class(layer$geom)[[1L]], character(1))
-    expect_true(all(c("GeomPoint", "GeomText") %in% geom_classes))
+    expect_true("GeomPoint" %in% geom_classes)
+    expect_false("GeomText" %in% geom_classes)
 })
 
 test_that("nine clusters add visible numbers when shapes begin to repeat", {
@@ -766,10 +744,6 @@ test_that("nine clusters add visible numbers when shapes begin to repeat", {
 
     aesthetics <- .tofuGroupAesthetics(as.character(seq_len(9L)))
     expect_lt(length(unique(unname(aesthetics$shape))), 9L)
-    expect_match(
-        tofu_squish_result(analysis$results$dendrogramDescription),
-        "Cluster numbers supplement colour and shape")
-
     plot <- private$.buildDendrogram()
     geom_classes <- vapply(
         plot$layers, function(layer) class(layer$geom)[[1L]], character(1))

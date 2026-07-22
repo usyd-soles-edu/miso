@@ -46,6 +46,49 @@ test_that("PERMANOVA narrative results use bounded HTML", {
     expect_identical(by_name$note$title, "How to read these results")
 })
 
+test_that("PERMANOVA tables and plot expose concise adjacent purposes", {
+    results <- yaml::read_yaml(
+        tofu_fixture_path("jamovi", "permanova.r.yaml"))$items
+    names <- vapply(results, `[[`, character(1), "name")
+    expected <- c(
+        summary="summaryPurpose",
+        table="tablePurpose",
+        companionPcoa="companionPcoaDescription",
+        companionPcoaSites="companionPcoaSitesPurpose",
+        companionPcoaCentroids="companionPcoaCentroidsPurpose",
+        pairwise="pairwisePurpose",
+        settings="settingsPurpose")
+
+    for (output in names(expected)) {
+        index <- match(output, names)
+        expect_identical(names[[index - 1L]], unname(expected[[output]]),
+            info=output)
+        purpose <- results[[index - 1L]]
+        expect_identical(purpose$type, "Html", info=output)
+        expect_true(nzchar(purpose$title), info=output)
+        expect_identical(results[[index]]$title, "", info=output)
+        expect_false(purpose$visible, info=output)
+    }
+
+    result <- permanova(
+        data=permanova_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        permN=19,
+        seed=123)
+    for (name in c("summaryPurpose", "tablePurpose", "settingsPurpose")) {
+        expect_true(result[[name]]$visible, info=name)
+        purpose <- tofu_squish_result(result[[name]])
+        expect_match(purpose, 'role="note"', fixed=TRUE, info=name)
+        expect_match(purpose, "About ", fixed=TRUE, info=name)
+        expect_lte(nchar(purpose), 500L)
+    }
+    for (name in c(
+            "companionPcoaDescription", "companionPcoaSitesPurpose",
+            "companionPcoaCentroidsPurpose", "pairwisePurpose"))
+        expect_false(result[[name]]$visible, info=name)
+})
+
 test_that("new PERMANOVA shows only complete getting-started guidance", {
     result <- permanova(
         data=permanova_state_data(),
@@ -499,17 +542,16 @@ test_that("interpretation distinguishes simple sequential and marginal models", 
         seed=123
     ))
 
-    expect_match(tofu_squish_result(simple$note), "R² is the proportion")
-    expect_match(tofu_squish_result(simple$note), "Examine PERMDISP")
-    expect_match(
-        tofu_squish_result(simple$note),
-        "How to read these results",
-        fixed=TRUE)
+    expect_match(tofu_squish_result(simple$note),
+        "Pseudo-F compares among-group and within-group variation")
+    expect_match(tofu_squish_result(simple$note),
+        "R² shows explained variation")
     expect_length(simple$table$notes, 0L)
     expect_length(simple$table$footnotes, 0L)
     expect_false(grepl("Sequential tests", tofu_squish_result(simple$note)))
-    expect_match(tofu_squish_result(sequential$note), "Sequential tests depend on model-term order")
-    expect_match(tofu_squish_result(marginal$note), "Marginal tests assess each term")
+    expect_identical(
+        tofu_squish_result(sequential$note),
+        tofu_squish_result(marginal$note))
 })
 
 permanova_companion_args <- function(...) {
@@ -569,9 +611,11 @@ test_that("PERMANOVA companion contracts are optional, bounded, and ordered", {
     results <- yaml::read_yaml(
         tofu_fixture_path("jamovi", "permanova.r.yaml"))$items
     names <- vapply(results, `[[`, character(1), "name")
-    expect_identical(names[match("table", names) + seq_len(5L)], c(
-        "companionPcoa", "companionPcoaDescription",
-        "companionPcoaSites", "companionPcoaCentroids", "pairwise"))
+    expect_identical(names[match("table", names) + seq_len(9L)], c(
+        "companionPcoaDescription", "companionPcoa",
+        "companionPcoaSitesPurpose", "companionPcoaSites",
+        "companionPcoaCentroidsPurpose", "companionPcoaCentroids",
+        "pairwisePurpose", "pairwise", "note"))
     byName <- setNames(results, names)
     expect_identical(byName$companionPcoa$width, 600L)
     expect_identical(byName$companionPcoa$height, 500L)
@@ -602,12 +646,10 @@ test_that("simple companion PCoA automatically displays the primary factor", {
         rep(3L, 3L))
     description <- tofu_squish_result(result$companionPcoaDescription)
     expect_match(description,
-        paste(
-            "Descriptive view of the distance structure; the",
-            "PERMANOVA table is the hypothesis test."), fixed=TRUE)
-    expect_match(description, "same prepared distance object", fixed=TRUE)
-    expect_match(description, "group (3 groups)", fixed=TRUE)
-    expect_match(description, "must not be used to infer p-values", fixed=TRUE)
+        "Visualises sample resemblance and group positions alongside the test",
+        fixed=TRUE)
+    expect_match(description, 'aria-label="About PERMANOVA companion PCoA"',
+        fixed=TRUE)
 })
 
 test_that("multifactor companion requires an eligible explicit display factor", {
@@ -660,11 +702,11 @@ test_that("multifactor companion requires an eligible explicit display factor", 
     expect_identical(unique(additional$companionPcoaSites$asDF$group),
         levels(permanova_state_data()$site))
     expect_match(
-        tofu_squish_result(additional$companionPcoaDescription),
-        "does not represent the complete model", fixed=TRUE)
+        tofu_squish_result(additional$warnings),
+        "does not represent adjusted effects", fixed=TRUE)
     expect_match(
-        tofu_squish_result(additional$companionPcoaDescription),
-        "cannot display adjusted term effects", fixed=TRUE)
+        tofu_squish_result(additional$warnings),
+        "complete model", fixed=TRUE)
 })
 
 test_that("companion coordinates preserve filtered source rows and factor alignment", {
@@ -717,13 +759,11 @@ test_that("companion eligibility follows factors retained by the fitted model", 
         as.character(data$group[companion$companionPcoaSites$asDF$sourceRow]))
     expect_false(any(grepl(
         "collapsing", companion$table$asDF$source, fixed=TRUE)))
-    description <- tofu_squish_result(
-        companion$companionPcoaDescription)
-    expect_match(description,
+    warning <- tofu_squish_result(companion$warnings)
+    expect_match(warning,
         "Additional factor 'collapsing' was not retained", fixed=TRUE)
-    expect_match(description,
+    expect_match(warning,
         "automatically displays 'group'", fixed=TRUE)
-    expect_match(description, "for group (3 groups)", fixed=TRUE)
 
     retained <- run_permanova_companion(
         permFactors="site", showCompanionPcoa=TRUE,
@@ -732,9 +772,6 @@ test_that("companion eligibility follows factors retained by the fitted model", 
     expect_identical(
         retained$companionPcoaSites$asDF$group,
         as.character(permanova_state_data()$site))
-    expect_match(
-        tofu_squish_result(retained$companionPcoaDescription),
-        "for site (2 groups)", fixed=TRUE)
 })
 
 test_that("companion coordinates exactly reuse every PERMANOVA distance correction", {
@@ -839,13 +876,11 @@ test_that("companion failure and one-axis geometry preserve inferential output",
     expect_true(oneAxis$companionPcoaCentroids$visible)
     expect_true(all(is.na(oneAxis$companionPcoaSites$asDF$PCoA2)))
     expect_match(tofu_squish_result(oneAxis$companionPcoaDescription),
-        "no blank image is shown", fixed=TRUE)
+        "two-dimensional companion plot is unavailable", fixed=TRUE)
     oneAxisDescription <- tofu_squish_result(
         oneAxis$companionPcoaDescription)
     expect_match(oneAxisDescription,
-        "Because the image is unavailable", fixed=TRUE)
-    expect_match(oneAxisDescription,
-        "coordinates are retained in tables where applicable", fixed=TRUE)
+        "Coordinate tables retain the fitted result", fixed=TRUE)
     expect_false(grepl("Sites are shown", oneAxisDescription, fixed=TRUE))
     expect_false(grepl("centroids are shown", oneAxisDescription, fixed=TRUE))
 })
@@ -981,9 +1016,9 @@ test_that("more than 64 groups use neutral companion styling without data loss",
     expect_equal(nrow(result$companionPcoaCentroids$asDF), 65L)
     expect_identical(sort(unique(result$companionPcoaSites$asDF$group)),
         sort(levels(groups)))
-    expect_match(tofu_squish_result(result$companionPcoaDescription),
-        "neutral styling because more than 64 groups", fixed=TRUE)
-    expect_match(tofu_squish_result(result$companionPcoaDescription),
+    expect_match(tofu_squish_result(result$warnings),
+        "Neutral site styling is used because more than 64 groups", fixed=TRUE)
+    expect_match(tofu_squish_result(result$warnings),
         "centroids and spiders are omitted from the image", fixed=TRUE)
 })
 

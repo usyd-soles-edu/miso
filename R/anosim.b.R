@@ -82,6 +82,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep,
                 self$options$transform,
                 self$options$distance)
+            private$.populatePurposes()
 
             if (! private$.runGlobal(prep))
                 return()
@@ -110,11 +111,17 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$rankPlotDescription$setContent("")
             self$results$note$setContent("")
             tofu_clear_table(self$results$settings)
+            for (name in c(
+                    "summaryPurpose", "globalPurpose", "pairwisePurpose",
+                    "rankSummaryPurpose", "settingsPurpose"))
+                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "warnings", "global",
-                    "pairwise", "rankPlot", "rankPlotDescription",
-                    "rankSummary", "note", "settings"))
+                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "global", "globalPurpose", "pairwise",
+                    "pairwisePurpose", "rankPlot", "rankPlotDescription",
+                    "rankSummary", "rankSummaryPurpose", "note", "settings",
+                    "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -125,14 +132,37 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
-            for (name in c("summary", "global", "note", "settings"))
+            for (name in c(
+                    "summary", "summaryPurpose", "global", "globalPurpose",
+                    "note", "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
+            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
             hasRank <- !is.null(private$.state$rankPlotData)
             showRank <- isTRUE(self$options$showRankPlot) && hasRank
             for (name in c("rankPlot", "rankPlotDescription"))
                 self$results[[name]]$setVisible(showRank)
             self$results$rankSummary$setVisible(hasRank)
+            self$results$rankSummaryPurpose$setVisible(hasRank)
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                globalPurpose=c(
+                    "Global ANOSIM",
+                    "Tests whether within-group samples are more similar than between-group samples."),
+                pairwisePurpose=c(
+                    "Pairwise ANOSIM",
+                    "Compares ANOSIM separation between each pair of groups."),
+                rankSummaryPurpose=c(
+                    "Ranked-dissimilarity summary",
+                    "Summarises ranks within each pair category."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .setWarnings = function(warnings) {
@@ -142,7 +172,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_html_block(warnings))
+            self$results$warnings$setContent(tofu_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -413,16 +443,10 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         groupCount)
                 else
                     character()
-                self$results$rankPlotDescription$setContent(tofu_html_block(c(
-                    paste(
-                        "Between ranks compare samples from different groups, while",
-                        "each Within category compares samples from the named group."),
-                    disclosure,
-                    styleDisclosure,
-                    paste(
-                        "Pairwise dissimilarities are dependent, so this plot is a",
-                        "diagnostic rather than additional inference; both location and",
-                        "dispersion can affect ANOSIM R."))))
+                self$results$rankPlotDescription$setContent(tofu_html_block(
+                    "Shows the ranked dissimilarities underlying the ANOSIM statistic.",
+                    ariaLabel="About ANOSIM rank distributions",
+                    title="Ranked-dissimilarity plot"))
             }
         },
 
@@ -467,7 +491,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     data=diagnostic$raw,
                     ggplot2::aes(
                         x=x, y=rank, colour=category, shape=category),
-                    inherit.aes=FALSE, size=1.65, alpha=.62, stroke=.35) +
+                    inherit.aes=FALSE, size=2.1, alpha=.9, stroke=.45) +
                 ggplot2::scale_x_continuous(
                     breaks=seq_along(categories),
                     labels=unname(labels[categories]),
@@ -482,7 +506,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 ggplot2::labs(
                     x="Pair category",
                     y="Ranked dissimilarity") +
-                .tofuPlotTheme(baseSize=10)
+                .tofuPlotTheme()
         },
 
         .plotRank = function(image, ...) {
@@ -609,64 +633,10 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .setInterpretation = function(prep, pairwiseShown) {
-            r <- private$.state$globalR
-            p <- private$.state$globalP
-            observed <- if (r > .1)
-                paste(
-                    "The positive R indicates that observations from different",
-                    "groups tend to be ranked as more dissimilar than observations",
-                    "within groups.")
-            else if (r < -.1)
-                paste(
-                    "The negative R indicates that within-group observations are,",
-                    "on average, ranked as more dissimilar than observations from",
-                    "different groups. The selected grouping may not describe the",
-                    "dissimilarity pattern well, or unusual dispersion or structure",
-                    "may need examination.")
-            else
-                paste(
-                    "R is near zero, so between-group and within-group rank patterns",
-                    "are similar.")
-            evidence <- if (is.finite(p) && p < .05)
-                paste(
-                    "The permutation p value provides evidence against the null",
-                    "pattern under the selected permutation design.")
-            else
-                paste(
-                    "The permutation p value does not provide sufficient evidence",
-                    "against the null pattern under the selected permutation design;",
-                    "this is not proof that the groups are identical.")
-            pairwiseText <- ""
-            if (isTRUE(self$options$anosimPairwise) && nlevels(prep$group) == 2L)
-                pairwiseText <- paste(
-                    "With two groups, global ANOSIM is the only group contrast,",
-                    "so a separate pairwise table is not shown.")
-            else if (isTRUE(pairwiseShown))
-                pairwiseText <- sprintf(
-                    "Pairwise contrasts use %s adjustment and concern ranked group separation.",
-                    private$.adjustmentLabel(self$options$anosimAdjust))
-
-            paragraphs <- c(
-                paste(
-                    "ANOSIM compares ranked between-group and within-group",
-                    "dissimilarities. R approaching 1 indicates stronger group",
-                    "separation; R near 0 indicates similar rank patterns; negative R",
-                    "means within-group observations are ranked as more dissimilar on",
-                    "average than observations from different groups."),
-                sprintf(
-                    "Global R = %s; Permutation p = %s. %s %s",
-                    format(r, digits=3),
-                    format.pval(p, digits=3, eps=.001),
-                    observed,
-                    evidence),
-                paste(
-                    "The p value assesses the selected permutation design and does",
-                    "not prove a biological mechanism. PERMANOVA is generally more",
-                    "flexible for model-based testing, and PERMDISP can help examine",
-                    "whether group dispersions differ."),
-                pairwiseText)
-            paragraphs <- paragraphs[nzchar(paragraphs)]
-            self$results$note$setContent(tofu_html_block(paragraphs))
+            self$results$note$setContent(tofu_html_block(paste(
+                "R measures rank separation; larger positive values indicate stronger separation.",
+                "Permutation p compares this with random grouping."),
+                title="How to read these results"))
         },
 
         .populateSettings = function(prep, pairwiseShown) {

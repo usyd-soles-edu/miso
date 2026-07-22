@@ -143,9 +143,10 @@ test_that("unique short labels preserve distinct identities after truncation", {
 })
 
 test_that("shared plot theme uses restrained publication settings", {
-    theme <- .tofuPlotTheme(baseSize = 12)
+    theme <- .tofuPlotTheme()
 
     expect_s3_class(theme, "theme")
+    expect_identical(theme$text$size, 12)
     expect_identical(theme$legend.position, "bottom")
     expect_identical(theme$legend.box, "vertical")
     expect_s3_class(theme$panel.grid.minor, "element_blank")

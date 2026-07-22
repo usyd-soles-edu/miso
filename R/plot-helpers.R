@@ -122,7 +122,7 @@
     labels
 }
 
-.tofuPlotTheme <- function(baseSize = 11) {
+.tofuPlotTheme <- function(baseSize = 12) {
     ggplot2::theme_minimal(base_size = baseSize) +
         ggplot2::theme(
             panel.grid.minor = ggplot2::element_blank(),

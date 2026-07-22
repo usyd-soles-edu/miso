@@ -1,7 +1,7 @@
 Package: tofu
 Type: Package
 Title: Multivariate Abundance Workflows for jamovi
-Version: 0.2.0
+Version: 0.2.1
 Author: Januar Harianto
 Maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
 Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and cluster

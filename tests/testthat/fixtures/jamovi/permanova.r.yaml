@@ -9,8 +9,13 @@ items:
     type: Html
     visible: false
 
-  - name: summary
+  - name: summaryPurpose
     title: Data Summary
+    type: Html
+    visible: false
+
+  - name: summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -23,12 +28,17 @@ items:
         type: text
 
   - name: warnings
-    title: Data handling warnings
+    title: ''
+    type: Html
+    visible: false
+
+  - name: tablePurpose
+    title: PERMANOVA Table
     type: Html
     visible: false
 
   - name: table
-    title: PERMANOVA Table
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -53,12 +63,9 @@ items:
         type: number
         format: zto,pvalue
 
-  - name: companionPcoa
+  - name: companionPcoaDescription
     title: PERMANOVA companion PCoA
-    type: Image
-    width: 600
-    height: 500
-    renderFun: .plotCompanionPcoa
+    type: Html
     visible: false
     clearWith: &companionClearWith
       - vars
@@ -78,14 +85,23 @@ items:
       - pcoaCentroids
       - pcoaSpiders
 
-  - name: companionPcoaDescription
-    title: Companion PCoA description
+  - name: companionPcoa
+    title: ''
+    type: Image
+    width: 600
+    height: 500
+    renderFun: .plotCompanionPcoa
+    visible: false
+    clearWith: *companionClearWith
+
+  - name: companionPcoaSitesPurpose
+    title: Companion PCoA Site Coordinates
     type: Html
     visible: false
     clearWith: *companionClearWith
 
   - name: companionPcoaSites
-    title: Companion PCoA Site Coordinates
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -109,8 +125,14 @@ items:
         format: zto
     clearWith: *companionClearWith
 
-  - name: companionPcoaCentroids
+  - name: companionPcoaCentroidsPurpose
     title: Companion PCoA Group Centroids
+    type: Html
+    visible: false
+    clearWith: *companionClearWith
+
+  - name: companionPcoaCentroids
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -131,8 +153,13 @@ items:
         format: zto
     clearWith: *companionClearWith
 
-  - name: pairwise
+  - name: pairwisePurpose
     title: Pairwise PERMANOVA
+    type: Html
+    visible: false
+
+  - name: pairwise
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -157,8 +184,13 @@ items:
     type: Html
     visible: false
 
-  - name: settings
+  - name: settingsPurpose
     title: Analysis settings
+    type: Html
+    visible: false
+
+  - name: settings
+    title: ''
     type: Table
     visible: false
     rows: 0

@@ -197,6 +197,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "because finite dissimilarity and ordination-distance",
                         "values were unavailable."))
             private$.populateSummary()
+            private$.populatePurposes()
             private$.populateCoreResults()
             showShepard <- isTRUE(self$options$nmdsShepard) &&
                 private$.state$shepardValid
@@ -210,8 +211,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_html_escape(value)
         },
 
-        .htmlBlock = function(paragraphs) {
-            tofu_html_block(paragraphs)
+        .htmlBlock = function(paragraphs, ariaLabel=NULL, title=NULL) {
+            tofu_html_block(
+                paragraphs,
+                ariaLabel=ariaLabel,
+                title=title)
         },
 
         .distanceLabel = function(method) {
@@ -579,6 +583,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$ordinationDescription$setContent("")
             self$results$shepardDescription$setContent("")
             self$results$note$setContent("")
+            for (name in c(
+                    "summaryPurpose", "sitesPurpose", "stressPurpose",
+                    "shepardPairsPurpose", "envfitPurpose", "featuresPurpose",
+                    "settingsPurpose"))
+                self$results[[name]]$setContent("")
             private$.clearTable(self$results$summary)
             private$.clearTable(self$results$stress)
             private$.clearTable(self$results$shepardPairs)
@@ -590,10 +599,13 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.clearTable(self$results$features)
             private$.clearTable(self$results$settings)
             for (name in c(
-                    "guidance", "summary", "warnings", "ordination",
-                    "ordinationDescription", "stress", "shepard",
-                    "shepardDescription", "shepardPairs", "envfit", "note", "sites",
-                    "features", "settings"))
+                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "ordination", "ordinationDescription", "stress",
+                    "stressPurpose", "shepard", "shepardDescription",
+                    "shepardPairs", "shepardPairsPurpose", "envfit",
+                    "envfitPurpose", "note", "sites", "sitesPurpose",
+                    "features", "featuresPurpose", "settings",
+                    "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -607,18 +619,47 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
             hasWarnings <- length(private$.state$warnings) > 0L
             if (hasWarnings)
-                self$results$warnings$setContent(private$.htmlBlock(
+                self$results$warnings$setContent(tofu_warning_block(
                     unique(private$.state$warnings)))
             for (name in c(
-                    "summary", "ordination", "ordinationDescription",
-                    "stress", "note", "sites", "settings"))
+                    "summary", "summaryPurpose", "ordination",
+                    "ordinationDescription", "stress", "stressPurpose", "note",
+                    "sites", "sitesPurpose", "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$warnings$setVisible(hasWarnings)
             self$results$shepard$setVisible(showShepard)
             self$results$shepardDescription$setVisible(showShepard)
             self$results$shepardPairs$setVisible(showShepard)
+            self$results$shepardPairsPurpose$setVisible(showShepard)
             self$results$envfit$setVisible(showEnv)
+            self$results$envfitPurpose$setVisible(showEnv)
             self$results$features$setVisible(showFeatures)
+            self$results$featuresPurpose$setVisible(showFeatures)
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                sitesPurpose=c(
+                    "Site scores",
+                    "Lists plotted sample coordinates for identification or reuse."),
+                stressPurpose=c(
+                    "Stress and convergence diagnostics",
+                    "Reports ordination stress and convergence."),
+                shepardPairsPurpose=c(
+                    "Shepard diagram values",
+                    "Lists the values represented in the Shepard diagram."),
+                envfitPurpose=c(
+                    "Environmental fit",
+                    "Shows associations between environmental variables and the ordination."),
+                featuresPurpose=c(
+                    "Feature scores",
+                    "Shows each feature's weighted-average position in the ordination."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .prepareGroup = function(prep) {
@@ -1108,151 +1149,25 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescriptions = function() {
-            fit <- private$.state$fit
-            prep <- private$.state$prep
-            k <- private$.state$effectiveK
-            stress <- private$.finiteNumber(fit$stress)
-            stressText <- if (is.na(stress))
-                "unavailable"
-            else
-                sprintf("%.4f", stress)
-            vectorCount <- length(private$.state$envRows)
-            grouping <- if (! is.null(private$.state$groupVariable) &&
-                    length(private$.state$assignedGroupLevels) >= 2L)
-                sprintf("grouped by %s", private$.state$groupVariable)
-            else
-                "not grouped"
-            paragraphs <- sprintf(
-                "%d sites; %s dissimilarity; transformation: %s; stress %s; %s.",
-                prep$rowsUsed,
-                private$.distanceLabel(self$options$distance),
-                private$.transformLabel(self$options$transform),
-                stressText,
-                grouping)
-
-            groupCount <- length(private$.state$assignedGroupLevels)
-            if (groupCount > 64L)
-                paragraphs <- c(paragraphs, sprintf(
-                    paste(
-                        "Group styling and overlays omitted: %d groups exceed",
-                        "the 64-style display limit."),
-                    groupCount))
-
-            overlays <- private$.state$overlays
-            if (length(overlays) > 0L && ! is.null(overlays$requested)) {
-                omitted <- names(overlays$requested)[
-                    overlays$requested & ! overlays$effective]
-                if (length(omitted) > 0L) {
-                    layerLabels <- c(
-                        points="group point styling",
-                        hull="group hulls",
-                        ellipse="1-SD dispersion ellipses",
-                        spider="group spiders")
-                    paragraphs <- c(paragraphs, sprintf(
-                        "Requested but omitted: %s.",
-                        paste(unname(layerLabels[omitted]), collapse=", ")))
-                }
-            }
-
-            requestedVectors <- unique(tofu_clean_vars(self$options$nmdsEnv))
-            if (length(requestedVectors) > vectorCount)
-                paragraphs <- c(paragraphs, sprintf(
-                    "%d of %d requested environmental vectors shown.",
-                    vectorCount, length(requestedVectors)))
-
-            features <- private$.state$features
-            if (isTRUE(self$options$nmdsSpecies) && is.null(features))
-                paragraphs <- c(
-                    paragraphs,
-                    "Requested feature score vectors and labels were unavailable.")
-            if (!is.null(features))
-                paragraphs <- c(
-                    paragraphs,
-                    private$.labelDisclosure(
-                        "Feature",
-                        private$.state$featureLabelsShown,
-                        private$.state$featureLabelsOmitted,
-                        nrow(features),
-                        "Feature Scores"))
-            if (vectorCount > 0L)
-                paragraphs <- c(
-                    paragraphs,
-                    private$.labelDisclosure(
-                        "Environmental vector",
-                        private$.state$vectorLabelsShown,
-                        private$.state$vectorLabelsOmitted,
-                        vectorCount,
-                        "Environmental Fit"))
-
-            if (identical(k, 3L))
-                paragraphs <- c(
-                    paragraphs,
-                    paste(
-                        "The image is an NMDS1-NMDS2 projection of the",
-                        "three-dimensional solution; NMDS3 is not shown.",
-                        "Use all three coordinates in the score and fit tables."))
             self$results$ordinationDescription$setContent(
-                private$.htmlBlock(paragraphs))
-
+                private$.htmlBlock(
+                    "Maps sample resemblance; closer points have more similar composition.",
+                    ariaLabel="About nMDS ordination",
+                    title="nMDS ordination"))
             if (isTRUE(self$options$nmdsShepard) &&
-                    private$.state$shepardValid) {
-                shepardText <- sprintf(
-                    paste(
-                        "Observed dissimilarities versus ordination distances across",
-                        "%d dimensions; stress %s. %s",
-                        "The monotone fit and stress use all finite pairs."),
-                    k, stressText,
-                    .tofuPlotDisclosure(
-                        private$.state$shepardDisplayed,
-                        private$.state$shepardTotal,
-                        "diagnostic pairs"))
+                    private$.state$shepardValid)
                 self$results$shepardDescription$setContent(
-                    private$.htmlBlock(shepardText))
-            }
+                    private$.htmlBlock(
+                        "Shows how well ordination distances preserve ranked dissimilarities.",
+                        ariaLabel="About the nMDS Shepard diagram",
+                        title="Shepard diagram"))
         },
 
         .populateInterpretation = function() {
-            fit <- private$.state$fit
-            prep <- private$.state$prep
-            k <- private$.state$effectiveK
-            stress <- private$.finiteNumber(fit$stress)
-            stressText <- if (is.na(stress))
-                "Stress is unavailable; check Stress and convergence."
-            else
-                sprintf(
-                    "Stress = %.3f; lower values indicate a closer fit.",
-                    stress)
-            paragraphs <- c(
-                paste(
-                    "Closer sites have more similar feature composition.",
-                    "Axis direction has no inherent meaning."),
-                stressText)
-            if (prep$rowsUsed <= 2L * k + 1L)
-                paragraphs <- c(
-                    paragraphs,
-                    sprintf(
-                        "%d sites support %d dimensions; stress may be uninformative.",
-                        prep$rowsUsed, k))
-            if (! is.null(private$.state$groupLabels))
-                paragraphs <- c(
-                    paragraphs,
-                    "Group displays are descriptive; 1-SD ellipses are not confidence regions.")
-            if (!is.null(private$.state$features))
-                paragraphs <- c(
-                    paragraphs,
-                    "Feature Scores are descriptive positions, not tests.")
-            if (length(private$.state$envRows) > 0L)
-                paragraphs <- c(
-                    paragraphs,
-                    paste(
-                        "Environmental fits test association with the ordination,",
-                        "not group differences; p-values are unadjusted."))
-            if (identical(k, 3L))
-                paragraphs <- c(
-                    paragraphs,
-                    "The plot omits NMDS3; use all three coordinates in the tables.")
-            self$results$note$setContent(
-                private$.htmlBlock(paragraphs))
+            self$results$note$setContent(tofu_html_block(paste(
+                "Closer points are more similar; axis direction is arbitrary, so check stress.",
+                "Feature scores are descriptive."),
+                title="How to read this ordination"))
         },
 
         .populateSettings = function() {
@@ -1486,7 +1401,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }))
         },
 
-        .buildNmdsPlot = function() {
+        .buildNmdsPlot = function ()
+        {
             sites <- private$.state$sites
             if (is.null(sites) || ncol(sites) < 2L)
                 return(NULL)
@@ -1496,251 +1412,150 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             yValues <- c(0, sites[is.finite(sites[, 2L]), 2L])
             styles <- overlays$styles
             pointsStyled <- isTRUE(overlays$effective[["points"]])
-            plot <- ggplot2::ggplot() +
-                ggplot2::labs(
-                    x="NMDS1", y="NMDS2",
-                    caption={
-                        stress <- private$.finiteNumber(private$.state$fit$stress)
-                        if (is.na(stress))
-                            "Stress unavailable"
-                        else
-                            sprintf("Stress = %.3f", stress)
-                    }) +
-                .tofuPlotTheme()
-
+            plot <- ggplot2::ggplot() + ggplot2::labs(x = "NMDS1", y = "NMDS2", caption = {
+                stress <- private$.finiteNumber(private$.state$fit$stress)
+                if (is.na(stress))
+                    "Stress unavailable"
+                else sprintf("Stress = %.3f", stress)
+            }) + .tofuPlotTheme()
             spiderData <- if (isTRUE(overlays$effective[["spider"]]))
-                private$.overlaySegmentData(
-                    overlays$spider, "Group spider")
-            else
-                data.frame()
+                private$.overlaySegmentData(overlays$spider, "Group spider")
+            else data.frame()
             hullData <- if (isTRUE(overlays$effective[["hull"]]))
                 private$.overlayPathData(overlays$hull, "Group hull")
-            else
-                data.frame()
+            else data.frame()
             ellipseData <- if (isTRUE(overlays$effective[["ellipse"]]))
-                private$.overlayPathData(
-                    overlays$ellipse, "Dispersion ellipse (1 SD)")
-            else
-                data.frame()
+                private$.overlayPathData(overlays$ellipse, "Dispersion ellipse (1 SD)")
+            else data.frame()
             overlayData <- list(spiderData, hullData, ellipseData)
-            for (geometry in overlayData)
-                if (nrow(geometry) > 0L) {
-                    xValues <- c(xValues, geometry$x)
-                    yValues <- c(yValues, geometry$y)
-                    if ("xend" %in% names(geometry)) {
-                        xValues <- c(xValues, geometry$xend)
-                        yValues <- c(yValues, geometry$yend)
-                    }
+            for (geometry in overlayData) if (nrow(geometry) > 0L) {
+                xValues <- c(xValues, geometry$x)
+                yValues <- c(yValues, geometry$y)
+                if ("xend" %in% names(geometry)) {
+                    xValues <- c(xValues, geometry$xend)
+                    yValues <- c(yValues, geometry$yend)
                 }
-
+            }
             lineMapping <- if (pointsStyled) {
-                ggplot2::aes(
-                    colour=group, linetype=layer, linewidth=layer)
-            } else {
-                ggplot2::aes(
-                    colour=group, linetype=group, linewidth=layer)
+                ggplot2::aes(colour = group, linetype = layer, linewidth = layer)
+            }
+            else {
+                ggplot2::aes(colour = group, linetype = group, linewidth = layer)
             }
             if (nrow(spiderData) > 0L)
-                plot <- plot + ggplot2::geom_segment(
-                    data=spiderData,
-                    mapping=utils::modifyList(
-                        lineMapping,
-                        ggplot2::aes(x=x, y=y, xend=xend, yend=yend)),
-                    alpha=0.72, show.legend=TRUE)
+                plot <- plot + ggplot2::geom_segment(data = spiderData, mapping = utils::modifyList(lineMapping,
+                    ggplot2::aes(x = x, y = y, xend = xend, yend = yend)), alpha = 0.72, show.legend = TRUE)
             if (nrow(hullData) > 0L)
-                plot <- plot + ggplot2::geom_path(
-                    data=hullData,
-                    mapping=utils::modifyList(
-                        lineMapping,
-                        ggplot2::aes(x=x, y=y, group=pathGroup)),
-                    show.legend=TRUE)
+                plot <- plot + ggplot2::geom_path(data = hullData, mapping = utils::modifyList(lineMapping, ggplot2::aes(x = x,
+                    y = y, group = pathGroup)), show.legend = TRUE)
             if (nrow(ellipseData) > 0L)
-                plot <- plot + ggplot2::geom_path(
-                    data=ellipseData,
-                    mapping=utils::modifyList(
-                        lineMapping,
-                        ggplot2::aes(x=x, y=y, group=pathGroup)),
-                    show.legend=TRUE)
-
-            siteData <- data.frame(
-                x=sites[, 1L], y=sites[, 2L],
-                stringsAsFactors=FALSE)
+                plot <- plot + ggplot2::geom_path(data = ellipseData, mapping = utils::modifyList(lineMapping,
+                    ggplot2::aes(x = x, y = y, group = pathGroup)), show.legend = TRUE)
+            siteData <- data.frame(x = sites[, 1L], y = sites[, 2L], stringsAsFactors = FALSE)
             if (pointsStyled) {
-                siteData$group <- factor(
-                    private$.state$groupLabels, levels=styles$group)
-                plot <- plot + ggplot2::geom_point(
-                    data=siteData,
-                    ggplot2::aes(x=x, y=y, colour=group, shape=group),
-                    size=2.5, stroke=0.8)
-            } else {
-                plot <- plot + ggplot2::geom_point(
-                    data=siteData, ggplot2::aes(x=x, y=y),
-                    shape=21L, size=2.5, stroke=0.7,
-                    colour="#1A1A1A", fill="#005A9C")
+                siteData$group <- factor(private$.state$groupLabels, levels = styles$group)
+                plot <- plot + ggplot2::geom_point(data = siteData, ggplot2::aes(x = x, y = y, colour = group,
+                    shape = group), size = 2.5, stroke = 0.8)
             }
-
-            if (! is.null(features) && nrow(features) > 0L && ncol(features) >= 2L) {
-                finiteFeatures <-
-                    is.finite(features[, 1L]) & is.finite(features[, 2L])
-                featureData <- data.frame(
-                    x=0, y=0,
-                    xend=features[finiteFeatures, 1L],
-                    yend=features[finiteFeatures, 2L],
-                    label=private$.featureNames()[finiteFeatures],
-                    group="Feature scores", layer="Feature score",
-                    original=which(finiteFeatures),
-                    stringsAsFactors=FALSE)
+            else {
+                plot <- plot + ggplot2::geom_point(data = siteData, ggplot2::aes(x = x, y = y), shape = 21L,
+                    size = 2.5, stroke = 0.7, colour = "#1A1A1A", fill = "#005A9C")
+            }
+            if (!is.null(features) && nrow(features) > 0L && ncol(features) >= 2L) {
+                finiteFeatures <- is.finite(features[, 1L]) & is.finite(features[, 2L])
+                featureData <- data.frame(x = 0, y = 0, xend = features[finiteFeatures, 1L], yend = features[finiteFeatures,
+                    2L], label = private$.featureNames()[finiteFeatures], group = "Feature scores", layer = "Feature score",
+                    original = which(finiteFeatures), stringsAsFactors = FALSE)
                 xValues <- c(xValues, featureData$xend)
                 yValues <- c(yValues, featureData$yend)
-                plot <- plot + ggplot2::geom_segment(
-                    data=featureData,
-                    ggplot2::aes(x=x, y=y, xend=xend, yend=yend),
-                    arrow=grid::arrow(
-                        length=grid::unit(0.12, "cm"), type="closed"),
-                    colour="#4D4D4D", linewidth=0.45, alpha=0.72,
-                    show.legend=FALSE)
+                plot <- plot + ggplot2::geom_segment(data = featureData, ggplot2::aes(x = x, y = y, xend = xend,
+                    yend = yend), arrow = grid::arrow(length = grid::unit(0.12, "cm"), type = "closed"), colour = "#4D4D4D",
+                    linewidth = 0.45, alpha = 0.72, show.legend = FALSE)
                 labels <- private$.featureNames()
                 shown <- private$.state$featureLabelSelection$shown
                 shown <- shown[shown %in% featureData$original]
                 if (length(shown) > 0L) {
-                    labelData <- data.frame(
-                        x=features[shown, 1L], y=features[shown, 2L],
-                        label=labels[shown], stringsAsFactors=FALSE)
+                    labelData <- data.frame(x = features[shown, 1L], y = features[shown, 2L], label = labels[shown],
+                        stringsAsFactors = FALSE)
                     xValues <- c(xValues, labelData$x)
                     yValues <- c(yValues, labelData$y)
-                    plot <- plot + ggplot2::geom_text(
-                        data=labelData,
-                        ggplot2::aes(x=x, y=y, label=label),
-                        colour="#3D3D3D", size=3, vjust=-0.45,
-                        check_overlap=FALSE, show.legend=FALSE)
+                    plot <- plot + ggplot2::geom_text(data = labelData, ggplot2::aes(x = x, y = y, label = label),
+                        colour = "#3D3D3D", size = 3.5, vjust = -0.45, check_overlap = FALSE, show.legend = FALSE)
                 }
             }
-
             vectors <- private$.state$vectorEndpoints
-            if (! is.null(vectors)) {
+            if (!is.null(vectors)) {
                 vectors <- as.matrix(vectors)
                 if (nrow(vectors) > 0L && ncol(vectors) >= 2L) {
                     labels <- rownames(vectors)
                     if (is.null(labels))
                         labels <- seq_len(nrow(vectors))
-                    finiteVectors <-
-                        is.finite(vectors[, 1L]) & is.finite(vectors[, 2L])
+                    finiteVectors <- is.finite(vectors[, 1L]) & is.finite(vectors[, 2L])
                     if (any(finiteVectors)) {
                         labelExpansion <- 1.12
-                        arrowMultiplier <- suppressWarnings(tryCatch(
-                            vegan::ordiArrowMul(
-                                vectors[finiteVectors, 1:2, drop=FALSE],
-                                fill=0.75 / labelExpansion),
-                            error=function(e) NA_real_))
-                        if (length(arrowMultiplier) != 1L ||
-                                ! is.finite(arrowMultiplier) ||
-                                arrowMultiplier <= 0)
-                            arrowMultiplier <- 1
-                        displayVectors <- matrix(
-                            NA_real_, nrow=nrow(vectors), ncol=2L)
-                        displayVectors[finiteVectors, ] <-
-                            vectors[finiteVectors, 1:2, drop=FALSE] *
-                            arrowMultiplier
-                        vectorData <- data.frame(
-                            x=0, y=0,
-                            xend=displayVectors[finiteVectors, 1L],
-                            yend=displayVectors[finiteVectors, 2L],
-                            label=labels[finiteVectors],
-                            group="Environmental vectors",
-                            layer="Environmental vector",
-                            original=which(finiteVectors),
-                            stringsAsFactors=FALSE)
+                        arrowMultiplier <- suppressWarnings(tryCatch(vegan::ordiArrowMul(vectors[finiteVectors,
+                          1:2, drop = FALSE], fill = 0.75/labelExpansion), error = function(e) NA_real_))
+                        if (length(arrowMultiplier) != 1L || !is.finite(arrowMultiplier) || arrowMultiplier <=
+                          0)
+                          arrowMultiplier <- 1
+                        displayVectors <- matrix(NA_real_, nrow = nrow(vectors), ncol = 2L)
+                        displayVectors[finiteVectors, ] <- vectors[finiteVectors, 1:2, drop = FALSE] * arrowMultiplier
+                        vectorData <- data.frame(x = 0, y = 0, xend = displayVectors[finiteVectors, 1L], yend = displayVectors[finiteVectors,
+                          2L], label = labels[finiteVectors], group = "Environmental vectors", layer = "Environmental vector",
+                          original = which(finiteVectors), stringsAsFactors = FALSE)
                         xValues <- c(xValues, vectorData$xend)
                         yValues <- c(yValues, vectorData$yend)
-                        plot <- plot + ggplot2::geom_segment(
-                            data=vectorData,
-                            ggplot2::aes(
-                                x=x, y=y, xend=xend, yend=yend),
-                            arrow=grid::arrow(
-                                length=grid::unit(0.14, "cm"), type="closed"),
-                            colour="#8B1A1A", linewidth=0.7,
-                            show.legend=FALSE)
-                        shown <- intersect(
-                            private$.state$vectorLabelSelection$shown,
-                            which(finiteVectors))
+                        plot <- plot + ggplot2::geom_segment(data = vectorData, ggplot2::aes(x = x, y = y, xend = xend,
+                          yend = yend), arrow = grid::arrow(length = grid::unit(0.14, "cm"), type = "closed"),
+                          colour = "#8B1A1A", linewidth = 0.7, show.legend = FALSE)
+                        shown <- intersect(private$.state$vectorLabelSelection$shown, which(finiteVectors))
                         if (length(shown) > 0L) {
-                            labelData <- data.frame(
-                                x=displayVectors[shown, 1L] * labelExpansion,
-                                y=displayVectors[shown, 2L] * labelExpansion,
-                                label=labels[shown], stringsAsFactors=FALSE)
-                            xValues <- c(xValues, labelData$x)
-                            yValues <- c(yValues, labelData$y)
-                            plot <- plot + ggplot2::geom_text(
-                                data=labelData,
-                                ggplot2::aes(x=x, y=y, label=label),
-                                colour="#8B1A1A", fontface="bold", size=3.1,
-                                vjust=-0.45, show.legend=FALSE)
+                          labelData <- data.frame(x = displayVectors[shown, 1L] * labelExpansion, y = displayVectors[shown,
+                            2L] * labelExpansion, label = labels[shown], stringsAsFactors = FALSE)
+                          xValues <- c(xValues, labelData$x)
+                          yValues <- c(yValues, labelData$y)
+                          plot <- plot + ggplot2::geom_text(data = labelData, ggplot2::aes(x = x, y = y, label = label),
+                            colour = "#8B1A1A", fontface = "bold", size = 3.5, vjust = -0.45, show.legend = FALSE)
                         }
                     }
                 }
             }
-
-            hasGroupLines <- any(vapply(
-                list(spiderData, hullData, ellipseData),
-                nrow, integer(1)) > 0L)
+            hasGroupLines <- any(vapply(list(spiderData, hullData, ellipseData), nrow, integer(1)) > 0L)
             if ((pointsStyled || hasGroupLines) && nrow(styles) > 0L) {
                 legendStyles <- if (pointsStyled)
                     styles
-                else
-                    styles[styles$assigned, , drop=FALSE]
-                plot <- plot + ggplot2::scale_colour_manual(
-                    name="Group",
-                    values=stats::setNames(
-                        legendStyles$colour, legendStyles$group),
-                    drop=FALSE)
+                else styles[styles$assigned, , drop = FALSE]
+                plot <- plot + ggplot2::scale_colour_manual(name = "Group", values = stats::setNames(legendStyles$colour,
+                    legendStyles$group), drop = FALSE)
                 if (pointsStyled)
-                    plot <- plot + ggplot2::scale_shape_manual(
-                        name="Group",
-                        values=stats::setNames(
-                            legendStyles$shape, legendStyles$group),
-                        drop=FALSE)
-                plot <- plot + ggplot2::guides(
-                    colour=ggplot2::guide_legend(nrow=2, byrow=TRUE))
+                    plot <- plot + ggplot2::scale_shape_manual(name = "Group", values = stats::setNames(legendStyles$shape,
+                        legendStyles$group), drop = FALSE)
+                plot <- plot + ggplot2::guides(colour = ggplot2::guide_legend(nrow = 2, byrow = TRUE))
                 if (pointsStyled)
-                    plot <- plot + ggplot2::guides(
-                        shape=ggplot2::guide_legend(nrow=2, byrow=TRUE))
+                    plot <- plot + ggplot2::guides(shape = ggplot2::guide_legend(nrow = 2, byrow = TRUE))
             }
             effectiveLineLayers <- c("hull", "ellipse", "spider")
-            effectiveLineLayers <- effectiveLineLayers[
-                overlays$effective[effectiveLineLayers]]
-            layerLabels <- c(
-                hull="Group hull",
-                ellipse="Dispersion ellipse (1 SD)",
-                spider="Group spider")
+            effectiveLineLayers <- effectiveLineLayers[overlays$effective[effectiveLineLayers]]
+            layerLabels <- c(hull = "Group hull", ellipse = "Dispersion ellipse (1 SD)", spider = "Group spider")
             if (length(effectiveLineLayers) > 0L) {
                 lineLabels <- unname(layerLabels[effectiveLineLayers])
-                plot <- plot + ggplot2::scale_linewidth_manual(
-                    name="Layer",
-                    values=stats::setNames(
-                        unname(overlays$lineWidths[effectiveLineLayers]),
-                        lineLabels))
+                plot <- plot + ggplot2::scale_linewidth_manual(name = "Layer", values = stats::setNames(unname(overlays$lineWidths[effectiveLineLayers]),
+                    lineLabels))
                 if (pointsStyled) {
-                    plot <- plot + ggplot2::scale_linetype_manual(
-                        name="Layer",
-                        values=stats::setNames(
-                            unname(overlays$lineTypes[effectiveLineLayers]),
-                            lineLabels))
-                } else {
-                    assigned <- styles[styles$assigned, , drop=FALSE]
-                    plot <- plot + ggplot2::scale_linetype_manual(
-                        name="Group",
-                        values=stats::setNames(
-                            assigned$lineType, assigned$group),
-                        drop=FALSE)
+                    plot <- plot + ggplot2::scale_linetype_manual(name = "Layer", values = stats::setNames(unname(overlays$lineTypes[effectiveLineLayers]),
+                        lineLabels))
                 }
-                plot <- plot + ggplot2::guides(
-                    linetype=ggplot2::guide_legend(nrow=2, byrow=TRUE))
+                else {
+                    assigned <- styles[styles$assigned, , drop = FALSE]
+                    plot <- plot + ggplot2::scale_linetype_manual(name = "Group", values = stats::setNames(assigned$lineType,
+                        assigned$group), drop = FALSE)
+                }
+                plot <- plot + ggplot2::guides(linetype = ggplot2::guide_legend(nrow = 2, byrow = TRUE))
             }
             limits <- private$.plotLimits(xValues, yValues)
-            plot + ggplot2::coord_equal(
-                xlim=limits$x, ylim=limits$y,
-                expand=FALSE, clip="off")
-        },
+            plot + ggplot2::coord_equal(xlim = limits$x, ylim = limits$y, expand = FALSE, clip = "off")
+        }
+,
 
         .plotNmds = function(image, ...) {
             plot <- private$.buildNmdsPlot()

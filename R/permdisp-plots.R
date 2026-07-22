@@ -122,7 +122,7 @@
             data=diagnostic$raw,
             ggplot2::aes(
                 x=x, y=distance, colour=group, shape=group),
-            inherit.aes=FALSE, size=1.65, alpha=.65, stroke=.35) +
+            inherit.aes=FALSE, size=2.1, alpha=.9, stroke=.45) +
         ggplot2::scale_x_continuous(
             breaks=seq_along(groups), labels=axisLabels,
             expand=ggplot2::expansion(mult=c(.06, .06)),
@@ -131,7 +131,7 @@
         ggplot2::scale_colour_manual(values=colours, guide="none") +
         ggplot2::scale_shape_manual(values=shapes, guide="none") +
         ggplot2::labs(x="Group", y="Distance to group centre") +
-        .tofuPlotTheme(baseSize=10)
+        .tofuPlotTheme()
 }
 
 .preparePermdispOrdination <- function(fit, rowIndex=NULL, maxRaw=600L) {
@@ -274,12 +274,12 @@
             ggplot2::aes(
                 x=axis1, y=axis2, xend=centre1, yend=centre2,
                 colour=group),
-            linewidth=.4, alpha=.42) +
+            linewidth=.5, alpha=.75) +
         ggplot2::geom_point(
             data=ordination$raw,
             ggplot2::aes(
                 x=axis1, y=axis2, colour=group, shape=group),
-            size=1.75, alpha=.85, stroke=.35) +
+            size=2.2, alpha=.9, stroke=.45) +
         ggplot2::geom_point(
             data=ordination$plotCentres,
             ggplot2::aes(x=axis1, y=axis2, colour=group),
@@ -300,7 +300,7 @@
             y=ordination$axisNames[[2L]],
             colour="Group", shape="Group") +
         ggplot2::coord_equal() +
-        .tofuPlotTheme(baseSize=10)
+        .tofuPlotTheme()
 
     if (!showLegend && length(groups) <= 64L) {
         centres <- ordination$plotCentres
@@ -308,7 +308,7 @@
         plot <- plot + ggplot2::geom_text(
             data=centres,
             ggplot2::aes(x=axis1, y=axis2, label=label),
-            colour="#222222", size=2.8, nudge_y=.025,
+            colour="#222222", size=3.5, nudge_y=.025,
             check_overlap=TRUE, show.legend=FALSE)
     }
     plot

@@ -208,20 +208,86 @@ tofu_html_escape <- function(value) {
     gsub("'", "&#39;", value, fixed=TRUE)
 }
 
-tofu_html_block <- function(paragraphs) {
+tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
     paragraphs <- as.character(paragraphs)
     paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
     escaped <- tofu_html_escape(paragraphs)
     escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
+    accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {
+        ""
+    } else {
+        paste0(
+            ' role="note" aria-label="',
+            tofu_html_escape(as.character(ariaLabel[[1L]])),
+            '"')
+    }
+    heading <- if (is.null(title) || !nzchar(title)) {
+        ""
+    } else {
+        paste0(
+            '<div role="heading" aria-level="3" ',
+            'style="margin: 0 0 0.35em 0; font-weight: 600;">',
+            tofu_html_escape(as.character(title[[1L]])),
+            '</div>\n')
+    }
     paste0(
-        '<div style="margin: 0; max-width: 44em; line-height: 1.45; ',
+        '<div', accessibility,
+        ' style="margin: 0; max-width: 44em; line-height: 1.45; ',
+        'font-family: inherit; font-size: inherit; ',
         'white-space: normal; overflow-wrap: anywhere; word-break: normal;">\n',
+        heading,
         paste0(
             '<p style="margin: 0 0 0.65em 0;">\n',
             escaped,
             '\n</p>',
             collapse=""),
         '\n</div>')
+}
+
+tofu_warning_block <- function(paragraphs, title="Data handling warning",
+        ariaLabel=title) {
+    paragraphs <- as.character(paragraphs)
+    paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
+    escaped <- tofu_html_escape(paragraphs)
+    escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
+    title <- tofu_html_escape(as.character(title[[1L]]))
+    accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {
+        ""
+    } else {
+        paste0(
+            ' aria-label="',
+            tofu_html_escape(as.character(ariaLabel[[1L]])),
+            '"')
+    }
+    paste0(
+        '<div role="note"', accessibility,
+        ' style="box-sizing: border-box; width: 100%; max-width: 100%; ',
+        'margin: 0; padding: 0.55em 0.75em; border-left: 0.25em solid #b36b00; ',
+        'line-height: 1.45; font-family: inherit; font-size: inherit; ',
+        'white-space: normal; overflow-wrap: anywhere; word-break: normal;">\n',
+        '<strong style="display: block; margin: 0 0 0.35em 0;">',
+        title,
+        '</strong>\n',
+        paste0(
+            '<p style="margin: 0 0 0.45em 0;">\n',
+            escaped,
+            '\n</p>',
+            collapse=""),
+        '\n</div>')
+}
+
+tofu_populate_purposes <- function(results, purposes) {
+    for (name in names(purposes)) {
+        purpose <- purposes[[name]]
+        if (length(purpose) != 2L)
+            stop("each result purpose requires a label and one sentence",
+                call.=FALSE)
+        results[[name]]$setContent(tofu_html_block(
+            purpose[[2L]],
+            ariaLabel=paste("About", purpose[[1L]]),
+            title=purpose[[1L]]))
+    }
+    invisible(NULL)
 }
 
 tofu_populate_summary <- function(results, prep, transform, distance) {

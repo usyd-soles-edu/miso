@@ -127,11 +127,11 @@ Install the tofu build under test before starting. The `.omv` files contain cach
 
 ### Install safeguard
 
-Delete the existing `tofu_0.2.0.jmo` before running `jmvtools::install(pkg=".")`. The current compiler can report process exit code 0 after a YAML compilation error and leave the old archive in place. Treat the install as successful only when all of the following are true:
+Delete the existing `tofu_0.2.1.jmo` before running `jmvtools::install(pkg=".")`. The current compiler can report process exit code 0 after a YAML compilation error and leave the old archive in place. Treat the install as successful only when all of the following are true:
 
 - the output does not contain `Unable to compile` or `Could not install module`;
-- a freshly dated `tofu_0.2.0.jmo` exists;
-- the output contains both `Installing tofu_0.2.0.jmo` and `Module installed successfully`; and
+- a freshly dated `tofu_0.2.1.jmo` exists;
+- the output contains both `Installing tofu_0.2.1.jmo` and `Module installed successfully`; and
 - `~/Library/Application Support/jamovi/modules/tofu/jamovi.yaml` has a fresh modification time.
 
 For the current PERMANOVA redesign, also inspect the installed `ui/permanova.js` for `Feature variables (required)`, the Free default, the `studyVariables` supplier, and four real `update_control_states` event handlers. A compiled `execute: function(ui) { }` means the unsupported `changed:` event alias was used instead of the working `change:` spelling. For nMDS, inspect installed `ui/nmds.js` for the short optional-variable labels and the two nearby tips. For SIMPER, inspect installed `ui/simper.js` for `Show detailed statistics`, `Contribution variability`, and `Group means`.

@@ -12,13 +12,16 @@ collect_plot_contracts <- function(items, prefix="", ancestorHidden=FALSE) {
         path <- if (nzchar(prefix)) paste(prefix, name, sep="/") else name
         hidden <- ancestorHidden || identical(item$visible, FALSE)
         if (identical(item$type, "Image")) {
-            description <- if (index + 1L <= length(items))
+            description <- if (index > 1L)
+                items[[index - 1L]] else NULL
+            tablePurpose <- if (index + 1L <= length(items))
                 items[[index + 1L]] else NULL
             table <- if (index + 2L <= length(items))
                 items[[index + 2L]] else NULL
             found[[path]] <- list(
                 image=item,
                 description=description,
+                tablePurpose=tablePurpose,
                 table=table,
                 hidden=hidden)
         }
@@ -30,6 +33,104 @@ collect_plot_contracts <- function(items, prefix="", ancestorHidden=FALSE) {
     }
     found
 }
+
+collect_result_sequences <- function(items, prefix="") {
+    sequences <- list()
+    if (is.null(items))
+        return(sequences)
+    names <- vapply(items, function(item) item$name, character(1))
+    sequences[[if (nzchar(prefix)) prefix else "root"]] <- list(
+        items=items, names=names)
+    for (item in items) {
+        path <- if (nzchar(prefix)) paste(prefix, item$name, sep="/") else
+            item$name
+        if (identical(item$type, "Group") && !is.null(item$items))
+            sequences <- c(sequences,
+                collect_result_sequences(item$items, path))
+        if (identical(item$type, "Array") && !is.null(item$template$items))
+            sequences <- c(sequences,
+                collect_result_sequences(item$template$items, path))
+    }
+    sequences
+}
+
+test_that("every substantive output follows title purpose output order", {
+    expected <- list(
+        permanova=c(
+            summary="summaryPurpose", table="tablePurpose",
+            companionPcoa="companionPcoaDescription",
+            companionPcoaSites="companionPcoaSitesPurpose",
+            companionPcoaCentroids="companionPcoaCentroidsPurpose",
+            pairwise="pairwisePurpose", settings="settingsPurpose"),
+        anosim=c(
+            summary="summaryPurpose", global="globalPurpose",
+            pairwise="pairwisePurpose", rankPlot="rankPlotDescription",
+            rankSummary="rankSummaryPurpose", settings="settingsPurpose"),
+        permdisp=c(
+            summary="summaryPurpose", anova="anovaPurpose",
+            pairwise="pairwisePurpose", plot="plotDescription",
+            distances="distancesPurpose",
+            ordinationPlot="ordinationDescription",
+            ordinationScores="ordinationScoresPurpose",
+            settings="settingsPurpose"),
+        nmds=c(
+            summary="summaryPurpose", ordination="ordinationDescription",
+            sites="sitesPurpose", stress="stressPurpose",
+            shepard="shepardDescription",
+            shepardPairs="shepardPairsPurpose", envfit="envfitPurpose",
+            features="featuresPurpose", settings="settingsPurpose"),
+        simper=c(
+            summary="summaryPurpose", contrasts="contrastsPurpose",
+            contributions="contributionsPurpose",
+            variability="variabilityPurpose", means="meansPurpose",
+            `contributionPlots/plot`="description",
+            `contributionPlots/values`="valuesPurpose",
+            heatmap="heatmapDescription",
+            heatmapValues="heatmapValuesPurpose",
+            assessment="assessmentPurpose", settings="settingsPurpose"),
+        cluster=c(
+            summary="summaryPurpose", dendrogram="dendrogramDescription",
+            dendrogramStructure="dendrogramStructurePurpose",
+            membership="membershipPurpose", settings="settingsPurpose"),
+        pcoa=c(
+            summary="summaryPurpose", ordination="ordinationDescription",
+            sites="sitesPurpose", centroids="centroidsPurpose",
+            eigenvalues="eigenvaluesPurpose", settings="settingsPurpose"))
+
+    for (analysis in names(expected)) {
+        schema <- yaml::read_yaml(plot_contract_fixture(analysis, "r"))
+        sequences <- collect_result_sequences(schema$items)
+        for (path in names(expected[[analysis]])) {
+            parts <- strsplit(path, "/", fixed=TRUE)[[1L]]
+            sequenceName <- if (length(parts) == 1L) "root" else
+                paste(parts[-length(parts)], collapse="/")
+            output <- parts[[length(parts)]]
+            sequence <- sequences[[sequenceName]]
+            index <- match(output, sequence$names)
+            purposeName <- unname(expected[[analysis]][[path]])
+            expect_false(is.na(index), info=paste(analysis, path))
+            expect_gt(index, 1L)
+            if (is.na(index) || index <= 1L)
+                next
+            expect_identical(
+                sequence$names[[index - 1L]], purposeName,
+                info=paste(analysis, path))
+            purpose <- sequence$items[[index - 1L]]
+            outputItem <- sequence$items[[index]]
+            expect_identical(purpose$type, "Html",
+                info=paste(analysis, path))
+            expect_true(nzchar(purpose$title),
+                info=paste(analysis, path))
+            expect_identical(outputItem$title, "",
+                info=paste(analysis, path, "native output title"))
+            expect_true(
+                identical(purpose$visible, FALSE) ||
+                    (startsWith(path, "contributionPlots/") &&
+                        is.null(purpose$visible)),
+                info=paste(analysis, path))
+        }
+    }
+})
 
 test_that("every plot has an adjacent semantic description and table", {
     expected <- list(
@@ -65,6 +166,8 @@ test_that("every plot has an adjacent semantic description and table", {
                 info=paste(analysis, path, "table"))
             expect_identical(contract$table$name, expectedNames[[2L]],
                 info=paste(analysis, path, "table name"))
+            expect_identical(contract$tablePurpose$type, "Html",
+                info=paste(analysis, path, "table purpose"))
             expect_gt(length(contract$table$columns), 0L)
             expect_true(contract$hidden,
                 info=paste(analysis, path, "hidden until valid"))
@@ -190,7 +293,7 @@ test_that("shared palette and essential site marks meet contrast contracts", {
     expect_match(pcoaSource,
         "size[[:space:]]*=[[:space:]]*2\\.2,[[:space:]]+alpha[[:space:]]*=[[:space:]]*0\\.85")
     expect_match(permdispSource,
-        "size[[:space:]]*=[[:space:]]*1\\.75,[[:space:]]+alpha[[:space:]]*=[[:space:]]*0\\.85")
+        "size[[:space:]]*=[[:space:]]*2\\.2,[[:space:]]+alpha[[:space:]]*=[[:space:]]*0\\.9")
 
     # Lower-alpha jittered marks are non-essential because their exact
     # distributions are provided by the adjacent complete summary tables.

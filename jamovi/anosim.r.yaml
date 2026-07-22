@@ -9,8 +9,13 @@ items:
     type: Html
     visible: false
 
-  - name: summary
+  - name: summaryPurpose
     title: Data Summary
+    type: Html
+    visible: false
+
+  - name: summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -23,12 +28,17 @@ items:
         type: text
 
   - name: warnings
-    title: Data handling warnings
+    title: ''
+    type: Html
+    visible: false
+
+  - name: globalPurpose
+    title: Global ANOSIM
     type: Html
     visible: false
 
   - name: global
-    title: Global ANOSIM
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -47,8 +57,13 @@ items:
         title: Effective permutations
         type: integer
 
-  - name: pairwise
+  - name: pairwisePurpose
     title: Pairwise ANOSIM
+    type: Html
+    visible: false
+
+  - name: pairwise
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -69,21 +84,26 @@ items:
         type: number
         format: zto,pvalue
 
-  - name: rankPlot
+  - name: rankPlotDescription
     title: Ranked dissimilarities by pair category
+    type: Html
+    visible: false
+
+  - name: rankPlot
+    title: ''
     type: Image
     visible: false
     width: 600
     height: 480
     renderFun: .plotRank
 
-  - name: rankPlotDescription
-    title: Plot details
+  - name: rankSummaryPurpose
+    title: Ranked-dissimilarity summary
     type: Html
     visible: false
 
   - name: rankSummary
-    title: Ranked-dissimilarity summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -105,12 +125,17 @@ items:
         type: number
 
   - name: note
-    title: Interpretation
+    title: How to read these results
+    type: Html
+    visible: false
+
+  - name: settingsPurpose
+    title: Analysis settings
     type: Html
     visible: false
 
   - name: settings
-    title: Analysis settings
+    title: ''
     type: Table
     visible: false
     rows: 0

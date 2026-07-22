@@ -122,7 +122,9 @@ test_that("PERMDISP result schema hides every empty shell", {
         vapply(by_name$ordinationScores$columns, `[[`, character(1), "name"),
         c("point", "pointType", "group", "plotKey", "axis1", "axis2"))
     expect_identical(by_name$anova$columns[[6L]]$title, "Permutation p")
-    expect_identical(by_name$pairwise$title, "Pairwise Dispersion Comparisons")
+    expect_identical(by_name$pairwise$title, "")
+    expect_identical(by_name$pairwisePurpose$title,
+        "Pairwise Dispersion Comparisons")
 })
 
 test_that("new PERMDISP shows only complete getting-started guidance", {
@@ -289,9 +291,7 @@ test_that("two-group PERMDISP never shows an empty pairwise table", {
     expect_equal(nrow(result$pairwise$asDF), 0L)
     expect_match(
         as.character(result$note$asString()),
-        paste0(
-            "overall[[:space:]|]+dispersion test is[[:space:]|]+",
-            "the only group contrast"))
+        "PERMDISP tests multivariate spread")
 })
 
 test_that("PERMDISP preprocessing warnings accompany valid results", {
@@ -552,6 +552,12 @@ test_that("distance plot uses shared ggplot styling and collision-safe n labels"
     expect_true(any(vapply(plot$layers, function(layer) {
         inherits(layer$geom, "GeomPoint")
     }, logical(1))))
+    pointLayer <- plot$layers[[which(vapply(
+        plot$layers,
+        function(layer) inherits(layer$geom, "GeomPoint"),
+        logical(1)))[[1L]]]]
+    expect_identical(pointLayer$aes_params$size, 2.1)
+    expect_identical(pointLayer$aes_params$alpha, .9)
 })
 
 test_that("distance and ordination builders degrade safely beyond 64 groups", {
@@ -697,15 +703,9 @@ test_that("non-finite fitted sites remain in coordinates and are disclosed", {
     expect_true(is.na(siteScores$axis1[[1L]]))
     expect_false(any(is.nan(siteScores$axis1)))
     expect_false(grepl("NaN", paste(as.matrix(scores), collapse=" "), fixed=TRUE))
-    expect_match(description, "1 of 9 fitted sites could not be plotted", fixed=TRUE)
-    expect_match(description, "3 of 8 plot-eligible sites", fixed=TRUE)
     expect_match(
         description,
-        "Small colour-and-shape points are sites, open diamonds are fitted group centres",
-        fixed=TRUE)
-    expect_match(
-        description,
-        "segments connect each displayed site to its own centre",
+        "Shows samples and the group centres used by PERMDISP",
         fixed=TRUE)
 })
 
@@ -793,15 +793,15 @@ test_that("plot toggles preserve every numerical PERMDISP result", {
     expect_true(ordination$ordinationScores$visible)
     expect_match(
         as.character(ordination$plotDescription$asString()),
-        "Dispersion Test table")
+        "distribution of distances to centre")
     expect_match(
         as.character(ordination$ordinationDescription$asString()),
-        "same fitted")
+        "group centres used by PERMDISP")
     expect_match(
         gsub(
             "\\s+", " ",
             as.character(ordination$ordinationDescription$asString())),
-        "open diamonds are fitted group centres",
+        "Shows samples and the group centres used by PERMDISP",
         fixed=TRUE)
 })
 

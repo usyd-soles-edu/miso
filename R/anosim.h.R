@@ -199,14 +199,19 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     inherit = jmvcore::Group,
     active = list(
         guidance = function() private$.items[["guidance"]],
+        summaryPurpose = function() private$.items[["summaryPurpose"]],
         summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
+        globalPurpose = function() private$.items[["globalPurpose"]],
         global = function() private$.items[["global"]],
+        pairwisePurpose = function() private$.items[["pairwisePurpose"]],
         pairwise = function() private$.items[["pairwise"]],
-        rankPlot = function() private$.items[["rankPlot"]],
         rankPlotDescription = function() private$.items[["rankPlotDescription"]],
+        rankPlot = function() private$.items[["rankPlot"]],
+        rankSummaryPurpose = function() private$.items[["rankSummaryPurpose"]],
         rankSummary = function() private$.items[["rankSummary"]],
         note = function() private$.items[["note"]],
+        settingsPurpose = function() private$.items[["settingsPurpose"]],
         settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
@@ -220,10 +225,15 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="guidance",
                 title="Getting started",
                 visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="summaryPurpose",
+                title="Data Summary",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
-                title="Data Summary",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -238,12 +248,17 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="warnings",
-                title="Data handling warnings",
+                title="",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="globalPurpose",
+                title="Global ANOSIM",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="global",
-                title="Global ANOSIM",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -264,10 +279,15 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="permutations",
                         `title`="Effective permutations",
                         `type`="integer"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="pairwisePurpose",
+                title="Pairwise ANOSIM",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
-                title="Pairwise ANOSIM",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -289,23 +309,28 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `title`="Adjusted p",
                         `type`="number",
                         `format`="zto,pvalue"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="rankPlotDescription",
+                title="Ranked dissimilarities by pair category",
+                visible=FALSE))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="rankPlot",
-                title="Ranked dissimilarities by pair category",
+                title="",
                 visible=FALSE,
                 width=600,
                 height=480,
                 renderFun=".plotRank"))
             self$add(jmvcore::Html$new(
                 options=options,
-                name="rankPlotDescription",
-                title="Plot details",
+                name="rankSummaryPurpose",
+                title="Ranked-dissimilarity summary",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="rankSummary",
-                title="Ranked-dissimilarity summary",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -332,12 +357,17 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Interpretation",
+                title="How to read these results",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="settingsPurpose",
+                title="Analysis settings",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="settings",
-                title="Analysis settings",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -358,7 +388,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             super$initialize(
                 package = "tofu",
                 name = "anosim",
-                version = c(0,2,0),
+                version = c(0,2,1),
                 options = options,
                 results = anosimResults$new(options=options),
                 data = data,
@@ -392,14 +422,19 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$globalPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$global} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
 #'   \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$rankSummaryPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'

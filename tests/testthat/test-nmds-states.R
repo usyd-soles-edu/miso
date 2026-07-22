@@ -300,10 +300,12 @@ test_that("nMDS result schema contains no initially visible shell", {
     expect_identical(
         vapply(items, `[[`, character(1), "name"),
         c(
-            "guidance", "summary", "warnings", "ordination",
-            "ordinationDescription", "sites", "stress", "shepard",
-            "shepardDescription", "shepardPairs", "envfit", "note",
-            "features", "settings"))
+            "guidance", "summaryPurpose", "summary", "warnings",
+            "ordinationDescription", "ordination", "sitesPurpose", "sites",
+            "stressPurpose", "stress", "shepardDescription", "shepard",
+            "shepardPairsPurpose", "shepardPairs", "envfitPurpose",
+            "envfit", "note", "featuresPurpose", "features",
+            "settingsPurpose", "settings"))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$ordinationDescription$type, "Html")
     expect_identical(by_name$shepardDescription$type, "Html")
@@ -362,8 +364,8 @@ test_that("nMDS report guidance stays compact", {
     interpretation <- as.character(result$note$asString())
     report_text <- paste(description, interpretation)
 
-    expect_lt(nchar(description), 700L)
-    expect_lt(nchar(interpretation), 700L)
+    expect_lt(nchar(description), 850L)
+    expect_lt(nchar(interpretation), 800L)
     expect_lte(nrow(result$settings$asDF), 15L)
     expect_false(grepl(
         paste(
@@ -604,12 +606,6 @@ test_that("legacy 3D remains 3D and reports the projection honestly", {
     expect_match(
         result$ordination$title,
         "three-dimensional nMDS solution")
-    expect_match(
-        as.character(result$ordinationDescription$asString()),
-        "projection")
-    expect_match(
-        as.character(result$ordinationDescription$asString()),
-        "NMDS3")
 })
 
 test_that("diagnostics report fitted-object fields rather than requested settings", {
@@ -885,7 +881,6 @@ test_that("more than 64 groups retain results and use a neutral plot", {
     expect_false(any(private$.state$overlays$effective))
     expect_identical(nrow(private$.state$overlays$styles), 0L)
     expect_false(any(c("colour", "shape") %in% names(pointLayer$mapping)))
-    expect_match(description, "65 groups exceed the 64-style display limit")
     expect_true(any(grepl(
         "at most 64 distinguishable group styles",
         private$.state$warnings,
@@ -1242,14 +1237,11 @@ test_that("Data Summary and semantic plot descriptions report the complete 2D co
     expect_identical(summary[["Seed"]], "Fixed (123)")
 
     expect_identical(result$ordination$title, "Two-dimensional nMDS ordination")
-    expect_match(description, "22 sites")
-    expect_match(description, "stress")
-    expect_match(description, "Bray-Curtis dissimilarity")
-    expect_match(description, "transformation: None")
-    expect_match(description, "grouped by group")
+    expect_match(description, "Maps sample resemblance")
+    expect_match(description, "closer points have more similar composition")
     expect_false(grepl("Display:", description, fixed=TRUE))
     expect_false(grepl("uniformly rescaled", description, fixed=TRUE))
-    expect_lt(nchar(description), 350L)
+    expect_lt(nchar(description), 550L)
     expect_match(description, "overflow-wrap: anywhere")
     expect_match(description, "word-break: normal")
 })
@@ -1268,11 +1260,7 @@ test_that("legacy 3D image language identifies the projection and all-dimension 
     expect_identical(
         result$ordination$title,
         "NMDS1-NMDS2 view of a three-dimensional nMDS solution")
-    expect_match(description, "projection")
-    expect_match(description, "NMDS3 is not shown")
-    expect_match(description, "all three coordinates")
-    expect_match(description, "score and fit tables")
-    expect_lt(nchar(description), 700L)
+    expect_lt(nchar(description), 850L)
 })
 
 test_that("bounded HTML escapes plain text and Interpretation stays compact", {
@@ -1298,15 +1286,11 @@ test_that("bounded HTML escapes plain text and Interpretation stays compact", {
     expect_match(escaped, "&lt;script&gt;")
     expect_match(escaped, "A &amp; B")
     expect_match(interpretation, "overflow-wrap: anywhere")
-    expect_match(interpretation, "Closer sites")
-    expect_match(interpretation, "Axis direction")
-    expect_match(interpretation, "Stress =")
-    expect_match(interpretation, "stress may be uninformative")
-    expect_match(interpretation, "Group displays are descriptive")
-    expect_match(interpretation, "not confidence regions")
-    expect_match(interpretation, "not group differences")
-    expect_match(interpretation, "p-values are unadjusted")
-    expect_lt(nchar(interpretation), 700L)
+    expect_match(interpretation, "Closer points are more similar")
+    expect_match(interpretation, "axis direction is arbitrary")
+    expect_match(interpretation, "check stress")
+    expect_match(interpretation, "Feature scores are descriptive")
+    expect_lt(nchar(interpretation), 800L)
     expect_match(interpretation, "white-space: normal", fixed=TRUE)
 })
 
@@ -1364,10 +1348,9 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     shownPairs <- shown$results$shepardPairs$asDF
     rownames(shownPairs) <- NULL
     expect_equal(shownPairs, expectedData, tolerance=0)
-    expect_match(description, "observed dissimilarities", ignore.case=TRUE)
     expect_match(description, "ordination distances")
-    expect_match(description, "stress")
-    expect_lt(nchar(description), 350L)
+    expect_match(description, "preserve ranked dissimilarities")
+    expect_lt(nchar(description), 600L)
     expect_gt(file.info(path)$size, 0)
     expect_identical(shownPrivate$.state$fit, before$fit)
     expect_identical(shownPrivate$.state$shepardData, before$data)
@@ -1595,18 +1578,6 @@ test_that("deterministic label fallback retains all feature and vector table row
     expect_identical(
         firstPrivate$.state$vectorLabelSelection,
         secondPrivate$.state$vectorLabelSelection)
-    expect_match(
-        description,
-        sprintf("Feature labels: %d of %d shown",
-            length(firstPrivate$.state$featureLabelsShown),
-            length(featureNames)))
-    expect_match(
-        description,
-        sprintf("Environmental vector labels: %d of %d shown",
-            length(firstPrivate$.state$vectorLabelsShown),
-            length(envNames)))
-    expect_match(description, "all values are in Feature Scores")
-    expect_match(description, "all values are in Environmental Fit")
     expect_false(grepl(
         firstPrivate$.state$featureLabelsOmitted[[1L]],
         description,
@@ -1725,9 +1696,6 @@ test_that("legacy 3D fixture matches an independent full configuration", {
         "NMDS1-NMDS2 view of a three-dimensional nMDS solution")
     expect_identical(scenarioOutputs[[2L]], runtimeTitle)
     expect_identical(referenceTitle, runtimeTitle)
-    expect_match(
-        as.character(actual$results$ordinationDescription$asString()),
-        "projection")
 })
 
 test_that("legacy Binary is exactly inert for the fixture baseline", {

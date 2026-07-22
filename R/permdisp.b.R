@@ -66,6 +66,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep,
                 self$options$transform,
                 self$options$distance)
+            private$.populatePurposes()
             private$.state$warnings <- c(
                 private$.state$warnings,
                 prep$warnings)
@@ -104,12 +105,19 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$plotDescription$setContent("")
             self$results$ordinationDescription$setContent("")
             tofu_clear_table(self$results$settings)
+            for (name in c(
+                    "summaryPurpose", "anovaPurpose", "pairwisePurpose",
+                    "distancesPurpose", "ordinationScoresPurpose",
+                    "settingsPurpose"))
+                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "warnings", "distances",
-                    "anova", "pairwise", "plot", "plotDescription",
+                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "distances", "distancesPurpose", "anova", "anovaPurpose",
+                    "pairwise", "pairwisePurpose", "plot", "plotDescription",
                     "ordinationPlot", "ordinationDescription",
-                    "ordinationScores", "note", "settings"))
+                    "ordinationScores", "ordinationScoresPurpose", "note",
+                    "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -121,9 +129,12 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
             for (name in c(
-                    "summary", "distances", "anova", "note", "settings"))
+                    "summary", "summaryPurpose", "distances",
+                    "distancesPurpose", "anova", "anovaPurpose", "note",
+                    "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
+            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
             showDistance <- isTRUE(self$options$showDistancePlot) &&
                 !is.null(private$.state$distanceDiagnostic)
             for (name in c("plot", "plotDescription"))
@@ -138,7 +149,31 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 isTRUE(private$.state$ordination$tableAvailable)
             self$results$ordinationPlot$setVisible(ordinationAvailable)
             self$results$ordinationScores$setVisible(ordinationTableAvailable)
+            self$results$ordinationScoresPurpose$setVisible(
+                ordinationTableAvailable)
             self$results$ordinationDescription$setVisible(requestedOrdination)
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                anovaPurpose=c(
+                    "Dispersion test",
+                    "Tests whether groups differ in mean distance to their centres."),
+                pairwisePurpose=c(
+                    "Pairwise dispersion comparisons",
+                    "Compares mean dispersion between each pair of groups."),
+                distancesPurpose=c(
+                    "Distance-to-centre summary",
+                    "Summarises the centre, spread and range of each group's distances."),
+                ordinationScoresPurpose=c(
+                    "Ordination coordinates",
+                    "Lists plotted ordination coordinates for identification or reuse."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .setWarnings = function(warnings) {
@@ -148,7 +183,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_html_block(warnings))
+            self$results$warnings$setContent(tofu_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -335,132 +370,66 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDistanceDescription = function() {
-            diagnostic <- private$.state$distanceDiagnostic
-            if (is.null(diagnostic) || !isTRUE(self$options$showDistancePlot))
+            if (is.null(private$.state$distanceDiagnostic) ||
+                    !isTRUE(self$options$showDistancePlot))
                 return()
-            styleDisclosure <- if (length(diagnostic$groups) > 64L)
-                paste(
-                    "Neutral point styling is used because the analysis has more",
-                    "than 64 groups; group positions and the summary table retain",
-                    "the full identities.")
-            else
-                character()
-            self$results$plotDescription$setContent(tofu_html_block(c(
-                sprintf(
-                    paste(
-                        "Marks are finite site distances to each group's %s;",
-                        "boxplots, n labels, and summaries use all finite distances."),
-                    tolower(diagnostic$centre)),
-                .tofuPlotDisclosure(
-                    diagnostic$displayed, diagnostic$total,
-                    noun="site distances"),
-                styleDisclosure,
-                paste(
-                    "This plot describes dispersion; the Dispersion Test table",
-                    "provides the hypothesis test."))))
+            self$results$plotDescription$setContent(tofu_html_block(
+                "Shows the distribution of distances to centre within each group.",
+                ariaLabel="About distances to group centre",
+                title="Distance-to-centre plot"))
         },
 
-        .populateOrdination = function() {
+        .populateOrdination = function ()
+        {
             ordination <- private$.state$ordination
             if (!isTRUE(self$options$showOrdinationPlot))
                 return()
-
-            if (!is.null(ordination) &&
-                    isTRUE(ordination$tableAvailable)) {
-                coordinates <- rbind(
-                    ordination$sites[, c(
-                        "point", "pointType", "group", "plotKey",
-                        "axis1", "axis2")],
-                    ordination$centres[, c(
-                        "point", "pointType", "group", "plotKey",
-                        "axis1", "axis2")])
+            if (!is.null(ordination) && isTRUE(ordination$tableAvailable)) {
+                coordinates <- rbind(ordination$sites[, c("point", "pointType", "group", "plotKey", "axis1",
+                    "axis2")], ordination$centres[, c("point", "pointType", "group", "plotKey", "axis1", "axis2")])
                 for (i in seq_len(nrow(coordinates))) {
-                    values <- coordinates[i, , drop=FALSE]
-                    self$results$ordinationScores$addRow(
-                        rowKey=as.character(i),
-                        values=list(
-                            point=values$point,
-                            pointType=values$pointType,
-                            group=values$group,
-                            plotKey=values$plotKey,
-                            axis1=tofu_num_or_na(values$axis1),
-                            axis2=tofu_num_or_na(values$axis2)))
+                    values <- coordinates[i, , drop = FALSE]
+                    self$results$ordinationScores$addRow(rowKey = as.character(i), values = list(point = values$point,
+                        pointType = values$pointType, group = values$group, plotKey = values$plotKey, axis1 = tofu_num_or_na(values$axis1),
+                        axis2 = tofu_num_or_na(values$axis2)))
                 }
             }
-
             if (is.null(ordination) || !isTRUE(ordination$available)) {
                 reason <- if (!is.null(ordination$reason))
                     ordination$reason
-                else
-                    "Two fitted ordination axes were unavailable."
-                omitted <- if (!is.null(ordination) &&
-                        !is.null(ordination$total) && ordination$total > 0L)
-                    sprintf(
-                        paste(
-                            "%d of %d fitted sites could not be plotted because",
-                            "finite coordinates were unavailable for a site or",
-                            "its assigned group centre."),
-                        ordination$unplottable, ordination$total)
-                else
-                    character()
-                self$results$ordinationDescription$setContent(
-                    tofu_html_block(c(reason, omitted)))
+                else "Two fitted ordination axes were unavailable."
+                omitted <- if (!is.null(ordination) && !is.null(ordination$total) && ordination$total > 0L)
+                    sprintf(paste("%d of %d fitted sites could not be plotted because", "finite coordinates were unavailable for a site or",
+                        "its assigned group centre."), ordination$unplottable, ordination$total)
+                else character()
+                self$results$ordinationDescription$setContent(tofu_html_block(
+                    c(reason, omitted),
+                    ariaLabel="About PERMDISP ordination",
+                    title="PERMDISP ordination"))
                 return()
             }
             mappingDisclosure <- if (length(ordination$groups) > 64L)
-                paste(
-                    "Neutral styling is used because more than 64 groups exceed",
-                    "the display-style limit; the coordinate table gives every",
+                paste("Neutral styling is used because more than 64 groups exceed", "the display-style limit; the coordinate table gives every",
                     "site and group centre identity.")
             else if (length(ordination$groups) > 12L)
-                paste(
-                    "Compact keys label group centres instead of using a wide",
-                    "legend; the coordinate table maps each key to its full group",
+                paste("Compact keys label group centres instead of using a wide", "legend; the coordinate table maps each key to its full group",
                     "name, and overlapping labels may be suppressed.")
-            else
-                character()
+            else character()
             finiteDisclosure <- if (ordination$unplottable > 0L)
-                sprintf(
-                    paste(
-                        "%d of %d fitted sites could not be plotted because",
-                        "finite coordinates were unavailable for a site or its",
-                        "assigned group centre."),
-                    ordination$unplottable, ordination$total)
-            else
-                sprintf(
-                    "All %d fitted sites had finite site and centre coordinates.",
-                    ordination$total)
-            capDisclosure <- if (
-                    ordination$displayed == ordination$plotEligible)
-                sprintf(
-                    "All %d plot-eligible sites and connecting segments are shown.",
-                    ordination$plotEligible)
-            else
-                sprintf(
-                    paste(
-                        "%d of %d plot-eligible sites and connecting segments are",
-                        "shown; %d are omitted from the image by the deterministic",
-                        "display cap but retained in the coordinate table."),
-                    ordination$displayed,
-                    ordination$plotEligible,
-                    ordination$plotEligible - ordination$displayed)
-            self$results$ordinationDescription$setContent(tofu_html_block(c(
-                sprintf(
-                    paste(
-                        "The %s and %s coordinates come from the same fitted",
-                        "PERMDISP geometry."),
-                    ordination$axisNames[[1L]], ordination$axisNames[[2L]]),
-                paste(
-                    "Small colour-and-shape points are sites, open diamonds are",
-                    "fitted group centres, and segments connect each displayed",
-                    "site to its own centre."),
-                finiteDisclosure,
-                capDisclosure,
-                mappingDisclosure,
-                paste(
-                    "This is descriptive geometry of distances to centres; the",
-                    "Dispersion Test table provides the hypothesis test."))))
-        },
+                sprintf(paste("%d of %d fitted sites could not be plotted because", "finite coordinates were unavailable for a site or its",
+                    "assigned group centre."), ordination$unplottable, ordination$total)
+            else sprintf("All %d fitted sites had finite site and centre coordinates.", ordination$total)
+            capDisclosure <- if (ordination$displayed == ordination$plotEligible)
+                sprintf("All %d plot-eligible sites and connecting segments are shown.", ordination$plotEligible)
+            else sprintf(paste("%d of %d plot-eligible sites and connecting segments are", "shown; %d are omitted from the image by the deterministic",
+                "display cap but retained in the coordinate table."), ordination$displayed, ordination$plotEligible,
+                ordination$plotEligible - ordination$displayed)
+            self$results$ordinationDescription$setContent(tofu_html_block(
+                "Shows samples and the group centres used by PERMDISP.",
+                ariaLabel="About PERMDISP ordination",
+                title="PERMDISP ordination"))
+        }
+,
 
         .restrictionState = function() {
             current <- self$options$permRestriction
@@ -499,48 +468,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .setInterpretation = function(prep, pairwiseShown) {
-            p <- private$.state$pValue
-            evidence <- if (is.finite(p) && p < .05)
-                paste(
-                    "The permutation p-value provides evidence that the groups",
-                    "differ in multivariate spread.")
-            else
-                paste(
-                    "The permutation p-value does not provide sufficient evidence",
-                    "that the groups differ in multivariate spread; this is not proof",
-                    "that their dispersions are equal.")
-            pLabel <- if (is.finite(p))
-                paste0("Permutation p = ", format.pval(p, digits=3, eps=.001), ".")
-            else
-                "The permutation p-value was unavailable."
-            pairwiseText <- ""
-            if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) == 2L)
-                pairwiseText <- paste(
-                    "With two groups, the overall dispersion test is the only group",
-                    "contrast, so a separate pairwise table is not shown.")
-            else if (isTRUE(pairwiseShown))
-                pairwiseText <- paste(
-                    "Pairwise comparisons identify which group dispersions differ",
-                    "and do not compare group locations.")
-
-            text <- paste(
-                paste(
-                    "PERMDISP tests whether groups differ in multivariate dispersion",
-                    "(spread) around each group's",
-                    sprintf("%s; it does not test whether group centres differ.",
-                        tolower(private$.centreLabel(self$options$dispType)))),
-                pLabel,
-                evidence,
-                paste(
-                    "Use the distance summary and distribution plot to see the",
-                    "size and pattern of each group's spread."),
-                paste(
-                    "Different dispersions can complicate interpretation of a",
-                    "PERMANOVA group-location result."),
-                pairwiseText)
-            self$results$note$setContent(paste0(
-                '<h2>Interpretation</h2>',
-                tofu_html_block(text)))
+            self$results$note$setContent(tofu_html_block(paste(
+                "PERMDISP tests multivariate spread, not group location.",
+                "Compare the test with the distance plot."),
+                title="How to read these results"))
         },
 
         .populateSettings = function(prep, pairwiseShown) {

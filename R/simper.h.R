@@ -182,19 +182,27 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     inherit = jmvcore::Group,
     active = list(
         guidance = function() private$.items[["guidance"]],
+        summaryPurpose = function() private$.items[["summaryPurpose"]],
         summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
+        contrastsPurpose = function() private$.items[["contrastsPurpose"]],
         contrasts = function() private$.items[["contrasts"]],
+        contributionsPurpose = function() private$.items[["contributionsPurpose"]],
         contributions = function() private$.items[["contributions"]],
+        variabilityPurpose = function() private$.items[["variabilityPurpose"]],
         variability = function() private$.items[["variability"]],
+        meansPurpose = function() private$.items[["meansPurpose"]],
         means = function() private$.items[["means"]],
         table = function() private$.items[["table"]],
         contributionPlots = function() private$.items[["contributionPlots"]],
-        heatmap = function() private$.items[["heatmap"]],
         heatmapDescription = function() private$.items[["heatmapDescription"]],
+        heatmap = function() private$.items[["heatmap"]],
+        heatmapValuesPurpose = function() private$.items[["heatmapValuesPurpose"]],
         heatmapValues = function() private$.items[["heatmapValues"]],
+        assessmentPurpose = function() private$.items[["assessmentPurpose"]],
         assessment = function() private$.items[["assessment"]],
         note = function() private$.items[["note"]],
+        settingsPurpose = function() private$.items[["settingsPurpose"]],
         settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
@@ -208,10 +216,15 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="guidance",
                 title="Getting started",
                 visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="summaryPurpose",
+                title="Data Summary",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
-                title="Data Summary",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -226,12 +239,17 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="warnings",
-                title="Data handling warnings",
+                title="",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="contrastsPurpose",
+                title="Contrast summary",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="contrasts",
-                title="Contrast summary",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -251,10 +269,15 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="overall",
                         `title`="Mean dissimilarity",
                         `type`="number"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="contributionsPurpose",
+                title="Descriptive feature contributions",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="contributions",
-                title="Descriptive feature contributions",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -274,10 +297,15 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="cumulative",
                         `title`="Cumulative (%)",
                         `type`="number"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="variabilityPurpose",
+                title="Contribution variability",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="variability",
-                title="Contribution variability",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -301,10 +329,15 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="ratio",
                         `title`="Average/SD",
                         `type`="number"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="meansPurpose",
+                title="Group means",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="means",
-                title="Group means",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -375,8 +408,9 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 template=R6::R6Class(
                     inherit = jmvcore::Group,
                     active = list(
-                        plot = function() private$.items[["plot"]],
                         description = function() private$.items[["description"]],
+                        plot = function() private$.items[["plot"]],
+                        valuesPurpose = function() private$.items[["valuesPurpose"]],
                         values = function() private$.items[["values"]]),
                     private = list(),
                     public=list(
@@ -385,21 +419,26 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                                 options=options,
                                 name="undefined",
                                 title="Contrast contribution")
+                            self$add(jmvcore::Html$new(
+                                options=options,
+                                name="description",
+                                title="Contribution plot"))
                             self$add(jmvcore::Image$new(
                                 options=options,
                                 name="plot",
-                                title="Contribution to average dissimilarity",
+                                title="",
                                 width=580,
                                 height=430,
                                 renderFun=".plotContribution"))
                             self$add(jmvcore::Html$new(
                                 options=options,
-                                name="description",
-                                title="Plot details"))
+                                name="valuesPurpose",
+                                title="SIMPER contribution values",
+                                visible=FALSE))
                             self$add(jmvcore::Table$new(
                                 options=options,
                                 name="values",
-                                title="Values shown in this plot",
+                                title="",
                                 rows=0,
                                 columns=list(
                                     list(
@@ -438,23 +477,28 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                                         `name`="direction",
                                         `title`="Direction",
                                         `type`="text"))))}))$new(options=options)))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="heatmapDescription",
+                title="Contrast overview heatmap",
+                visible=FALSE))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="heatmap",
-                title="Contrast overview heatmap",
+                title="",
                 visible=FALSE,
                 width=600,
                 height=500,
                 renderFun=".plotHeatmap"))
             self$add(jmvcore::Html$new(
                 options=options,
-                name="heatmapDescription",
-                title="Heatmap details",
+                name="heatmapValuesPurpose",
+                title="SIMPER contrast heatmap values",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="heatmapValues",
-                title="Values shown in the heatmap",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -474,10 +518,15 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="selected",
                         `title`="Selected for this contrast",
                         `type`="text"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="assessmentPurpose",
+                title="Exploratory permutation assessment",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="assessment",
-                title="Exploratory permutation assessment",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -502,12 +551,17 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Interpretation",
+                title="How to read these results",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="settingsPurpose",
+                title="Analysis settings",
                 visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="settings",
-                title="Analysis settings",
+                title="",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -528,7 +582,7 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             super$initialize(
                 package = "tofu",
                 name = "simper",
-                version = c(0,2,0),
+                version = c(0,2,1),
                 options = options,
                 results = simperResults$new(options=options),
                 data = data,
@@ -561,19 +615,27 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$contrastsPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$contributionsPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$variabilityPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$variability} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$meansPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$means} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
-#'   \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
 #'   \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$heatmapValuesPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$heatmapValues} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$assessmentPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'

@@ -395,11 +395,7 @@ test_that("PCoA analysis hides empty output and clears stale output", {
             rowKey=as.character(i), col="explained")$value, "")
     }, logical(1))))
     expect_match(tofu_squish_result(result$ordinationDescription),
-        "sum of positive eigenvalues")
-    expect_match(tofu_squish_result(result$ordinationDescription),
-        "descriptive")
-    expect_match(tofu_squish_result(result$ordinationDescription),
-        "Site labels are omitted")
+        "Maps the main dimensions of dissimilarity among samples")
 
     varsOption <- analysis$options$option("vars")
     varsOption$.__enclos_env__$private$.value <- character()
@@ -484,9 +480,11 @@ test_that("PCoA schema and menu follow the approved student contract", {
 
     itemOrder <- vapply(results$items, `[[`, character(1), "name")
     expect_identical(itemOrder,
-        c("guidance", "summary", "warnings", "ordination",
-            "ordinationDescription", "sites", "centroids", "eigenvalues",
-            "interpretation", "settings"))
+        c("guidance", "summaryPurpose", "summary", "warnings",
+            "ordinationDescription", "ordination", "sitesPurpose", "sites",
+            "centroidsPurpose", "centroids", "eigenvaluesPurpose",
+            "eigenvalues", "interpretation", "settingsPurpose",
+            "settings"))
     image <- results$items[[match("ordination", itemOrder)]]
     expect_identical(image$width, 600L)
     expect_identical(image$height, 500L)

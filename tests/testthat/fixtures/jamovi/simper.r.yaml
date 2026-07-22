@@ -9,8 +9,13 @@ items:
     type: Html
     visible: false
 
-  - name: summary
+  - name: summaryPurpose
     title: Data Summary
+    type: Html
+    visible: false
+
+  - name: summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -23,12 +28,17 @@ items:
         type: text
 
   - name: warnings
-    title: Data handling warnings
+    title: ''
+    type: Html
+    visible: false
+
+  - name: contrastsPurpose
+    title: Contrast summary
     type: Html
     visible: false
 
   - name: contrasts
-    title: Contrast summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -46,8 +56,13 @@ items:
         title: Mean dissimilarity
         type: number
 
-  - name: contributions
+  - name: contributionsPurpose
     title: Descriptive feature contributions
+    type: Html
+    visible: false
+
+  - name: contributions
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -65,8 +80,13 @@ items:
         title: Cumulative (%)
         type: number
 
-  - name: variability
+  - name: variabilityPurpose
     title: Contribution variability
+    type: Html
+    visible: false
+
+  - name: variability
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -87,8 +107,13 @@ items:
         title: Average/SD
         type: number
 
-  - name: means
+  - name: meansPurpose
     title: Group means
+    type: Html
+    visible: false
+
+  - name: means
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -148,17 +173,22 @@ items:
       type: Group
       title: Contrast contribution
       items:
+        - name: description
+          title: Contribution plot
+          type: Html
         - name: plot
-          title: Contribution to average dissimilarity
+          title: ''
           type: Image
           width: 580
           height: 430
           renderFun: .plotContribution
-        - name: description
-          title: Plot details
+        - name: valuesPurpose
+          title: SIMPER contribution values
           type: Html
+          visible: false
+
         - name: values
-          title: Values shown in this plot
+          title: ''
           type: Table
           rows: 0
           columns:
@@ -189,22 +219,26 @@ items:
             - name: direction
               title: Direction
               type: text
+  - name: heatmapDescription
+    title: Contrast overview heatmap
+    type: Html
+    visible: false
 
   - name: heatmap
-    title: Contrast overview heatmap
+    title: ''
     type: Image
     visible: false
     width: 600
     height: 500
     renderFun: .plotHeatmap
 
-  - name: heatmapDescription
-    title: Heatmap details
+  - name: heatmapValuesPurpose
+    title: SIMPER contrast heatmap values
     type: Html
     visible: false
 
   - name: heatmapValues
-    title: Values shown in the heatmap
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -222,8 +256,13 @@ items:
         title: Selected for this contrast
         type: text
 
-  - name: assessment
+  - name: assessmentPurpose
     title: Exploratory permutation assessment
+    type: Html
+    visible: false
+
+  - name: assessment
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -244,12 +283,17 @@ items:
         format: zto,pvalue
 
   - name: note
-    title: Interpretation
+    title: How to read these results
+    type: Html
+    visible: false
+
+  - name: settingsPurpose
+    title: Analysis settings
     type: Html
     visible: false
 
   - name: settings
-    title: Analysis settings
+    title: ''
     type: Table
     visible: false
     rows: 0

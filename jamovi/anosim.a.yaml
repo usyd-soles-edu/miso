@@ -4,7 +4,7 @@ title: ANOSIM
 menuGroup: tofu
 menuTitle: ANOSIM
 menuSubtitle: Rank-based alternative
-version: '0.2.0'
+version: '0.2.1'
 jas: '1.2'
 
 options:

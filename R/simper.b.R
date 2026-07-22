@@ -90,6 +90,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
 
             private$.populateSummary(prep, length(descriptive$contrastRows))
+            private$.populatePurposes()
             private$.populateDescriptive(descriptive)
 
             assessmentShown <- FALSE
@@ -124,14 +125,23 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$heatmapDescription$setContent("")
             self$results$note$setContent("")
             tofu_clear_table(self$results$settings)
+            for (name in c(
+                    "summaryPurpose", "contrastsPurpose",
+                    "contributionsPurpose", "variabilityPurpose",
+                    "meansPurpose", "heatmapValuesPurpose",
+                    "assessmentPurpose", "settingsPurpose"))
+                self$results[[name]]$setContent("")
             self$results$heatmap$setSize(600, 500)
 
             for (name in c(
-                    "guidance", "summary", "warnings", "contrasts",
-                    "contributions", "variability", "means", "table",
+                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "contrasts", "contrastsPurpose", "contributions",
+                    "contributionsPurpose", "variability",
+                    "variabilityPurpose", "means", "meansPurpose", "table",
                     "contributionPlots", "heatmap", "heatmapDescription",
-                    "heatmapValues",
-                    "assessment", "note", "settings"))
+                    "heatmapValues", "heatmapValuesPurpose", "assessment",
+                    "assessmentPurpose", "note", "settings",
+                    "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -143,18 +153,55 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(assessmentShown=FALSE) {
             for (name in c(
-                    "summary", "contrasts", "contributions",
-                    "contributionPlots", "note", "settings"))
+                    "summary", "summaryPurpose", "contrasts",
+                    "contrastsPurpose", "contributions",
+                    "contributionsPurpose", "contributionPlots", "note",
+                    "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap))
             self$results$heatmapDescription$setVisible(
                 isTRUE(self$options$simperHeatmap))
             self$results$heatmapValues$setVisible(
                 isTRUE(self$options$simperHeatmap))
+            self$results$heatmapValuesPurpose$setVisible(
+                isTRUE(self$options$simperHeatmap))
             self$results$variability$setVisible(isTRUE(self$options$simperDetails))
+            self$results$variabilityPurpose$setVisible(
+                isTRUE(self$options$simperDetails))
             self$results$means$setVisible(isTRUE(self$options$simperDetails))
+            self$results$meansPurpose$setVisible(
+                isTRUE(self$options$simperDetails))
             self$results$table$setVisible(FALSE)
             self$results$assessment$setVisible(isTRUE(assessmentShown))
+            self$results$assessmentPurpose$setVisible(isTRUE(assessmentShown))
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                contrastsPurpose=c(
+                    "Contrast summary",
+                    "Summarises group sizes and mean Bray-Curtis dissimilarity for each contrast."),
+                contributionsPurpose=c(
+                    "Descriptive feature contributions",
+                    "Ranks features by their contribution to average dissimilarity."),
+                variabilityPurpose=c(
+                    "Contribution variability",
+                    "Shows how consistently each feature contributes across sample pairs."),
+                meansPurpose=c(
+                    "Group means",
+                    "Shows each feature's mean in both groups on the analysis scale."),
+                heatmapValuesPurpose=c(
+                    "SIMPER contrast heatmap values",
+                    "Lists the values represented in the contribution heatmap."),
+                assessmentPurpose=c(
+                    "Exploratory permutation assessment",
+                    "Compares observed feature contributions with contributions from permuted group labels."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .setWarnings = function(warnings) {
@@ -164,7 +211,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_html_block(warnings))
+            self$results$warnings$setContent(tofu_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -342,6 +389,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 item$plot$setSize(580, 430)
                 item$description$setContent(
                     private$.plotDescription(contrast))
+                item$valuesPurpose$setContent(tofu_html_block(
+                    "Lists the values represented in this contribution plot.",
+                    ariaLabel=paste(
+                        "About SIMPER contribution values for", contrast),
+                    title="SIMPER contribution values"))
                 rows <- private$.state$plotData[
                     private$.state$plotData$contrast == contrast, , drop=FALSE]
                 for (row in seq_len(nrow(rows))) {
@@ -518,76 +570,26 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotDescription = function(contrast) {
-            rows <- private$.state$plotData[
-                private$.state$plotData$contrast == contrast, , drop=FALSE]
-            shown <- nrow(rows)
-            total <- unname(private$.state$contrastTotals[[contrast]])
-            omitted <- max(0L, total - shown)
-            detailAvailability <- if (isTRUE(self$options$simperDetails))
-                paste(
-                    "retained in the detailed tables below",
-                    "(Contribution variability and Group means)")
-            else
-                paste(
-                    "available by enabling Show detailed statistics",
-                    "for the Contribution variability and Group means tables")
-            paste0(
-                '<div style="margin: 0; max-width: 44em; line-height: 1.45; white-space: normal; overflow-wrap: anywhere;">',
-                '<p style="margin: 0;">Selected contrast: <strong>',
-                private$.htmlEscape(contrast), '</strong>. ',
-                'Stopping rule: Top ',
-                private$.htmlEscape(as.character(self$options$simperTop)),
-                ' or ',
-                private$.htmlEscape(as.character(self$options$simperCum)),
-                '% cumulative contribution, whichever came first; the threshold-crossing feature is included. ',
-                shown, ' features shown; ', omitted,
-                ' omitted from this image and ', detailAvailability, '. ',
-                'This is a descriptive view of contribution to average dissimilarity and does not establish cause or significance.',
-                '</p></div>')
+            tofu_html_block(
+                "Shows the leading feature contributions for each contrast.",
+                ariaLabel=paste("About SIMPER contribution plot for", contrast),
+                title="Contribution plot")
         },
 
         .heatmapDescription = function() {
-            data <- private$.heatmapData()
-            if (is.null(data))
+            if (is.null(private$.heatmapData()))
                 return("")
-            paste0(
-                '<div style="margin: 0; max-width: 44em; line-height: 1.45; white-space: normal; overflow-wrap: anywhere;">',
-                '<p style="margin: 0;">All ',
-                length(unique(data$contrast)),
-                ' observed contrasts are shown. The feature union follows the Top ',
-                private$.htmlEscape(as.character(self$options$simperTop)),
-                ' or ',
-                private$.htmlEscape(as.character(self$options$simperCum)),
-                '% cumulative stopping rule. ',
-                length(unique(data$feature)),
-                ' features are shown; grey cells are features omitted by that rule for a contrast. ',
-                'Colours describe contribution to average dissimilarity and do not establish cause or significance.',
-                '</p></div>')
+            tofu_html_block(
+                "Compares leading feature contributions across contrasts.",
+                ariaLabel="About the SIMPER contrast heatmap",
+                title="Contrast overview heatmap")
         },
 
         .setInterpretation = function(prep, assessmentShown) {
-            paragraphs <- c(
-                paste(
-                    "SIMPER decomposes each contrast's average Bray-Curtis dissimilarity into feature contributions.",
-                    "Large average or percentage contributions identify features worth examining; they do not prove a cause or an overall group difference."),
-                paste(
-                    "High contributions can reflect high abundance or within-group variability.",
-                    "Average divided by SD describes consistency and is not a significance test.",
-                    "The first- and second-group means show descriptive direction on the transformed scale."),
-                paste(
-                    "Use PERMANOVA or ANOSIM for the overall group-comparison context.",
-                    sprintf(
-                        "The table and plot include features until the cumulative contribution reaches %s%% or %s features are shown, whichever occurs first.",
-                        self$options$simperCum,
-                        self$options$simperTop)))
-            if (isTRUE(assessmentShown))
-                paragraphs <- c(
-                    paragraphs,
-                    paste(
-                        "The exploratory permutation p-value is the proportion of random group-label assignments whose average contribution is at least as large as observed.",
-                        "It does not test contribution percentage, establish causation, show which group mean is higher, or replace an overall group test.",
-                        "Multiple-testing adjustment was performed separately within each contrast."))
-            self$results$note$setContent(tofu_html_block(paragraphs))
+            self$results$note$setContent(tofu_html_block(paste(
+                "SIMPER contributions are descriptive.",
+                "Average/SD shows consistency; permutation p does not replace an overall test."),
+                title="How to read these results"))
         },
 
         .populateSettings = function(prep, assessmentShown) {
@@ -627,84 +629,39 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
         },
 
-        .buildContributionPlot = function(rows, contrast) {
+        .buildContributionPlot = function (rows, contrast)
+        {
             if (is.null(rows) || nrow(rows) == 0L)
                 return(NULL)
-            rows <- rows[order(rows$contribution, rows$feature), , drop=FALSE]
-            rows$feature <- factor(
-                as.character(rows$feature),
-                levels=unique(as.character(rows$feature)))
-            featureLabels <- .tofuUniqueShortLabels(
-                levels(rows$feature), width=24L)
-            groupLabels <- .tofuUniqueShortLabels(
-                c(
-                    as.character(rows$firstGroup[[1L]]),
-                    as.character(rows$secondGroup[[1L]])),
-                width=18L)
+            rows <- rows[order(rows$contribution, rows$feature), , drop = FALSE]
+            rows$feature <- factor(as.character(rows$feature), levels = unique(as.character(rows$feature)))
+            featureLabels <- .tofuUniqueShortLabels(levels(rows$feature), width = 24L)
+            groupLabels <- .tofuUniqueShortLabels(c(as.character(rows$firstGroup[[1L]]), as.character(rows$secondGroup[[1L]])),
+                width = 18L)
             first <- unname(groupLabels[[1L]])
             second <- unname(groupLabels[[2L]])
             firstDirection <- paste0(first, " higher")
             secondDirection <- paste0(second, " higher")
-            directionLevels <- c(
-                firstDirection,
-                secondDirection,
-                "Equal means",
-                "Mean unavailable")
-            rows$direction <- ifelse(
-                ! is.finite(rows$meanFirst) | ! is.finite(rows$meanSecond),
-                "Mean unavailable",
-                ifelse(
-                    rows$meanFirst > rows$meanSecond,
-                    firstDirection,
-                    ifelse(
-                        rows$meanSecond > rows$meanFirst,
-                        secondDirection,
-                        "Equal means")))
-            rows$direction <- factor(rows$direction, levels=directionLevels)
-            rows$valueLabel <- sprintf(
-                "%.1f%% (cumulative %.1f%%)",
-                rows$contribution, rows$cumulative)
+            directionLevels <- c(firstDirection, secondDirection, "Equal means", "Mean unavailable")
+            rows$direction <- ifelse(!is.finite(rows$meanFirst) | !is.finite(rows$meanSecond), "Mean unavailable",
+                ifelse(rows$meanFirst > rows$meanSecond, firstDirection, ifelse(rows$meanSecond > rows$meanFirst,
+                    secondDirection, "Equal means")))
+            rows$direction <- factor(rows$direction, levels = directionLevels)
+            rows$valueLabel <- sprintf("%.1f%% (cumulative %.1f%%)", rows$contribution, rows$cumulative)
             directions <- directionLevels[directionLevels %in% rows$direction]
-            palette <- stats::setNames(
-                c("#0072B2", "#D55E00", "#666666", "#B3B3B3"),
-                directionLevels)
-            lineTypes <- stats::setNames(
-                c("solid", "longdash", "dotted", "dotdash"),
-                directionLevels)
-
-            ggplot2::ggplot(
-                rows,
-                ggplot2::aes(
-                    x=contribution, y=feature,
-                    fill=direction, linetype=direction)) +
-                ggplot2::geom_col(width=0.72, colour="#222222", linewidth=0.7) +
-                ggplot2::geom_text(
-                    ggplot2::aes(label=valueLabel),
-                    hjust=-0.05, size=3.1, colour="#222222") +
-                ggplot2::scale_fill_manual(
-                    values=palette, breaks=directions, labels=directions,
-                    drop=FALSE,
-                    name="Transformed group mean") +
-                ggplot2::scale_linetype_manual(
-                    values=lineTypes, breaks=directions, labels=directions,
-                    drop=FALSE,
-                    name="Transformed group mean") +
-                ggplot2::scale_x_continuous(
-                    labels=function(x) paste0(x, "%"),
-                    expand=ggplot2::expansion(mult=c(0, 0.42))) +
-                ggplot2::scale_y_discrete(labels=featureLabels) +
-                ggplot2::labs(
-                    x="Contribution to average dissimilarity (%)",
-                    y=NULL,
-                    subtitle=sprintf(
-                        "Top %s or %s%% cumulative; threshold-crossing feature included",
-                        self$options$simperTop,
-                        self$options$simperCum)) +
-                .tofuPlotTheme() +
-                ggplot2::theme(
-                    legend.position="bottom",
-                    plot.subtitle=ggplot2::element_text(size=9, colour="#444444"))
-        },
+            palette <- stats::setNames(c("#0072B2", "#D55E00", "#666666", "#B3B3B3"), directionLevels)
+            lineTypes <- stats::setNames(c("solid", "longdash", "dotted", "dotdash"), directionLevels)
+            ggplot2::ggplot(rows, ggplot2::aes(x = contribution, y = feature, fill = direction, linetype = direction)) +
+                ggplot2::geom_col(width = 0.72, colour = "#222222", linewidth = 0.7) + ggplot2::geom_text(ggplot2::aes(label = valueLabel),
+                hjust = -0.05, size = 3.5, colour = "#222222") + ggplot2::scale_fill_manual(values = palette,
+                breaks = directions, labels = directions, drop = FALSE, name = "Transformed group mean") + ggplot2::scale_linetype_manual(values = lineTypes,
+                breaks = directions, labels = directions, drop = FALSE, name = "Transformed group mean") + ggplot2::scale_x_continuous(labels = function(x) paste0(x,
+                "%"), expand = ggplot2::expansion(mult = c(0, 0.42))) + ggplot2::scale_y_discrete(labels = featureLabels) +
+                ggplot2::labs(x = "Contribution to average dissimilarity (%)", y = NULL, subtitle = sprintf("Top %s or %s%% cumulative; threshold-crossing feature included",
+                    self$options$simperTop, self$options$simperCum)) + .tofuPlotTheme() + ggplot2::theme(legend.position = "bottom",
+                plot.subtitle = ggplot2::element_text(size = 10, colour = "#444444"))
+        }
+,
 
         .plotContribution = function(image, ...) {
             contrast <- as.character(image$key)
@@ -735,43 +692,26 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             grid
         },
 
-        .buildHeatmapPlot = function() {
+        .buildHeatmapPlot = function ()
+        {
             dat <- private$.heatmapData()
             if (is.null(dat))
                 return(NULL)
-            dat$feature <- factor(
-                dat$feature,
-                levels=unique(dat$feature))
-            dat$contrast <- factor(
-                dat$contrast,
-                levels=unique(dat$contrast))
-            featureLabels <- .tofuUniqueShortLabels(
-                levels(dat$feature), width=20L)
-            contrastLabels <- .tofuUniqueShortLabels(
-                levels(dat$contrast), width=24L)
-            grid <- dat[, c("feature", "contrast", "missing"), drop=FALSE]
-            selected <- dat[! dat$missing, , drop=FALSE]
-            ggplot2::ggplot(
-                grid,
-                ggplot2::aes(x=contrast, y=feature)) +
-                ggplot2::geom_tile(
-                    fill="#D9D9D9", colour="white", linewidth=0.35) +
-                ggplot2::geom_tile(
-                    data=selected,
-                    ggplot2::aes(fill=contribution),
-                    colour="white", linewidth=0.35) +
-                ggplot2::scale_fill_viridis_c(
-                    option="C", direction=-1,
-                    na.value="#D9D9D9",
-                    name="Contribution (%)") +
-                ggplot2::scale_x_discrete(labels=contrastLabels) +
-                ggplot2::scale_y_discrete(labels=featureLabels) +
-                ggplot2::labs(x="Contrast", y="Feature") +
-                .tofuPlotTheme(baseSize=10) +
-                ggplot2::theme(
-                    axis.text.x=ggplot2::element_text(
-                        angle=35, hjust=1, vjust=1))
-        },
+            dat$feature <- factor(dat$feature, levels = unique(dat$feature))
+            dat$contrast <- factor(dat$contrast, levels = unique(dat$contrast))
+            featureLabels <- .tofuUniqueShortLabels(levels(dat$feature), width = 20L)
+            contrastLabels <- .tofuUniqueShortLabels(levels(dat$contrast), width = 24L)
+            grid <- dat[, c("feature", "contrast", "missing"), drop = FALSE]
+            selected <- dat[!dat$missing, , drop = FALSE]
+            ggplot2::ggplot(grid, ggplot2::aes(x = contrast, y = feature)) + ggplot2::geom_tile(fill = "#D9D9D9",
+                colour = "white", linewidth = 0.35) + ggplot2::geom_tile(data = selected, ggplot2::aes(fill = contribution),
+                colour = "white", linewidth = 0.35) + ggplot2::scale_fill_viridis_c(option = "C", direction = -1,
+                na.value = "#D9D9D9", name = "Contribution (%)") + ggplot2::scale_x_discrete(labels = contrastLabels) +
+                ggplot2::scale_y_discrete(labels = featureLabels) + ggplot2::labs(x = "Contrast", y = "Feature") +
+                .tofuPlotTheme() + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 35, hjust = 1,
+                vjust = 1))
+        }
+,
 
         .plotHeatmap = function(image, ...) {
             if (! isTRUE(self$options$simperHeatmap))

@@ -4,7 +4,7 @@ title: Cluster analysis
 menuGroup: tofu
 menuTitle: Cluster analysis
 menuSubtitle: Visualise sample similarity
-version: '0.2.0'
+version: '0.2.1'
 jas: '1.2'
 
 options:

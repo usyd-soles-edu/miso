@@ -56,6 +56,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 showSpiders=self$options$showSpiders)
 
             private$.populateSummary()
+            private$.populatePurposes()
             private$.populateSites()
             private$.populateCentroids()
             private$.populateEigenvalues()
@@ -72,6 +73,10 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             self$results$ordinationDescription$setContent("")
             self$results$interpretation$setContent("")
+            for (name in c(
+                    "summaryPurpose", "sitesPurpose", "centroidsPurpose",
+                    "eigenvaluesPurpose", "settingsPurpose"))
+                self$results[[name]]$setContent("")
             for (name in c("summary", "sites", "centroids", "eigenvalues",
                     "settings")) {
                 table <- self$results[[name]]
@@ -79,9 +84,11 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 table$.__enclos_env__$private$.rowNames <- character()
             }
             for (name in c(
-                    "guidance", "summary", "warnings", "ordination",
-                    "ordinationDescription", "sites", "centroids",
-                    "eigenvalues", "interpretation", "settings"))
+                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "ordination", "ordinationDescription", "sites",
+                    "sitesPurpose", "centroids", "centroidsPurpose",
+                    "eigenvalues", "eigenvaluesPurpose", "interpretation",
+                    "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -96,22 +103,44 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             plotAvailable <- !is.null(private$.state$plotData) &&
                 isTRUE(private$.state$plotData$available)
             for (name in c(
-                    "summary", "sites", "eigenvalues", "interpretation",
-                    "settings"))
+                    "summary", "summaryPurpose", "sites", "sitesPurpose",
+                    "eigenvalues", "eigenvaluesPurpose", "interpretation",
+                    "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
-            self$results$centroids$setVisible(
+            showCentroids <-
                 !is.null(fit$groups) &&
                 (isTRUE(self$options$showCentroids) ||
-                    isTRUE(self$options$showSpiders)))
+                    isTRUE(self$options$showSpiders))
+            self$results$centroids$setVisible(showCentroids)
+            self$results$centroidsPurpose$setVisible(showCentroids)
             self$results$ordination$setVisible(plotAvailable)
             self$results$ordinationDescription$setVisible(TRUE)
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                sitesPurpose=c(
+                    "Site coordinates",
+                    "Lists plotted sample coordinates for identification or reuse."),
+                centroidsPurpose=c(
+                    "Group centroids",
+                    "Lists the plotted mean position of each group."),
+                eigenvaluesPurpose=c(
+                    "Eigenvalues",
+                    "Shows each axis's eigenvalue and explained variation."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
             if (length(warnings) == 0L)
                 return()
-            self$results$warnings$setContent(tofu_html_block(warnings))
+            self$results$warnings$setContent(tofu_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -218,105 +247,27 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescription = function() {
-            prep <- private$.state$prep
-            fit <- private$.state$pcoa
             plotData <- private$.state$plotData
-            correctionText <- if (identical(fit$correction, "none")) {
-                "No additive correction was applied."
-            } else {
-                sprintf("%s correction was applied (constant %.6g).",
-                    private$.correctionLabel(fit$correction),
-                    fit$correctionConstant)
-            }
-            groupText <- if (is.null(fit$groups)) {
-                "Sites are shown without grouping."
-            } else {
-                sprintf("Sites are grouped by %s (%d groups).",
-                    prep$primary, nlevels(fit$groups))
-            }
-            overlayText <- if (is.null(fit$groups)) {
-                "Group centroids and spiders are not applicable."
-            } else if (isTRUE(plotData$neutral)) {
-                paste(
-                    "Group styling, centroids, and spiders are omitted because",
-                    "more than 64 groups cannot be distinguished accessibly."
-                )
-            } else {
-                sprintf("Centroids are %s and spiders are %s.",
-                    if (isTRUE(plotData$showCentroids)) "shown" else
-                        "not shown",
-                    if (isTRUE(plotData$showSpiders)) "shown" else
-                        "not shown")
-            }
             if (!isTRUE(plotData$available)) {
-                content <- c(
+                self$results$ordinationDescription$setContent(tofu_html_block(
                     paste(
-                        "A two-dimensional plot is unavailable because fewer",
-                        "than two positive PCoA axes were fitted."),
-                    sprintf(
-                        paste(
-                            "%d sites were analysed after the %s transformation",
-                            "with %s dissimilarities%s."),
-                        prep$rowsUsed,
-                        tolower(private$.transformLabel(self$options$transform)),
-                        private$.distanceLabel(self$options$distance),
-                        if (isTRUE(self$options$sqrtDist))
-                            ", followed by square-rooting distances" else ""),
-                    correctionText,
-                    paste(
-                        "The coordinate and eigenvalue tables retain the useful",
-                        "one-dimensional result."))
-            } else {
-                content <- c(
-                    sprintf(
-                        paste(
-                            "%d sites were analysed after the %s transformation",
-                            "with %s dissimilarities%s."),
-                        prep$rowsUsed,
-                        tolower(private$.transformLabel(self$options$transform)),
-                        private$.distanceLabel(self$options$distance),
-                        if (isTRUE(self$options$sqrtDist))
-                            ", followed by square-rooting distances" else ""),
-                    correctionText,
-                    sprintf(
-                        paste(
-                            "PCoA1 and PCoA2 explain %.1f%% and %.1f%% of the",
-                            "sum of positive eigenvalues, respectively."),
-                        fit$explained[[1L]], fit$explained[[2L]]),
-                    groupText,
-                    overlayText,
-                    .tofuPcoaSamplingDisclosure(plotData),
-                    paste(
-                        "Site labels are omitted from the image and retained",
-                        "with source rows in the Site Coordinates table."),
-                    paste(
-                        "PCoA is descriptive; two plotted axes approximate",
-                        "dissimilarities represented across all fitted axes."))
+                        "A two-dimensional plot is unavailable.",
+                        "Coordinate and eigenvalue tables retain the fitted result."),
+                    ariaLabel="About PCoA ordination",
+                    title="Principal coordinates ordination"))
+                return()
             }
-            self$results$ordinationDescription$setContent(
-                tofu_html_block(content))
+            self$results$ordinationDescription$setContent(tofu_html_block(
+                "Maps the main dimensions of dissimilarity among samples.",
+                ariaLabel="About PCoA ordination",
+                title="Principal coordinates ordination"))
         },
 
         .populateInterpretation = function() {
-            fit <- private$.state$pcoa
-            negativeText <- if (fit$negativeAxisCount > 0L) {
-                sprintf(
-                    paste(
-                        "%d negative eigenvalue%s indicate that the selected",
-                        "dissimilarities are not fully Euclidean in this space."),
-                    fit$negativeAxisCount,
-                    if (fit$negativeAxisCount == 1L) "" else "s")
-            } else {
-                "No negative eigenvalues were retained."
-            }
-            self$results$interpretation$setContent(tofu_html_block(c(
-                paste(
-                    "Sites closer together have more similar multivariate",
-                    "profiles under the selected preprocessing."),
-                negativeText,
-                paste(
-                    "This ordination describes structure and does not test",
-                    "group differences."))))
+            self$results$interpretation$setContent(tofu_html_block(paste(
+                "Closer points are more similar.",
+                "Axis labels report the variation represented by each displayed coordinate."),
+                title="How to read this ordination"))
         },
 
         .populateSettings = function() {

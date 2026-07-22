@@ -8,7 +8,7 @@ items:
     title: Getting started
     type: Html
     visible: false
-    clearWith:
+    clearWith: &clearWith
       - vars
       - labels
       - transform
@@ -19,8 +19,14 @@ items:
       - numberClusters
       - cutHeight
 
-  - name: summary
+  - name: summaryPurpose
     title: Data summary
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -43,7 +49,22 @@ items:
       - cutHeight
 
   - name: warnings
-    title: Data handling warnings
+    title: ''
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: dendrogramDescription
+    title: Group-average cluster dendrogram
     type: Html
     visible: false
     clearWith:
@@ -58,7 +79,7 @@ items:
       - cutHeight
 
   - name: dendrogram
-    title: Group-average cluster dendrogram
+    title: ''
     type: Image
     visible: false
     width: 600
@@ -75,23 +96,14 @@ items:
       - numberClusters
       - cutHeight
 
-  - name: dendrogramDescription
-    title: Plot details
+  - name: dendrogramStructurePurpose
+    title: Dendrogram structure
     type: Html
     visible: false
-    clearWith:
-      - vars
-      - labels
-      - transform
-      - distance
-      - sampleLabels
-      - defineClusters
-      - cutMode
-      - numberClusters
-      - cutHeight
+    clearWith: *clearWith
 
   - name: dendrogramStructure
-    title: Dendrogram structure
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -128,8 +140,14 @@ items:
       - numberClusters
       - cutHeight
 
-  - name: membership
+  - name: membershipPurpose
     title: Cluster membership
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: membership
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -165,8 +183,14 @@ items:
       - numberClusters
       - cutHeight
 
-  - name: settings
+  - name: settingsPurpose
     title: Analysis settings
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: settings
+    title: ''
     type: Table
     visible: false
     rows: 0

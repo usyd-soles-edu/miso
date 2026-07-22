@@ -310,7 +310,7 @@
             ggplot2::aes(
                 x=axis1, y=axis2, xend=centroid1, yend=centroid2,
                 group=interaction(group, site)),
-            colour="#808080", linewidth=0.35, alpha=0.6)
+            colour="#666666", linewidth=0.5, alpha=0.85)
     }
 
     if (isTRUE(plotData$grouped) && !isTRUE(plotData$neutral)) {

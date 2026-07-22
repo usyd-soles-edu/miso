@@ -19,8 +19,14 @@ items:
       - showCentroids
       - showSpiders
 
+  - name: summaryPurpose
+    title: Data summary
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
   - name: summary
-    title: Data Summary
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -34,13 +40,19 @@ items:
     clearWith: *clearWith
 
   - name: warnings
-    title: Warnings
+    title: ''
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: ordinationDescription
+    title: Principal coordinates ordination
     type: Html
     visible: false
     clearWith: *clearWith
 
   - name: ordination
-    title: Principal coordinates ordination
+    title: ''
     type: Image
     width: 600
     height: 500
@@ -48,14 +60,14 @@ items:
     visible: false
     clearWith: *clearWith
 
-  - name: ordinationDescription
-    title: Ordination description
+  - name: sitesPurpose
+    title: Site coordinates
     type: Html
     visible: false
     clearWith: *clearWith
 
   - name: sites
-    title: Site Coordinates
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -79,8 +91,14 @@ items:
         format: zto
     clearWith: *clearWith
 
+  - name: centroidsPurpose
+    title: Group centroids
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
   - name: centroids
-    title: Group Centroids
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -101,8 +119,14 @@ items:
         format: zto
     clearWith: *clearWith
 
-  - name: eigenvalues
+  - name: eigenvaluesPurpose
     title: Eigenvalues
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: eigenvalues
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -124,13 +148,19 @@ items:
     clearWith: *clearWith
 
   - name: interpretation
-    title: Interpretation
+    title: How to read this ordination
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: settingsPurpose
+    title: Settings
     type: Html
     visible: false
     clearWith: *clearWith
 
   - name: settings
-    title: Settings
+    title: ''
     type: Table
     rows: 0
     visible: false

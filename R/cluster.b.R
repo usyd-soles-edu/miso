@@ -101,18 +101,16 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     clusterState$warning)))
 
             private$.populateSummary(prep)
+            private$.populatePurposes()
             private$.populateSettings(prep, labelState$source)
             private$.populateDendrogramStructure()
             private$.populateMembership()
             private$.setWarnings(private$.state$warnings)
             private$.populateDescription()
-            self$results$interpretation$setContent(tofu_html_block(c(
-                paste(
-                    "Lower joins indicate more similar samples under the selected",
-                    "settings."),
-                paste(
-                    "The dendrogram is descriptive; branch order can rotate without",
-                    "changing the relationships."))))
+            self$results$interpretation$setContent(tofu_html_block(paste(
+                "Merge height shows dissimilarity.",
+                "Branches can rotate around a merge without changing the clustering."),
+                title="How to read this dendrogram"))
             private$.showSuccessfulResults()
         },
 
@@ -125,12 +123,17 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$membership)
             self$results$interpretation$setContent("")
             tofu_clear_table(self$results$settings)
+            for (name in c(
+                    "summaryPurpose", "dendrogramStructurePurpose",
+                    "membershipPurpose", "settingsPurpose"))
+                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "warnings", "dendrogram",
+                    "guidance", "summary", "summaryPurpose", "warnings", "dendrogram",
                     "dendrogramDescription", "dendrogramStructure",
-                    "membership", "interpretation",
-                    "settings"))
+                    "dendrogramStructurePurpose", "membership",
+                    "membershipPurpose", "interpretation", "settings",
+                    "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -142,19 +145,38 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function() {
             for (name in c(
-                    "summary", "dendrogram", "dendrogramDescription",
-                    "dendrogramStructure",
-                    "interpretation", "settings"))
+                    "summary", "summaryPurpose", "dendrogram",
+                    "dendrogramDescription", "dendrogramStructure",
+                    "dendrogramStructurePurpose", "interpretation", "settings",
+                    "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
-            if (!is.null(private$.state$membership))
+            if (!is.null(private$.state$membership)) {
                 self$results$membership$setVisible(TRUE)
+                self$results$membershipPurpose$setVisible(TRUE)
+            }
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                dendrogramStructurePurpose=c(
+                    "Dendrogram structure",
+                    "Lists dendrogram merges and their heights."),
+                membershipPurpose=c(
+                    "Cluster membership",
+                    "Lists each sample's cluster at the selected cut."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
             if (length(warnings) == 0L)
                 return()
-            self$results$warnings$setContent(tofu_html_block(warnings))
+            self$results$warnings$setContent(tofu_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -311,55 +333,10 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescription = function() {
-            prep <- private$.state$prep
-            labelText <- if (private$.state$showLabels) {
-                if (private$.state$labelsShortened)
-                    "Sample labels are shown and long labels are shortened only in the plot."
-                else
-                    "Sample labels are shown."
-            } else if (identical(private$.state$labelMode, "auto") &&
-                    prep$rowsUsed > private$.autoLabelLimit) {
-                sprintf(
-                    "Sample labels were automatically hidden because more than %d samples were used.",
-                    private$.autoLabelLimit)
-            } else {
-                "Sample labels are hidden."
-            }
-            legacyText <- if (identical(
-                    private$.state$labelModeSource,
-                    "legacy")) {
-                paste(
-                    "This analysis inherited its sample-label setting from an",
-                    "earlier Tofu version.",
-                    "Choose Show or Hide under Sample labels to replace it.")
-            } else {
-                character()
-            }
-            clusterCount <- if (is.null(private$.state$membership))
-                0L
-            else
-                length(unique(private$.state$membership))
-            styleText <- if (clusterCount > 64L) {
-                paste(
-                    "Distinct colour-and-shape styling was omitted because more than",
-                    "64 clusters were defined; cluster numbers and the membership table remain.")
-            } else if (clusterCount > 8L) {
-                paste(
-                    "Cluster numbers supplement colour and shape because shapes repeat",
-                    "when more than 8 clusters are defined.")
-            } else {
-                character()
-            }
-            self$results$dendrogramDescription$setContent(tofu_html_block(c(
-                sprintf(
-                    "%d samples; %s dissimilarity after %s transformation.",
-                    prep$rowsUsed,
-                    private$.distanceLabel(self$options$distance),
-                    tolower(private$.transformLabel(self$options$transform))),
-                labelText,
-                legacyText,
-                private$.state$cutDescription,
-                styleText)))
+            self$results$dendrogramDescription$setContent(tofu_html_block(
+                "Shows how samples merge into clusters as dissimilarity increases.",
+                ariaLabel="About the cluster dendrogram",
+                title="Group-average cluster dendrogram"))
         },
 
         .addSummary = function(item, value) {
@@ -576,94 +553,50 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             list(nodes=nodes, segments=segments, leaf=leaf)
         },
 
-        .buildDendrogram = function(
-                fit=private$.state$fit,
-                labels=private$.state$labels,
-                showLabels=private$.state$showLabels,
-                membership=private$.state$membership,
-                cutLine=private$.state$cutLine) {
+        .buildDendrogram = function (fit = private$.state$fit, labels = private$.state$labels, showLabels = private$.state$showLabels,
+            membership = private$.state$membership, cutLine = private$.state$cutLine)
+        {
             if (is.null(fit))
                 return(NULL)
             plotData <- private$.dendrogramData(fit, labels, membership)
             leaf <- plotData$leaf
-            plot <- ggplot2::ggplot() +
-                ggplot2::geom_segment(
-                    data=plotData$segments,
-                    ggplot2::aes(x=x, xend=xend, y=y, yend=yend),
-                    colour="#333333", linewidth=.55, lineend="square")
-
+            plot <- ggplot2::ggplot() + ggplot2::geom_segment(data = plotData$segments, ggplot2::aes(x = x, xend = xend,
+                y = y, yend = yend), colour = "#333333", linewidth = 0.55, lineend = "square")
             if (!is.null(cutLine))
-                plot <- plot + ggplot2::geom_hline(
-                    yintercept=cutLine,
-                    colour="#555555",
-                    linetype="dashed",
-                    linewidth=.65)
-
+                plot <- plot + ggplot2::geom_hline(yintercept = cutLine, colour = "#555555", linetype = "dashed",
+                    linewidth = 0.65)
             clusterCount <- if (is.null(membership))
                 0L
-            else
-                length(unique(membership))
+            else length(unique(membership))
             if (clusterCount > 0L && clusterCount <= 64L) {
                 keys <- as.character(sort(unique(leaf$cluster)))
                 aesthetics <- .tofuGroupAesthetics(keys)
-                plot <- plot +
-                    ggplot2::geom_point(
-                        data=leaf,
-                        ggplot2::aes(
-                            x=x, y=y, colour=clusterKey, shape=clusterKey),
-                        size=2.2, stroke=.55) +
-                    ggplot2::scale_colour_manual(
-                        name="Cluster", values=aesthetics$colour[keys]) +
-                    ggplot2::scale_shape_manual(
-                        name="Cluster", values=aesthetics$shape[keys])
+                plot <- plot + ggplot2::geom_point(data = leaf, ggplot2::aes(x = x, y = y, colour = clusterKey,
+                    shape = clusterKey), size = 2.2, stroke = 0.55) + ggplot2::scale_colour_manual(name = "Cluster",
+                    values = aesthetics$colour[keys]) + ggplot2::scale_shape_manual(name = "Cluster", values = aesthetics$shape[keys])
                 if (clusterCount > 8L)
-                    plot <- plot +
-                        ggplot2::geom_text(
-                            data=leaf,
-                            ggplot2::aes(x=x, y=y, label=cluster),
-                            nudge_y=max(fit$height) * .025,
-                            size=2.2,
-                            colour="#222222") +
-                        ggplot2::guides(colour="none", shape="none")
-            } else if (clusterCount > 64L) {
-                plot <- plot +
-                    ggplot2::geom_point(
-                        data=leaf,
-                        ggplot2::aes(x=x, y=y),
-                        shape=1L, colour="#555555", size=1.8) +
-                    ggplot2::geom_text(
-                        data=leaf,
-                        ggplot2::aes(x=x, y=y, label=cluster),
-                        nudge_y=max(fit$height) * .025,
-                        size=2.0,
-                        colour="#222222")
+                    plot <- plot + ggplot2::geom_text(data = leaf, ggplot2::aes(x = x, y = y, label = cluster),
+                        nudge_y = max(fit$height) * 0.025, size = 3.5, colour = "#222222") + ggplot2::guides(colour = "none",
+                        shape = "none")
             }
-
-            axisLabels <- if (isTRUE(showLabels)) leaf$plotLabel else NULL
-            plot +
-                ggplot2::scale_x_continuous(
-                    breaks=if (isTRUE(showLabels)) leaf$x else NULL,
-                    labels=axisLabels,
-                    expand=ggplot2::expansion(mult=c(.015, .015)),
-                    guide=ggplot2::guide_axis(check.overlap=FALSE)) +
-                ggplot2::scale_y_continuous(
-                    expand=ggplot2::expansion(mult=c(.02, .06))) +
-                ggplot2::labs(
-                    x="Samples",
-                    y=paste(
-                        private$.distanceLabel(self$options$distance),
-                        "dissimilarity")) +
-                .tofuPlotTheme(baseSize=10) +
-                ggplot2::theme(
-                    axis.text.x=if (isTRUE(showLabels))
-                        ggplot2::element_text(
-                            angle=55, hjust=1, vjust=1, size=7)
-                    else
-                        ggplot2::element_blank(),
-                    axis.ticks.x=ggplot2::element_blank(),
-                    panel.grid.major.x=ggplot2::element_blank(),
-                    plot.margin=ggplot2::margin(7, 8, 8, 8))
-        },
+            else if (clusterCount > 64L) {
+                plot <- plot + ggplot2::geom_point(data = leaf, ggplot2::aes(x = x, y = y), shape = 1L, colour = "#444444",
+                    size = 2.2)
+            }
+            axisLabels <- if (isTRUE(showLabels))
+                leaf$plotLabel
+            else NULL
+            plot + ggplot2::scale_x_continuous(breaks = if (isTRUE(showLabels))
+                leaf$x
+            else NULL, labels = axisLabels, expand = ggplot2::expansion(mult = c(0.015, 0.015)), guide = ggplot2::guide_axis(check.overlap = FALSE)) +
+                ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.02, 0.06))) + ggplot2::labs(x = "Samples",
+                y = paste(private$.distanceLabel(self$options$distance), "dissimilarity")) + .tofuPlotTheme() +
+                ggplot2::theme(axis.text.x = if (isTRUE(showLabels))
+                    ggplot2::element_text(angle = 55, hjust = 1, vjust = 1, size = 10)
+                else ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank(),
+                    plot.margin = ggplot2::margin(7, 8, 8, 8))
+        }
+,
 
         .plotDendrogram = function(image, ...) {
             plot <- private$.buildDendrogram()

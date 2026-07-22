@@ -183,28 +183,36 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
     expect_identical(
         vapply(results, `[[`, character(1), "name"),
         c(
-            "guidance", "summary", "warnings", "contrasts", "contributions",
-            "variability", "means", "table", "contributionPlots", "heatmap",
-            "heatmapDescription", "heatmapValues", "assessment", "note", "settings")
+            "guidance", "summaryPurpose", "summary", "warnings",
+            "contrastsPurpose", "contrasts", "contributionsPurpose",
+            "contributions", "variabilityPurpose", "variability",
+            "meansPurpose", "means", "table", "contributionPlots",
+            "heatmapDescription", "heatmap", "heatmapValuesPurpose",
+            "heatmapValues", "assessmentPurpose", "assessment", "note",
+            "settingsPurpose", "settings")
     )
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
-    expect_identical(by_name$warnings$title, "Data handling warnings")
-    expect_identical(by_name$contrasts$title, "Contrast summary")
-    expect_identical(by_name$contributions$title, "Descriptive feature contributions")
-    expect_identical(by_name$variability$title, "Contribution variability")
-    expect_identical(by_name$means$title, "Group means")
+    expect_identical(by_name$warnings$title, "")
+    expect_identical(by_name$contrastsPurpose$title, "Contrast summary")
+    expect_identical(by_name$contributionsPurpose$title,
+        "Descriptive feature contributions")
+    expect_identical(by_name$variabilityPurpose$title,
+        "Contribution variability")
+    expect_identical(by_name$meansPurpose$title, "Group means")
     expect_identical(by_name$table$title, "Descriptive feature contributions")
     expect_identical(by_name$contributionPlots$title, "Contribution plots by contrast")
     expect_identical(by_name$contributionPlots$type, "Array")
     expect_identical(by_name$contributionPlots$template$type, "Group")
     expect_identical(
         vapply(by_name$contributionPlots$template$items, `[[`, character(1), "name"),
-        c("plot", "description", "values"))
-    expect_identical(by_name$heatmap$title, "Contrast overview heatmap")
-    expect_identical(by_name$assessment$title, "Exploratory permutation assessment")
+        c("description", "plot", "valuesPurpose", "values"))
+    expect_identical(by_name$heatmapDescription$title,
+        "Contrast overview heatmap")
+    expect_identical(by_name$assessmentPurpose$title,
+        "Exploratory permutation assessment")
     expect_identical(by_name$note$type, "Html")
-    expect_identical(by_name$settings$title, "Analysis settings")
+    expect_identical(by_name$settingsPurpose$title, "Analysis settings")
 
     expect_identical(
         vapply(by_name$contrasts$columns, `[[`, character(1), "title"),
@@ -235,8 +243,11 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
     }, integer(1))), 5L)
     expect_lte(length(by_name$variability$columns), 5L)
     expect_lte(length(by_name$means$columns), 4L)
-    expect_lte(by_name$contributionPlots$template$items[[1L]]$width, 600L)
-    expect_lte(by_name$contributionPlots$template$items[[1L]]$height, 650L)
+    plotItem <- by_name$contributionPlots$template$items[[match(
+        "plot", vapply(by_name$contributionPlots$template$items, `[[`,
+            character(1), "name"))]]
+    expect_lte(plotItem$width, 600L)
+    expect_lte(plotItem$height, 650L)
     expect_lte(by_name$heatmap$width, 600L)
     expect_lte(by_name$heatmap$height, 650L)
 })
@@ -550,7 +561,7 @@ test_that("permutation assessment is separate and adjusts before filtering", {
     expect_identical(settings[["Random seed"]], "123")
     expect_match(
         as.character(result$note$asString()),
-        "does[[:space:]]+not[[:space:]]+test[[:space:]]+contribution[[:space:]]+percentage")
+        "permutation p does not replace an overall test")
 })
 
 test_that("effective permutations report the evaluated exhaustive count", {
@@ -788,17 +799,14 @@ test_that("two-group plots omit features only from images and compact rows", {
     description <- gsub(
         "[[:space:]]+", " ",
         as.character(result$contributionPlots$items[[1L]]$description$asString()))
-    expect_match(description, "3 features shown; 9 omitted", fixed=TRUE)
-    expect_match(description, "retained in the detailed tables", fixed=TRUE)
+    expect_match(description,
+        "Shows the leading feature contributions for each contrast", fixed=TRUE)
     compact_description <- gsub(
         "[[:space:]]+", " ",
         as.character(
             compact_only$contributionPlots$items[[1L]]$description$asString()))
-    expect_match(compact_description, "3 features shown; 9 omitted", fixed=TRUE)
-    expect_match(
-        compact_description,
-        "available by enabling Show detailed statistics",
-        fixed=TRUE)
+    expect_match(compact_description,
+        "Shows the leading feature contributions for each contrast", fixed=TRUE)
     expect_identical(result$table$asDF, compact_only$table$asDF)
 })
 
@@ -826,8 +834,9 @@ test_that("ten contrast plots stay filtered while every detailed table is comple
         function(item) gsub(
             "[[:space:]]+", " ", as.character(item$description$asString())),
         character(1))
-    expect_true(all(grepl("3 features shown; 9 omitted", descriptions, fixed=TRUE)))
-    expect_true(all(grepl("retained in the detailed tables", descriptions, fixed=TRUE)))
+    expect_true(all(grepl(
+        "Shows the leading feature contributions for each contrast",
+        descriptions, fixed=TRUE)))
 })
 
 test_that("SIMPER ggplot builder bounds labels and preserves full table names", {
@@ -873,14 +882,9 @@ test_that("SIMPER ggplot builder bounds labels and preserves full table names", 
     description <- as.character(
         analysis$results$contributionPlots$items[[1L]]$description$asString())
     description_text <- gsub("[[:space:]]+", " ", description)
-    expect_match(description, first_group, fixed=TRUE)
-    expect_match(description, second_group, fixed=TRUE)
-    expect_match(description, "Top 2|100%")
-    expect_match(description, "features shown")
-    expect_match(description, "descriptive")
-    expect_match(description_text, "does not establish cause")
-    expect_match(description_text, "available by enabling Show detailed statistics")
-    expect_lte(nchar(description), 900L)
+    expect_match(description_text,
+        "Shows the leading feature contributions for each contrast", fixed=TRUE)
+    expect_lte(nchar(description), 1250L)
     expect_false(grepl(first_feature, description, fixed=TRUE))
 })
 

@@ -266,7 +266,7 @@ test_that("PERMDISP returns test table and plot output", {
 
     expect_match(
         as.character(res$note$asString()),
-        "PERMDISP tests whether groups differ in[[:space:]]+multivariate dispersion")
+        "PERMDISP tests multivariate spread")
     expect_true(nrow(res$anova$asDF) >= 2L)
     expect_true(nrow(res$distances$asDF) >= 3L)
     expect_false(is.null(res$plot))
@@ -296,7 +296,7 @@ test_that("ANOSIM returns stable numeric results", {
     tab <- res$global$asDF
     expect_match(
         as.character(res$note$asString()),
-        "compares ranked between-group and within-group")
+        "R measures rank separation")
     expect_equal(nrow(tab), 1L)
     expect_equal(tab$value[tab$statistic == "Global R"], -0.4444444, tolerance = 1e-6)
     expect_equal(tab$p[tab$statistic == "Global R"], 1, tolerance = 1e-6)
@@ -316,7 +316,7 @@ test_that("SIMPER returns stable contribution results and plot output", {
     tab <- res$table$asDF
     expect_match(
         as.character(res$note$asString()),
-        "SIMPER[[:space:]]+decomposes")
+        "SIMPER contributions are descriptive")
     expect_true(nrow(tab) >= 1L)
     expect_equal(tab$contribution[1], 48.47328, tolerance = 1e-5)
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
@@ -560,7 +560,33 @@ test_that("narrative HTML is readable, wrapping, and escaped", {
     expect_match(html, "line-height: 1.45", fixed=TRUE)
     expect_match(html, "overflow-wrap: anywhere", fixed=TRUE)
     expect_match(html, "word-break: normal", fixed=TRUE)
+    expect_match(html, "font-family: inherit", fixed=TRUE)
+    expect_match(html, "font-size: inherit", fixed=TRUE)
     expect_false(grepl("<script>", html, fixed=TRUE))
     expect_match(html, "&lt;script&gt;", fixed=TRUE)
     expect_match(html, "&amp; more", fixed=TRUE)
+
+    purpose <- tofu_html_block(
+        "Tests whether multivariate composition is associated with each model term.",
+        ariaLabel="About PERMANOVA table",
+        title="PERMANOVA table")
+    expect_match(purpose, 'role="note"', fixed=TRUE)
+    expect_match(
+        purpose,
+        'aria-label="About PERMANOVA table"',
+        fixed=TRUE)
+    expect_match(purpose, 'role="heading"', fixed=TRUE)
+    expect_match(purpose, 'aria-level="3"', fixed=TRUE)
+    expect_match(purpose, "PERMANOVA table", fixed=TRUE)
+
+    warning <- tofu_warning_block(
+        "Two rows with missing values were excluded.",
+        title="Data handling warning")
+    expect_match(warning, 'role="note"', fixed=TRUE)
+    expect_match(warning, "Data handling warning", fixed=TRUE)
+    expect_match(warning, "box-sizing: border-box", fixed=TRUE)
+    expect_match(warning, "width: 100%", fixed=TRUE)
+    expect_match(warning, "max-width: 100%", fixed=TRUE)
+    expect_match(warning, "border-left:", fixed=TRUE)
+    expect_match(warning, "overflow-wrap: anywhere", fixed=TRUE)
 })

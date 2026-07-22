@@ -8,7 +8,7 @@ items:
     title: Getting started
     type: Html
     visible: false
-    clearWith:
+    clearWith: &clearWith
       - vars
       - factor
       - transform
@@ -27,8 +27,14 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
+  - name: summaryPurpose
+    title: Data summary
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
   - name: summary
-    title: Data Summary
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -59,7 +65,30 @@ items:
       - nmdsEnvPerm
 
   - name: warnings
-    title: Warnings
+    title: ''
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: ordinationDescription
+    title: Two-dimensional nMDS ordination
     type: Html
     visible: false
     clearWith:
@@ -82,7 +111,7 @@ items:
       - nmdsEnvPerm
 
   - name: ordination
-    title: Two-dimensional nMDS ordination
+    title: ''
     type: Image
     width: 580
     height: 450
@@ -107,31 +136,14 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
-  - name: ordinationDescription
-    title: Ordination description
+  - name: sitesPurpose
+    title: Site scores
     type: Html
     visible: false
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
-      - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
-      - nmdsEnvPerm
+    clearWith: *clearWith
 
   - name: sites
-    title: Site Scores
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -173,8 +185,14 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
-  - name: stress
+  - name: stressPurpose
     title: Stress and convergence diagnostics
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: stress
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -204,8 +222,31 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
-  - name: shepard
+  - name: shepardDescription
     title: Shepard diagram
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - seed
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsShepard
+      - nmdsOverlay
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
+      - nmdsEnvPerm
+
+  - name: shepard
+    title: ''
     type: Image
     width: 580
     height: 450
@@ -230,31 +271,14 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
-  - name: shepardDescription
-    title: Shepard diagram description
+  - name: shepardPairsPurpose
+    title: Shepard diagram values
     type: Html
     visible: false
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
-      - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
-      - nmdsEnvPerm
+    clearWith: *clearWith
 
   - name: shepardPairs
-    title: Pairs shown in the Shepard diagram
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -290,8 +314,14 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
+  - name: envfitPurpose
+    title: Environmental fit
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
   - name: envfit
-    title: Environmental Fit
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -345,7 +375,7 @@ items:
       - nmdsEnvPerm
 
   - name: note
-    title: Interpretation
+    title: How to read this ordination
     type: Html
     visible: false
     clearWith:
@@ -367,8 +397,14 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
+  - name: featuresPurpose
+    title: Feature scores
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
   - name: features
-    title: Feature Scores
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -407,8 +443,13 @@ items:
       - nmdsSpider
       - nmdsEnvPerm
 
-  - name: settings
+  - name: settingsPurpose
     title: Analysis settings
+    type: Html
+    visible: false
+    clearWith: *clearWith
+  - name: settings
+    title: ''
     type: Table
     rows: 0
     visible: false
@@ -437,4 +478,5 @@ items:
       - nmdsEllipse
       - nmdsSpider
       - nmdsEnvPerm
+
 ...

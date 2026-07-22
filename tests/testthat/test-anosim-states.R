@@ -104,7 +104,8 @@ test_that("ANOSIM result schema hides every empty shell", {
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
     expect_identical(by_name$note$type, "Html")
-    expect_identical(by_name$global$title, "Global ANOSIM")
+    expect_identical(by_name$global$title, "")
+    expect_identical(by_name$globalPurpose$title, "Global ANOSIM")
     expect_identical(by_name$global$columns[[2L]]$title, "R")
     expect_identical(by_name$global$columns[[3L]]$title, "Permutation p")
     expect_identical(by_name$pairwise$columns[[4L]]$title, "Adjusted p")
@@ -116,7 +117,8 @@ test_that("ANOSIM result schema hides every empty shell", {
     expect_identical(
         vapply(by_name$rankSummary$columns, `[[`, character(1), "name"),
         c("category", "pairs", "median", "q1", "q3"))
-    expect_identical(by_name$settings$title, "Analysis settings")
+    expect_identical(by_name$settings$title, "")
+    expect_identical(by_name$settingsPurpose$title, "Analysis settings")
 })
 
 test_that("new ANOSIM shows only complete getting-started guidance", {
@@ -270,6 +272,8 @@ test_that("ANOSIM rank raw marks are deterministic, bounded, and RNG-safe", {
     expect_identical(
         ggplot2::ggplot_build(plot_one)$data[[2L]][c("x", "y")],
         ggplot2::ggplot_build(plot_two)$data[[2L]][c("x", "y")])
+    expect_identical(plot_one$layers[[2L]]$aes_params$size, 2.1)
+    expect_identical(plot_one$layers[[2L]]$aes_params$alpha, .9)
     expect_identical(before, after_plot)
 })
 
@@ -346,7 +350,7 @@ test_that("ANOSIM rank plot degrades gracefully above 64 groups", {
     expect_identical(nrow(analysis$results$rankSummary$asDF), 66L)
     expect_match(
         tofu_squish_result(analysis$results$rankPlotDescription),
-        "65 groups exceed the 64-style display limit")
+        "ranked dissimilarities underlying the ANOSIM statistic")
 })
 
 test_that("ANOSIM rank plot handles long colliding labels accessibly", {
@@ -404,11 +408,8 @@ test_that("ANOSIM rank diagnostic visibility toggles without changing inference"
     expect_identical(hidden$settings$asDF, shown$settings$asDF)
 
     description <- tofu_squish_result(shown$rankPlotDescription)
-    expect_match(description, "Between")
-    expect_match(description, "Within")
-    expect_match(description, "dependent")
-    expect_match(description, "diagnostic")
-    expect_match(description, "location and dispersion")
+    expect_match(description, "ranked dissimilarities")
+    expect_match(description, "ANOSIM statistic")
     plain_description <- gsub("<[^>]+>", "", description)
     expect_lte(length(strsplit(plain_description, "[.!?]+")[[1L]]), 5L)
 })
@@ -642,7 +643,7 @@ test_that("two-group ANOSIM never shows an empty pairwise table", {
     expect_equal(nrow(result$pairwise$asDF), 0L)
     expect_match(
         as.character(result$note$asString()),
-        "global ANOSIM is[[:space:]|]+the[[:space:]|]+only group contrast")
+        "Permutation p compares this with random grouping")
 })
 
 test_that("legacy Stratified ANOSIM migrates truthfully", {
@@ -706,11 +707,11 @@ test_that("ANOSIM interpretation explains negative R and settings are effective"
         anosimN=19,
         seed=123
     )))
-    interpretation <- as.character(result$note$asString())
+    interpretation <- tofu_squish_result(result$note)
     settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
 
-    expect_match(interpretation, "negative R")
-    expect_match(interpretation, "within-group observations")
+    expect_match(interpretation, "R measures rank separation")
+    expect_match(interpretation, "stronger separation")
     expect_match(interpretation, "max-width: 44em", fixed=TRUE)
     expect_match(interpretation, "overflow-wrap: anywhere", fixed=TRUE)
     expect_identical(settings[["Requested permutation restriction"]], "Free")

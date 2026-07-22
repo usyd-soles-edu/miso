@@ -97,6 +97,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep,
                 self$options$transform,
                 self$options$distance)
+            private$.populatePurposes()
 
             private$.runCompanionPcoa(prep, main$model)
 
@@ -136,6 +137,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$companionPcoaDescription$setContent("")
+            for (name in c(
+                    "summaryPurpose", "tablePurpose",
+                    "companionPcoaSitesPurpose",
+                    "companionPcoaCentroidsPurpose", "pairwisePurpose",
+                    "settingsPurpose"))
+                self$results[[name]]$setContent("")
             tofu_clear_table(self$results$summary)
             tofu_clear_table(self$results$table)
             tofu_clear_table(self$results$companionPcoaSites)
@@ -148,10 +155,14 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             tofu_clear_table(self$results$settings)
 
             for (name in c(
-                    "guidance", "warnings", "summary", "table",
+                    "guidance", "warnings", "summary", "summaryPurpose",
+                    "table", "tablePurpose",
                     "companionPcoa", "companionPcoaDescription",
-                    "companionPcoaSites", "companionPcoaCentroids",
-                    "pairwise", "note", "settings"))
+                    "companionPcoaSites", "companionPcoaSitesPurpose",
+                    "companionPcoaCentroids",
+                    "companionPcoaCentroidsPurpose",
+                    "pairwise", "pairwisePurpose", "note", "settings",
+                    "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
         },
 
@@ -162,9 +173,34 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
-            for (name in c("summary", "table", "note", "settings"))
+            for (name in c(
+                    "summary", "summaryPurpose", "table", "tablePurpose",
+                    "note", "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
+            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
+        },
+
+        .populatePurposes = function() {
+            tofu_populate_purposes(self$results, list(
+                summaryPurpose=c(
+                    "Data summary",
+                    "Summarises included samples and features, including any exclusions."),
+                tablePurpose=c(
+                    "PERMANOVA table",
+                    "Tests compositional associations and reports each term's explained variation (R²)."),
+                companionPcoaSitesPurpose=c(
+                    "Companion PCoA site coordinates",
+                    "Lists plotted sample coordinates for identification or reuse."),
+                companionPcoaCentroidsPurpose=c(
+                    "Companion PCoA group centroids",
+                    "Lists the plotted mean position of each group."),
+                pairwisePurpose=c(
+                    "Pairwise PERMANOVA",
+                    "Compares pairs of groups and reports adjusted p-values when requested."),
+                settingsPurpose=c(
+                    "Analysis settings",
+                    "Lists the options used for this analysis.")))
         },
 
         .setWarnings = function(warnings) {
@@ -174,7 +210,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_html_block(warnings))
+            self$results$warnings$setContent(tofu_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -222,10 +258,13 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             self$results$companionPcoaDescription$setVisible(TRUE)
             self$results$companionPcoaSites$setVisible(TRUE)
+            self$results$companionPcoaSitesPurpose$setVisible(TRUE)
             self$results$companionPcoaCentroids$setVisible(
                 (isTRUE(self$options$pcoaCentroids) ||
                     isTRUE(self$options$pcoaSpiders)) &&
                 !is.null(fit$centroids))
+            self$results$companionPcoaCentroidsPurpose$setVisible(
+                self$results$companionPcoaCentroids$visible)
             self$results$companionPcoa$setVisible(
                 !is.null(plotData) && isTRUE(plotData$available))
         },
@@ -313,9 +352,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$companionPcoaDescription$setContent(
                 tofu_html_block(c(
                     paste(
-                        "Descriptive view of the distance structure; the",
-                        "PERMANOVA table is the hypothesis test."),
-                    message)))
+                        "Shows a two-dimensional representation of the",
+                        "dissimilarities used by PERMANOVA; nearby points",
+                        "generally represent more similar samples."),
+                    message),
+                    ariaLabel="About PERMANOVA companion PCoA",
+                    title="PERMANOVA companion PCoA"))
             self$results$companionPcoaDescription$setVisible(TRUE)
         },
 
@@ -371,94 +413,35 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .populateCompanionDescription = function(
                 prep, model, displayFactor, fit, plotData,
                 selectionNotice=character()) {
-            opening <- paste(
-                "Descriptive view of the distance structure; the",
-                "PERMANOVA table is the hypothesis test.")
-            preprocessing <- sprintf(
-                paste(
-                    "%d sites were retained after the %s transformation and",
-                    "%s dissimilarity calculation; the same prepared distance",
-                    "object supplied to PERMANOVA was used."),
-                prep$rowsUsed,
-                tolower(private$.transformLabel(self$options$transform)),
-                private$.distanceLabel(self$options$distance))
-            sqrtText <- if (isTRUE(fit$sqrtDist)) {
-                "Distances were square-rooted for both PERMANOVA and this PCoA."
-            } else {
-                "Distances were not square-rooted."
-            }
-            correctionText <- if (identical(fit$correction, "none")) {
-                "No additive correction was applied."
-            } else {
-                sprintf(
-                    "%s correction was applied in both analyses (constant %.6g).",
-                    private$.additiveLabel(fit$correction),
-                    fit$correctionConstant)
-            }
-            axesText <- if (!is.null(plotData) &&
-                    isTRUE(plotData$available)) {
-                sprintf(
-                    paste(
-                        "The image displays PCoA1 (%.1f%%) and PCoA2 (%.1f%%)",
-                        "of the sum of positive eigenvalues for %s (%d groups)."),
-                    fit$explained[[1L]], fit$explained[[2L]],
-                    displayFactor, nlevels(fit$groups))
-            } else {
-                paste(
-                    "Fewer than two positive axes were available, so no blank",
-                    "image is shown; the coordinate tables retain the useful",
-                    "one-dimensional result.")
-            }
-            plotAvailable <- !is.null(plotData) &&
-                isTRUE(plotData$available)
-            overlays <- if (!plotAvailable) {
-                paste(
-                    "Because the image is unavailable, no site, centroid, or",
-                    "spider overlay is shown. Site and centroid coordinates",
-                    "are retained in tables where applicable.")
-            } else if (isTRUE(plotData$neutral)) {
-                paste(
-                    "Sites use neutral styling because more than 64 groups are",
-                    "present; centroids and spiders are omitted from the image",
-                    "while full group identities remain in the tables.")
-            } else {
-                sprintf(
-                    "Sites are shown; centroids are %s and spiders are %s.",
-                    if (isTRUE(plotData$showCentroids)) "shown" else
-                        "not shown",
-                    if (isTRUE(plotData$showSpiders)) "shown" else
-                        "not shown")
-            }
+            available <- !is.null(plotData) && isTRUE(plotData$available)
+            self$results$companionPcoaDescription$setContent(
+                tofu_html_block(
+                    if (available)
+                        "Visualises sample resemblance and group positions alongside the test."
+                    else
+                        paste(
+                            "A two-dimensional companion plot is unavailable.",
+                            "Coordinate tables retain the fitted result."),
+                    ariaLabel="About PERMANOVA companion PCoA",
+                    title="PERMANOVA companion PCoA"))
             modelIsComplex <- length(model$extraNames) > 0L ||
                 length(model$covariateNames) > 0L ||
                 isTRUE(self$options$permInteractions)
-            modelCaveat <- if (modelIsComplex) {
-                paste(
-                    "The displayed grouping does not represent the complete",
-                    "model, and this two-dimensional view cannot display",
-                    "adjusted term effects.")
-            } else {
-                character()
-            }
-            content <- c(
-                opening,
-                preprocessing,
-                sqrtText,
-                correctionText,
-                axesText,
-                overlays,
-                selectionNotice,
-                if (!is.null(plotData) && isTRUE(plotData$available))
-                    .tofuPcoaSamplingDisclosure(plotData) else character(),
-                paste(
-                    "Complete site identities, source rows, and group labels",
-                    "are provided in the coordinate table."),
-                modelCaveat,
-                paste(
-                    "Apparent separation is descriptive and must not be used",
-                    "to infer p-values or effect significance."))
-            self$results$companionPcoaDescription$setContent(
-                tofu_html_block(content))
+            if (modelIsComplex)
+                private$.state$warnings <- c(
+                    private$.state$warnings,
+                    paste(
+                        "The companion PCoA displays one grouping variable and",
+                        "does not represent adjusted effects from the complete model."))
+            if (length(selectionNotice) > 0L)
+                private$.state$warnings <- c(
+                    private$.state$warnings, selectionNotice)
+            if (available && isTRUE(plotData$neutral))
+                private$.state$warnings <- c(
+                    private$.state$warnings,
+                    paste(
+                        "Neutral site styling is used because more than 64 groups",
+                        "are present; centroids and spiders are omitted from the image."))
         },
 
         .plotCompanionPcoa = function(image, ...) {
@@ -756,47 +739,10 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .setInterpretation = function(prep, model, pairwiseShown) {
-            text <- paste(
-                "R\u00B2 is the proportion of multivariate variation associated with each model term.",
-                paste(
-                    "A permutation p-value assesses evidence that the corresponding term",
-                    "explains differences in multivariate composition under the selected permutation model."))
-
-            multiTerm <- length(model$extraNames) > 0L ||
-                length(model$covariateNames) > 0L
-            if (multiTerm) {
-                if (identical(self$options$permBy, "terms"))
-                    text <- paste(
-                        text,
-                        "Sequential tests depend on model-term order.")
-                else if (identical(self$options$permBy, "margin"))
-                    text <- paste(
-                        text,
-                        "Marginal tests assess each term while accounting for the others.")
-                else
-                    text <- paste(text, "The Omnibus test assesses the model as a whole.")
-            }
-
-            text <- paste(
-                text,
-                paste(
-                    "Unequal dispersion can contribute to a PERMANOVA result.",
-                    "Examine PERMDISP alongside PERMANOVA, but do not treat PERMDISP alone",
-                    "as proof or disproof of differences in group centres."))
-            if (pairwiseShown)
-                text <- paste(
-                    text,
-                    "Pairwise comparisons concern levels of the primary Grouping variable.",
-                    if (identical(self$options$permAdjust, "none"))
-                        "Unadjusted p-values are shown for the pairwise comparisons."
-                    else
-                        sprintf(
-                            "%s-adjusted p-values address multiple pairwise comparisons.",
-                            private$.adjustmentLabel(self$options$permAdjust)))
-
-            self$results$note$setContent(paste0(
-                '<h2>How to read these results</h2>',
-                tofu_html_block(text)))
+            self$results$note$setContent(tofu_html_block(paste(
+                "Pseudo-F compares among-group and within-group variation.",
+                "R² shows explained variation, and permutation p tests the null model."),
+                title="How to read these results"))
         },
 
         .populateSettings = function(prep, permutation, pairwiseShown) {

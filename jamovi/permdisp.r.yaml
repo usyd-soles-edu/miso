@@ -9,8 +9,13 @@ items:
     type: Html
     visible: false
 
-  - name: summary
+  - name: summaryPurpose
     title: Data Summary
+    type: Html
+    visible: false
+
+  - name: summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -23,12 +28,17 @@ items:
         type: text
 
   - name: warnings
-    title: Data handling warnings
+    title: ''
+    type: Html
+    visible: false
+
+  - name: anovaPurpose
+    title: Dispersion Test
     type: Html
     visible: false
 
   - name: anova
-    title: Dispersion Test
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -53,8 +63,13 @@ items:
         type: number
         format: zto,pvalue
 
-  - name: pairwise
+  - name: pairwisePurpose
     title: Pairwise Dispersion Comparisons
+    type: Html
+    visible: false
+
+  - name: pairwise
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -74,21 +89,26 @@ items:
         type: number
         format: zto,pvalue
 
-  - name: plot
+  - name: plotDescription
     title: Distance to group centre
+    type: Html
+    visible: false
+
+  - name: plot
+    title: ''
     type: Image
     visible: false
     width: 600
     height: 460
     renderFun: .plotDistances
 
-  - name: plotDescription
-    title: Plot details
+  - name: distancesPurpose
+    title: Distance-to-centre summary
     type: Html
     visible: false
 
   - name: distances
-    title: Distance-to-centre summary
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -124,21 +144,26 @@ items:
         title: Maximum
         type: number
 
-  - name: ordinationPlot
+  - name: ordinationDescription
     title: Ordination with group centres
+    type: Html
+    visible: false
+
+  - name: ordinationPlot
+    title: ''
     type: Image
     visible: false
     width: 600
     height: 500
     renderFun: .plotOrdination
 
-  - name: ordinationDescription
-    title: Ordination details
+  - name: ordinationScoresPurpose
+    title: Ordination coordinates
     type: Html
     visible: false
 
   - name: ordinationScores
-    title: Ordination coordinates
+    title: ''
     type: Table
     visible: false
     rows: 0
@@ -163,12 +188,17 @@ items:
         type: number
 
   - name: note
-    title: Interpretation
+    title: How to read these results
+    type: Html
+    visible: false
+
+  - name: settingsPurpose
+    title: Analysis settings
     type: Html
     visible: false
 
   - name: settings
-    title: Analysis settings
+    title: ''
     type: Table
     visible: false
     rows: 0
