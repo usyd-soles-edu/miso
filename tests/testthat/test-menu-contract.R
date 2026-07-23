@@ -24,3 +24,15 @@ test_that("tofu uses one flat task-labelled analysis menu", {
     )
     expect_true(all(vapply(analyses, function(analysis) is.null(analysis$menuSubgroup), logical(1))))
 })
+
+test_that("every library analysis has a public description", {
+    module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
+
+    descriptions <- vapply(
+        module$analyses,
+        function(analysis) analysis$description,
+        character(1))
+
+    expect_true(all(nzchar(descriptions)))
+    expect_true(all(nchar(descriptions) <= 300L))
+})

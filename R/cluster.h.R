@@ -459,7 +459,9 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' Cluster analysis
 #'
-#'
+#' Groups samples by hierarchical clustering of dissimilarities calculated
+#' with vegan::vegdist and stats::hclust. The dendrogram and optional cluster
+#' memberships are descriptive.
 #' @param data .
 #' @param vars .
 #' @param labels .

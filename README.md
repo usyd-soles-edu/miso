@@ -18,14 +18,17 @@ Not all features are included as we have deliberately ported only the most commo
 
 ## Installation
 
-Install `tofu` from jamovi's module library, or build it from source:
+`tofu` is being prepared for submission to the jamovi module library. Until it
+is listed, install it from a source checkout:
 
 ```r
-# install.packages("jmvtools")
-jmvtools::install()
+install.packages("jmvtools") # first time only
+jmvtools::install(pkg = ".")
 ```
 
-We have plans to submit `tofu` to the jamovi library in the near future.
+Testers can also side-load a compatible `.jmo` file through **Modules →
+Side-load**. A `.jmo` build is specific to its operating system, processor
+architecture, and jamovi series.
 
 ## Manual testing in jamovi
 
@@ -54,7 +57,7 @@ Do this before trusting any jamovi result:
 5. Relaunch jamovi. Open **Analyses → tofu** and confirm that seven items are present: PERMANOVA, ANOSIM, PERMDISP, SIMPER, nMDS, Cluster analysis, and PCoA.
 6. Open PERMANOVA and confirm **Plots → Show companion PCoA** is available. Open PERMDISP and confirm **Distance-to-centre diagnostic** is selected by default. Open Cluster analysis and confirm **Define clusters** is optional. Open PCoA and confirm it includes **Feature variables (required)**, **Grouping variable (optional)**, **Plots**, and **Advanced corrections**.
 
-Record the operating system plus the jamovi and tofu versions with your test notes. The version alone is not proof that the new build loaded: an older build may also say `0.2.0`. If the menu or controls do not match this guide, remove tofu, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
+Record the operating system plus the jamovi and tofu versions with your test notes. The version alone is not proof that the new build loaded because two local builds may share a version number. If the menu or controls do not match this guide, remove tofu, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
 
 ### Choose a test scope
 

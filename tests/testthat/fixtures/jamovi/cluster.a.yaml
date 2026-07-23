@@ -6,6 +6,8 @@ menuTitle: Cluster analysis
 menuSubtitle: Visualise sample similarity
 version: '0.2.1'
 jas: '1.2'
+description:
+  main: Groups samples by hierarchical clustering of dissimilarities calculated with vegan::vegdist and stats::hclust. The dendrogram and optional cluster memberships are descriptive.
 
 options:
   - name: data

@@ -597,7 +597,9 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' SIMPER
 #'
-#'
+#' Describes how individual features contribute to average Bray-Curtis
+#' dissimilarity between groups using vegan::simper. Optional permutation
+#' results are exploratory rather than an overall group test.
 #' @param data .
 #' @param vars .
 #' @param factor .

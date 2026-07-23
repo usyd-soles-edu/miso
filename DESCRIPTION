@@ -9,6 +9,8 @@ Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and clust
     The module uses a shared transformation and dissimilarity workflow powered
     by the vegan R package.
 License: GPL (>= 2)
+URL: https://github.com/usyd-soles-edu/tofu
+BugReports: https://github.com/usyd-soles-edu/tofu/issues
 Encoding: UTF-8
 Imports: jmvcore (>= 0.8.5), R6, vegan, permute, ggplot2
 Suggests:

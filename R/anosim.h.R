@@ -403,7 +403,9 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' ANOSIM
 #'
-#'
+#' Tests whether within-group samples are more similar than between-group
+#' samples using rank-based ANOSIM through vegan::anosim. Includes optional
+#' pairwise comparisons and rank diagnostics.
 #' @param data .
 #' @param vars .
 #' @param factor .

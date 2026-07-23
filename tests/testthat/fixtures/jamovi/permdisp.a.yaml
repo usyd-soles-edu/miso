@@ -6,6 +6,8 @@ menuTitle: PERMDISP
 menuSubtitle: Check group dispersion
 version: '0.2.1'
 jas: '1.2'
+description:
+  main: Tests whether groups differ in multivariate dispersion using vegan::betadisper and permutation tests. Includes distance-to-centre summaries, diagnostics, and an optional ordination.
 
 options:
   - name: data

@@ -6,6 +6,8 @@ menuTitle: nMDS
 menuSubtitle: Visualise sample patterns
 version: '0.2.1'
 jas: '1.2'
+description:
+  main: Produces a non-metric multidimensional scaling ordination through vegan::metaMDS. Reports stress and convergence and can add group, feature, environmental, and Shepard diagnostics.
 
 options:
   - name: data

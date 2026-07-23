@@ -517,7 +517,9 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' PERMDISP
 #'
-#'
+#' Tests whether groups differ in multivariate dispersion using
+#' vegan::betadisper and permutation tests. Includes distance-to-centre
+#' summaries, diagnostics, and an optional ordination.
 #' @param data .
 #' @param vars .
 #' @param factor .

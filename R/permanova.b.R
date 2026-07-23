@@ -188,7 +188,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "Summarises included samples and features, including any exclusions."),
                 tablePurpose=c(
                     "PERMANOVA table",
-                    "Tests compositional associations and reports each term's explained variation (R²)."),
+                    "Tests compositional associations and reports each term's explained variation (R\u00B2)."),
                 companionPcoaSitesPurpose=c(
                     "Companion PCoA site coordinates",
                     "Lists plotted sample coordinates for identification or reuse."),
@@ -741,7 +741,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .setInterpretation = function(prep, model, pairwiseShown) {
             self$results$note$setContent(tofu_html_block(paste(
                 "Pseudo-F compares among-group and within-group variation.",
-                "R² shows explained variation, and permutation p tests the null model."),
+                    "R\u00B2 shows explained variation, and permutation p tests the null model."),
                 title="How to read these results"))
         },
 

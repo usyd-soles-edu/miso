@@ -6,6 +6,8 @@ menuTitle: PERMANOVA
 menuSubtitle: Test group differences
 version: '0.2.1'
 jas: '1.2'
+description:
+  main: Tests whether multivariate composition is associated with one or more predictors using PERMANOVA through vegan::adonis2. Supports restricted permutations, pairwise comparisons, and a descriptive companion PCoA.
 
 options:
   - name: data

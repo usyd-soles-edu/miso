@@ -629,7 +629,9 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' PERMANOVA
 #'
-#'
+#' Tests whether multivariate composition is associated with one or more
+#' predictors using PERMANOVA through vegan::adonis2. Supports restricted
+#' permutations, pairwise comparisons, and a descriptive companion PCoA.
 #' @param data .
 #' @param vars .
 #' @param factor .

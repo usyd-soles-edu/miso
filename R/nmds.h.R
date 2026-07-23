@@ -886,7 +886,9 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' nMDS
 #'
-#'
+#' Produces a non-metric multidimensional scaling ordination through
+#' vegan::metaMDS. Reports stress and convergence and can add group, feature,
+#' environmental, and Shepard diagnostics.
 #' @param data .
 #' @param vars .
 #' @param factor .
