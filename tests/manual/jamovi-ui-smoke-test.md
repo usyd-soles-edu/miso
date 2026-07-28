@@ -1,6 +1,6 @@
 # jamovi UI smoke-test runbook
 
-This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised the tofu analyses on the saved baseline workbooks and clean CSV fixtures. It is intended for future Codex sessions and is deliberately separate from the user-facing functionality guide in `README.md`.
+This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised the tofu analyses on the saved baseline workbooks and clean CSV fixtures. It is intended for future Codex sessions and is deliberately separate from the user-facing `jamovi-functionality-guide.md`.
 
 ## Current automated scope
 
@@ -29,7 +29,7 @@ Run every analysis from both clean CSVs so cached workbook output cannot satisfy
 
 ### Pending PERMANOVA plot procedure
 
-1. Create PERMANOVA from each clean CSV with the baseline settings in `README.md`. Record the complete **PERMANOVA Table**.
+1. Create PERMANOVA from each clean CSV with the baseline settings in `jamovi-functionality-guide.md`. Record the complete **PERMANOVA Table**.
 2. Confirm **Show companion PCoA** is off and that **PERMANOVA companion PCoA**, **Companion PCoA description**, coordinates, and centroids are absent.
 3. Select **Show companion PCoA**. For the simple model, assert `group` is the effective display factor and that the 600 × 500 **PERMANOVA companion PCoA**, **Companion PCoA description**, and **Companion PCoA Site Coordinates** appear.
 4. Select **Show group centroids** and **Connect sites to centroids** independently. Assert the image and description report the effective layers and the full-data coordinate and centroid tables remain available.

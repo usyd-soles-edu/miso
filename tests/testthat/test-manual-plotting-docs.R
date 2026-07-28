@@ -1,41 +1,35 @@
 manual_path <- function(...) test_path("..", "manual", ...)
 
-readme_path <- function() {
-    sourcePath <- test_path("..", "..", "README.md")
-    if (file.exists(sourcePath))
-        sourcePath
-    else
-        system.file("README.md", package="tofu", mustWork=TRUE)
-}
+functionality_guide_path <- function()
+    manual_path("jamovi-functionality-guide.md")
 
-test_that("README presents seven functionality-specific analysis cards", {
-    readme <- paste(readLines(readme_path(),
+test_that("functionality guide presents all seven analysis cards", {
+    guide <- paste(readLines(functionality_guide_path(),
         warn=FALSE), collapse="\n")
 
-    expect_match(readme, "seven focused analyses")
-    expect_match(readme, "### Test PCoA", fixed=TRUE)
-    expect_match(readme, "vegan::wcmdscale", fixed=TRUE)
-    expect_match(readme, "Cluster analysis and PCoA are not saved in these workbooks",
+    analysis_cards <- c(
+        "PERMANOVA", "ANOSIM", "PERMDISP", "nMDS",
+        "cluster analysis", "SIMPER", "PCoA")
+    for (analysis in analysis_cards)
+        expect_match(guide, paste("### Test", analysis), fixed=TRUE)
+    expect_match(guide, "vegan::wcmdscale", fixed=TRUE)
+    expect_match(guide, "Cluster analysis and PCoA are not saved in these workbooks",
         fixed=TRUE)
-    expect_match(readme, "Optional companion PCoA", fixed=TRUE)
-    expect_match(readme, "Ranked-dissimilarity diagnostic", fixed=TRUE)
-    expect_match(readme, "Distance-to-centre diagnostic; optional ordination",
+    expect_match(guide, "Optional companion PCoA", fixed=TRUE)
+    expect_match(guide, "Ranked-dissimilarity diagnostic", fixed=TRUE)
+    expect_match(guide, "Distance-to-centre diagnostic; optional ordination",
         fixed=TRUE)
-    expect_match(readme, "Separate contribution plots; optional heatmap",
+    expect_match(guide, "Separate contribution plots; optional heatmap",
         fixed=TRUE)
-    expect_match(readme, "Dendrogram; optional cut", fixed=TRUE)
-    expect_match(readme, "pass or fail is determined", fixed=TRUE)
-    expect_match(
-        readme,
-        "Summarise feature contributions to average Bray-Curtis dissimilarity",
-        fixed=TRUE)
-    expect_false(grepl("six analyses below", readme, fixed=TRUE))
-    expect_false(grepl("all five baseline analyses", readme, fixed=TRUE))
+    expect_match(guide, "Dendrogram; optional cut", fixed=TRUE)
+    expect_match(guide, "pass or fail is determined", fixed=TRUE)
+    expect_false(grepl("six analyses below", guide, fixed=TRUE))
+    expect_false(grepl("all five baseline analyses", guide, fixed=TRUE))
 })
 
 test_that("click-by-click docs use the visible variable-target labels", {
     docs <- list(
-        README=paste(readLines(readme_path(),
+        guide=paste(readLines(functionality_guide_path(),
             warn=FALSE), collapse="\n"),
         runbook=paste(readLines(manual_path("jamovi-ui-smoke-test.md"),
             warn=FALSE), collapse="\n"))
