@@ -1,8 +1,6 @@
 # tofu
 
-`tofu` brings community-ecology methods from R into [jamovi](https://www.jamovi.org). It is designed for teaching at the University of Sydney but is not limited to that setting. The module provides seven focused analyses with a consistent, accessible interface and publication-oriented `ggplot2` figures.
-
-The ecological calculations are powered primarily by the [`vegan`](https://cran.r-project.org/package=vegan) R package. `tofu` deliberately presents a smaller set of commonly taught workflows rather than reproducing all of `vegan`. If you need functionality that is not included, please use `vegan` directly or suggest an addition.
+`tofu` brings common multivariate methods, often used to analyse ecological and biological datasets, from R into [jamovi](https://www.jamovi.org). It was created to assist in teaching biostatistic at the University of Sydney and should be fine to use for research as long as the user recognises its limitations. The statistical calculations are powered primarily by the [`vegan`](https://cran.r-project.org/package=vegan) R package. If you need functionality that is not included, please use `vegan` directly or suggest an addition.
 
 | Analysis | R function | What it does |
 |---|---|---|
@@ -23,7 +21,6 @@ install.packages("jmvtools") # first time only
 jmvtools::install(pkg = ".")
 ```
 
-Testers can also install a compatible `.jmo` file through **Modules → Side-load**. A `.jmo` build is specific to its operating system, processor architecture, and jamovi series.
 
 ## Current support
 
@@ -31,16 +28,12 @@ Testers can also install a compatible `.jmo` file through **Modules → Side-loa
 |---|---|---|---|---|---|---|---|
 | Transformation | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Selectable dissimilarity | Yes | Yes | Yes | Yes | Yes | Bray-Curtis only | Yes |
-| Binary distance | Yes | Yes | Yes | Legacy analyses only | No | No | Yes |
+| Binary distance | Yes | Yes | Yes | No | No | No | Yes |
 | Blocking factor | Yes | Yes | No | No | No | No | No |
 | Permutation scheme | Yes | Yes | Yes | No | No | No | No |
 | Parallel option | Yes | Yes | Yes | No | No | No | No |
 | Pairwise or contrast output | Optional | Optional | Optional | No | No | Group contrasts | No |
 | Main plots | Companion PCoA | Ranked dissimilarities | Distance to centre | Ordination and Shepard | Dendrogram | Contributions and heatmap | Ordination |
-
-## Development and testing
-
-The [functionality-based testing guide](tests/manual/jamovi-functionality-guide.md) provides click-by-click checks for every analysis on small and large datasets. The [UI automation runbook](tests/manual/jamovi-ui-smoke-test.md) records the repeatable Computer Use workflow, lifecycle safeguards, and current automation coverage. Automated regression tests are under [`tests/testthat`](tests/testthat).
 
 ## License
 
