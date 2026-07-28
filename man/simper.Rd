@@ -10,10 +10,15 @@ simper(
   factor,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
   seed = 0,
   simperN = 999,
   simperTop = 10,
-  simperCum = 70
+  simperCum = 70,
+  simperHeatmap = FALSE,
+  simperAssess = FALSE,
+  simperAdjust = "holm",
+  simperDetails = FALSE
 )
 }
 \arguments{
@@ -27,6 +32,8 @@ simper(
 
 \item{distance}{.}
 
+\item{distBinary}{.}
+
 \item{seed}{.}
 
 \item{simperN}{.}
@@ -34,15 +41,32 @@ simper(
 \item{simperTop}{.}
 
 \item{simperCum}{.}
+
+\item{simperHeatmap}{.}
+
+\item{simperAssess}{.}
+
+\item{simperAdjust}{.}
+
+\item{simperDetails}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+  \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
+  \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
+  \code{results$variability} \tab \tab \tab \tab \tab a table \cr
+  \code{results$means} \tab \tab \tab \tab \tab a table \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
-  \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
+  \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
+  \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

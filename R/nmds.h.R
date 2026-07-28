@@ -10,12 +10,19 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             factor = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
             seed = 0,
             nmdsK = 2,
             nmdsTrymax = 20,
             nmdsMaxit = 200,
             nmdsShepard = TRUE,
-            nmdsOverlay = TRUE, ...) {
+            nmdsOverlay = TRUE,
+            nmdsEnv = NULL,
+            nmdsSpecies = FALSE,
+            nmdsHull = FALSE,
+            nmdsEllipse = FALSE,
+            nmdsSpider = FALSE,
+            nmdsEnvPerm = 99, ...) {
 
             super$initialize(
                 package="tofu",
@@ -50,7 +57,14 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -69,8 +83,16 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE,
+                hidden=TRUE)
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -81,7 +103,8 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 nmdsK,
                 default=2,
                 min=2,
-                max=3)
+                max=3,
+                hidden=TRUE)
             private$..nmdsTrymax <- jmvcore::OptionNumber$new(
                 "nmdsTrymax",
                 nmdsTrymax,
@@ -100,52 +123,117 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "nmdsOverlay",
                 nmdsOverlay,
                 default=TRUE)
+            private$..nmdsEnv <- jmvcore::OptionVariables$new(
+                "nmdsEnv",
+                nmdsEnv,
+                suggested=list(
+                    "continuous"),
+                permitted=list(
+                    "numeric"),
+                default=NULL)
+            private$..nmdsSpecies <- jmvcore::OptionBool$new(
+                "nmdsSpecies",
+                nmdsSpecies,
+                default=FALSE)
+            private$..nmdsHull <- jmvcore::OptionBool$new(
+                "nmdsHull",
+                nmdsHull,
+                default=FALSE)
+            private$..nmdsEllipse <- jmvcore::OptionBool$new(
+                "nmdsEllipse",
+                nmdsEllipse,
+                default=FALSE)
+            private$..nmdsSpider <- jmvcore::OptionBool$new(
+                "nmdsSpider",
+                nmdsSpider,
+                default=FALSE)
+            private$..nmdsEnvPerm <- jmvcore::OptionNumber$new(
+                "nmdsEnvPerm",
+                nmdsEnvPerm,
+                default=99,
+                min=1)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..nmdsK)
             self$.addOption(private$..nmdsTrymax)
             self$.addOption(private$..nmdsMaxit)
             self$.addOption(private$..nmdsShepard)
             self$.addOption(private$..nmdsOverlay)
+            self$.addOption(private$..nmdsEnv)
+            self$.addOption(private$..nmdsSpecies)
+            self$.addOption(private$..nmdsHull)
+            self$.addOption(private$..nmdsEllipse)
+            self$.addOption(private$..nmdsSpider)
+            self$.addOption(private$..nmdsEnvPerm)
         }),
     active = list(
         vars = function() private$..vars$value,
         factor = function() private$..factor$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
         nmdsK = function() private$..nmdsK$value,
         nmdsTrymax = function() private$..nmdsTrymax$value,
         nmdsMaxit = function() private$..nmdsMaxit$value,
         nmdsShepard = function() private$..nmdsShepard$value,
-        nmdsOverlay = function() private$..nmdsOverlay$value),
+        nmdsOverlay = function() private$..nmdsOverlay$value,
+        nmdsEnv = function() private$..nmdsEnv$value,
+        nmdsSpecies = function() private$..nmdsSpecies$value,
+        nmdsHull = function() private$..nmdsHull$value,
+        nmdsEllipse = function() private$..nmdsEllipse$value,
+        nmdsSpider = function() private$..nmdsSpider$value,
+        nmdsEnvPerm = function() private$..nmdsEnvPerm$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
         ..seed = NA,
         ..nmdsK = NA,
         ..nmdsTrymax = NA,
         ..nmdsMaxit = NA,
         ..nmdsShepard = NA,
-        ..nmdsOverlay = NA)
+        ..nmdsOverlay = NA,
+        ..nmdsEnv = NA,
+        ..nmdsSpecies = NA,
+        ..nmdsHull = NA,
+        ..nmdsEllipse = NA,
+        ..nmdsSpider = NA,
+        ..nmdsEnvPerm = NA)
 )
 
 nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "nmdsResults",
     inherit = jmvcore::Group,
     active = list(
-        warnings = function() private$.items[["warnings"]],
+        guidance = function() private$.items[["guidance"]],
+        summaryPurpose = function() private$.items[["summaryPurpose"]],
         summary = function() private$.items[["summary"]],
+        warnings = function() private$.items[["warnings"]],
+        ordinationDescription = function() private$.items[["ordinationDescription"]],
         ordination = function() private$.items[["ordination"]],
+        sitesPurpose = function() private$.items[["sitesPurpose"]],
+        sites = function() private$.items[["sites"]],
+        stressPurpose = function() private$.items[["stressPurpose"]],
         stress = function() private$.items[["stress"]],
+        shepardDescription = function() private$.items[["shepardDescription"]],
         shepard = function() private$.items[["shepard"]],
-        note = function() private$.items[["note"]]),
+        shepardPairsPurpose = function() private$.items[["shepardPairsPurpose"]],
+        shepardPairs = function() private$.items[["shepardPairs"]],
+        envfitPurpose = function() private$.items[["envfitPurpose"]],
+        envfit = function() private$.items[["envfit"]],
+        note = function() private$.items[["note"]],
+        featuresPurpose = function() private$.items[["featuresPurpose"]],
+        features = function() private$.items[["features"]],
+        settingsPurpose = function() private$.items[["settingsPurpose"]],
+        settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -153,15 +241,58 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="",
                 title="nMDS")
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
-                name="warnings",
-                title="Notes and Warnings"))
+                name="guidance",
+                title="Getting started",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="summaryPurpose",
+                title="Data summary",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
-                title="Data Summary",
+                title="",
                 rows=0,
+                visible=FALSE,
                 columns=list(
                     list(
                         `name`="item",
@@ -170,19 +301,197 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     list(
                         `name`="value",
                         `title`="Value",
-                        `type`="text"))))
+                        `type`="text")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="warnings",
+                title="",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="ordinationDescription",
+                title="Two-dimensional nMDS ordination",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="ordination",
-                title="Ordination Plot",
-                width=600,
+                title="",
+                width=580,
                 height=450,
-                renderFun=".plotNmds"))
+                renderFun=".plotNmds",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="sitesPurpose",
+                title="Site scores",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="sites",
+                title="",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="row",
+                        `title`="Row",
+                        `type`="integer"),
+                    list(
+                        `name`="NMDS1",
+                        `title`="NMDS1",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS2",
+                        `title`="NMDS2",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS3",
+                        `title`="NMDS3",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="group",
+                        `title`="Group",
+                        `type`="text")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="stressPurpose",
+                title="Stress and convergence diagnostics",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="stress",
-                title="Stress and Convergence",
+                title="",
                 rows=0,
+                visible=FALSE,
                 columns=list(
                     list(
                         `name`="item",
@@ -191,18 +500,368 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     list(
                         `name`="value",
                         `title`="Value",
-                        `type`="text"))))
+                        `type`="text")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="shepardDescription",
+                title="Shepard diagram",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="shepard",
-                title="Shepard Diagram",
-                width=600,
+                title="",
+                width=580,
                 height=450,
-                renderFun=".plotShepard"))
-            self$add(jmvcore::Preformatted$new(
+                renderFun=".plotShepard",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="shepardPairsPurpose",
+                title="Shepard diagram values",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="shepardPairs",
+                title="",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="dissimilarity",
+                        `title`="Observed dissimilarity",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="ordinationDistance",
+                        `title`="Ordination distance",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="monotonicFit",
+                        `title`="Monotone fitted distance",
+                        `type`="number",
+                        `format`="zto")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="envfitPurpose",
+                title="Environmental fit",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="envfit",
+                title="",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="variable",
+                        `title`="Variable",
+                        `type`="text"),
+                    list(
+                        `name`="r2",
+                        `title`="r\u00B2",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="p",
+                        `title`="p (unadjusted)",
+                        `type`="number",
+                        `format`="zto,pvalue"),
+                    list(
+                        `name`="samples",
+                        `title`="n",
+                        `type`="integer"),
+                    list(
+                        `name`="permutations",
+                        `title`="Permutations",
+                        `type`="integer"),
+                    list(
+                        `name`="NMDS1",
+                        `title`="NMDS1",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS2",
+                        `title`="NMDS2",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS3",
+                        `title`="NMDS3",
+                        `type`="number",
+                        `format`="zto")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Notes"))}))
+                title="How to read this ordination",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="featuresPurpose",
+                title="Feature scores",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="features",
+                title="",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="feature",
+                        `title`="Feature",
+                        `type`="text"),
+                    list(
+                        `name`="NMDS1",
+                        `title`="NMDS1",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS2",
+                        `title`="NMDS2",
+                        `type`="number",
+                        `format`="zto"),
+                    list(
+                        `name`="NMDS3",
+                        `title`="NMDS3",
+                        `type`="number",
+                        `format`="zto")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="settingsPurpose",
+                title="Analysis settings",
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="settings",
+                title="",
+                rows=0,
+                visible=FALSE,
+                columns=list(
+                    list(
+                        `name`="setting",
+                        `title`="Setting",
+                        `type`="text"),
+                    list(
+                        `name`="value",
+                        `title`="Value",
+                        `type`="text")),
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "distBinary",
+                    "seed",
+                    "nmdsK",
+                    "nmdsTrymax",
+                    "nmdsMaxit",
+                    "nmdsShepard",
+                    "nmdsOverlay",
+                    "nmdsEnv",
+                    "nmdsSpecies",
+                    "nmdsHull",
+                    "nmdsEllipse",
+                    "nmdsSpider",
+                    "nmdsEnvPerm")))}))
 
 nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "nmdsBase",
@@ -212,7 +871,7 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             super$initialize(
                 package = "tofu",
                 name = "nmds",
-                version = c(0,1,0),
+                version = c(0,2,1),
                 options = options,
                 results = nmdsResults$new(options=options),
                 data = data,
@@ -227,26 +886,50 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' nMDS
 #'
-#'
+#' Produces a non-metric multidimensional scaling ordination through
+#' vegan::metaMDS. Reports stress and convergence and can add group, feature,
+#' environmental, and Shepard diagnostics.
 #' @param data .
 #' @param vars .
 #' @param factor .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
 #' @param seed .
 #' @param nmdsK .
 #' @param nmdsTrymax .
 #' @param nmdsMaxit .
 #' @param nmdsShepard .
 #' @param nmdsOverlay .
+#' @param nmdsEnv .
+#' @param nmdsSpecies .
+#' @param nmdsHull .
+#' @param nmdsEllipse .
+#' @param nmdsSpider .
+#' @param nmdsEnvPerm .
 #' @return A results object containing:
 #' \tabular{llllll}{
-#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$sitesPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$sites} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$stressPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$shepardDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$shepardPairsPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$shepardPairs} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$envfitPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$featuresPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$features} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
@@ -262,23 +945,32 @@ nmds <- function(
     factor = NULL,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
     seed = 0,
     nmdsK = 2,
     nmdsTrymax = 20,
     nmdsMaxit = 200,
     nmdsShepard = TRUE,
-    nmdsOverlay = TRUE) {
+    nmdsOverlay = TRUE,
+    nmdsEnv = NULL,
+    nmdsSpecies = FALSE,
+    nmdsHull = FALSE,
+    nmdsEllipse = FALSE,
+    nmdsSpider = FALSE,
+    nmdsEnvPerm = 99) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("nmds requires jmvcore to be installed (restart may be required)")
 
     if ( ! missing(vars)) vars <- jmvcore::resolveQuo(jmvcore::enquo(vars))
     if ( ! missing(factor)) factor <- jmvcore::resolveQuo(jmvcore::enquo(factor))
+    if ( ! missing(nmdsEnv)) nmdsEnv <- jmvcore::resolveQuo(jmvcore::enquo(nmdsEnv))
     if (missing(data))
         data <- jmvcore::marshalData(
             parent.frame(),
             `if`( ! missing(vars), vars, NULL),
-            `if`( ! missing(factor), factor, NULL))
+            `if`( ! missing(factor), factor, NULL),
+            `if`( ! missing(nmdsEnv), nmdsEnv, NULL))
 
     for (v in factor) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
 
@@ -287,12 +979,19 @@ nmds <- function(
         factor = factor,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
         seed = seed,
         nmdsK = nmdsK,
         nmdsTrymax = nmdsTrymax,
         nmdsMaxit = nmdsMaxit,
         nmdsShepard = nmdsShepard,
-        nmdsOverlay = nmdsOverlay)
+        nmdsOverlay = nmdsOverlay,
+        nmdsEnv = nmdsEnv,
+        nmdsSpecies = nmdsSpecies,
+        nmdsHull = nmdsHull,
+        nmdsEllipse = nmdsEllipse,
+        nmdsSpider = nmdsSpider,
+        nmdsEnvPerm = nmdsEnvPerm)
 
     analysis <- nmdsClass$new(
         options = options,

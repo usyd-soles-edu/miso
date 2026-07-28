@@ -10,10 +10,20 @@ permdisp(
   factor,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
+  distSqrt = FALSE,
+  distAdd = "none",
   seed = 0,
   permN = 999,
+  permRestriction = "free",
+  permScheme = "free",
+  useParallel = FALSE,
   dispType = "median",
-  dispBias = FALSE
+  dispBias = FALSE,
+  dispPairwise = FALSE,
+  dispAdjust = "holm",
+  showDistancePlot = TRUE,
+  showOrdinationPlot = FALSE
 )
 }
 \arguments{
@@ -27,23 +37,50 @@ permdisp(
 
 \item{distance}{.}
 
+\item{distBinary}{.}
+
+\item{distSqrt}{.}
+
+\item{distAdd}{.}
+
 \item{seed}{.}
 
 \item{permN}{.}
 
+\item{permRestriction}{.}
+
+\item{permScheme}{.}
+
+\item{useParallel}{.}
+
 \item{dispType}{.}
 
 \item{dispBias}{.}
+
+\item{dispPairwise}{.}
+
+\item{dispAdjust}{.}
+
+\item{showDistancePlot}{.}
+
+\item{showOrdinationPlot}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
-  \code{results$distances} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
+  \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$distances} \tab \tab \tab \tab \tab a table \cr
+  \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$ordinationScores} \tab \tab \tab \tab \tab a table \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

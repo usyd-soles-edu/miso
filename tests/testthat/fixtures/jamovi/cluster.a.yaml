@@ -1,0 +1,159 @@
+---
+name: cluster
+title: Cluster analysis
+menuGroup: tofu
+menuTitle: Cluster analysis
+menuSubtitle: Visualise sample similarity
+version: '0.2.1'
+jas: '1.2'
+description:
+  main: Groups samples by hierarchical clustering of dissimilarities calculated with vegan::vegdist and stats::hclust. The dendrogram and optional cluster memberships are descriptive.
+
+options:
+  - name: data
+    type: Data
+
+  - name: vars
+    title: Feature variables (required)
+    type: Variables
+    suggested:
+      - continuous
+    permitted:
+      - numeric
+
+  - name: labels
+    title: Sample labels (optional)
+    type: Variable
+    suggested:
+      - nominal
+      - ordinal
+      - id
+    permitted:
+      - numeric
+      - factor
+      - id
+    default: null
+
+  - name: transform
+    title: Transformation
+    type: List
+    options:
+      - title: None
+        name: none
+      - title: Square root
+        name: sqrt
+      - title: Fourth root
+        name: fourthroot
+      - title: Log(x + 1)
+        name: log
+      - title: Presence/absence
+        name: pa
+      - title: Wisconsin
+        name: wisconsin
+      - title: Hellinger
+        name: hellinger
+      - title: Total
+        name: total
+      - title: Max
+        name: max
+      - title: Frequency
+        name: frequency
+      - title: Normalize
+        name: normalize
+      - title: Range
+        name: range
+      - title: Standardize
+        name: standardize
+      - title: Chi-square
+        name: chi.square
+      - title: Reverse CLR
+        name: rclr
+    default: none
+
+  - name: distance
+    title: Dissimilarity index
+    type: List
+    options:
+      - title: Bray-Curtis
+        name: bray
+      - title: Jaccard
+        name: jaccard
+      - title: Euclidean
+        name: euclidean
+      - title: Manhattan
+        name: manhattan
+      - title: Canberra
+        name: canberra
+      - title: Kulczynski
+        name: kulczynski
+      - title: Gower
+        name: gower
+      - title: Morisita
+        name: morisita
+      - title: Horn-Morisita
+        name: horn
+      - title: Mountford
+        name: mountford
+      - title: Raup-Crick
+        name: raup
+      - title: Binomial
+        name: binomial
+      - title: Chao
+        name: chao
+      - title: Cao
+        name: cao
+      - title: Clark
+        name: clark
+      - title: Alternative Gower
+        name: altGower
+      - title: Mahalanobis
+        name: mahalanobis
+    default: bray
+
+  - name: sampleLabels
+    title: Sample labels
+    type: List
+    options:
+      - title: Automatic
+        name: auto
+      - title: Show
+        name: show
+      - title: Hide
+        name: hide
+    default: auto
+
+  - name: showLabels
+    title: Legacy sample labels
+    type: String
+    default: __tofu_unset__
+    hidden: true
+    description: Compatibility value for analyses saved before sample label modes were introduced.
+
+  - name: defineClusters
+    title: Define clusters
+    type: Bool
+    default: false
+
+  - name: cutMode
+    title: Define clusters by
+    type: List
+    options:
+      - title: Number of clusters
+        name: number
+      - title: Dissimilarity height
+        name: height
+    default: number
+
+  - name: numberClusters
+    title: Number of clusters
+    type: Number
+    default: 3
+    min: 2
+
+  - name: cutHeight
+    title: Dissimilarity height
+    type: Number
+    default: 0.5
+    min: 0
+
+...

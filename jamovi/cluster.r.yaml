@@ -1,0 +1,215 @@
+---
+name: cluster
+title: Cluster analysis
+jrs: '1.1'
+
+items:
+  - name: guidance
+    title: Getting started
+    type: Html
+    visible: false
+    clearWith: &clearWith
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: summaryPurpose
+    title: Data summary
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: summary
+    title: ''
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: item
+        title: Item
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: warnings
+    title: ''
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: dendrogramDescription
+    title: Group-average cluster dendrogram
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: dendrogram
+    title: ''
+    type: Image
+    visible: false
+    width: 600
+    height: 500
+    renderFun: .plotDendrogram
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: dendrogramStructurePurpose
+    title: Dendrogram structure
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: dendrogramStructure
+    title: ''
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: recordType
+        title: Record
+        type: text
+      - name: displayOrder
+        title: Display order
+        type: integer
+      - name: sample
+        title: Sample
+        type: text
+      - name: mergeStep
+        title: Merge step
+        type: integer
+      - name: leftChild
+        title: Left child
+        type: text
+      - name: rightChild
+        title: Right child
+        type: text
+      - name: height
+        title: Height
+        type: number
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: membershipPurpose
+    title: Cluster membership
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: membership
+    title: ''
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: sample
+        title: Sample
+        type: text
+      - name: cluster
+        title: Cluster
+        type: integer
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: interpretation
+    title: How to read this dendrogram
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+  - name: settingsPurpose
+    title: Analysis settings
+    type: Html
+    visible: false
+    clearWith: *clearWith
+
+  - name: settings
+    title: ''
+    type: Table
+    visible: false
+    rows: 0
+    columns:
+      - name: setting
+        title: Setting
+        type: text
+      - name: value
+        title: Value
+        type: text
+    clearWith:
+      - vars
+      - labels
+      - transform
+      - distance
+      - sampleLabels
+      - defineClusters
+      - cutMode
+      - numberClusters
+      - cutHeight
+
+...

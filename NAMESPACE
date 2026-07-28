@@ -1,5 +1,7 @@
 export(anosim)
+export(cluster)
 export(nmds)
+export(pcoa)
 export(permanova)
 export(permdisp)
 export(simper)

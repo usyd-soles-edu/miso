@@ -11,8 +11,15 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             strata = NULL,
             transform = "none",
             distance = "bray",
+            distBinary = FALSE,
             seed = 0,
-            anosimN = 999, ...) {
+            anosimN = 999,
+            permRestriction = "free",
+            permScheme = "free",
+            useParallel = FALSE,
+            anosimPairwise = FALSE,
+            anosimAdjust = "holm",
+            showRankPlot = TRUE, ...) {
 
             super$initialize(
                 package="tofu",
@@ -55,7 +62,14 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "pa",
                     "wisconsin",
                     "hellinger",
-                    "total"),
+                    "total",
+                    "max",
+                    "frequency",
+                    "normalize",
+                    "range",
+                    "standardize",
+                    "chi.square",
+                    "rclr"),
                 default="none")
             private$..distance <- jmvcore::OptionList$new(
                 "distance",
@@ -74,8 +88,15 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "raup",
                     "binomial",
                     "chao",
-                    "cao"),
+                    "cao",
+                    "clark",
+                    "altGower",
+                    "mahalanobis"),
                 default="bray")
+            private$..distBinary <- jmvcore::OptionBool$new(
+                "distBinary",
+                distBinary,
+                default=FALSE)
             private$..seed <- jmvcore::OptionNumber$new(
                 "seed",
                 seed,
@@ -86,14 +107,60 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 anosimN,
                 default=999,
                 min=1)
+            private$..permRestriction <- jmvcore::OptionList$new(
+                "permRestriction",
+                permRestriction,
+                options=list(
+                    "free",
+                    "stratified",
+                    "series"),
+                default="free")
+            private$..permScheme <- jmvcore::OptionList$new(
+                "permScheme",
+                permScheme,
+                options=list(
+                    "free",
+                    "stratified",
+                    "series"),
+                default="free",
+                hidden=TRUE)
+            private$..useParallel <- jmvcore::OptionBool$new(
+                "useParallel",
+                useParallel,
+                default=FALSE)
+            private$..anosimPairwise <- jmvcore::OptionBool$new(
+                "anosimPairwise",
+                anosimPairwise,
+                default=FALSE)
+            private$..anosimAdjust <- jmvcore::OptionList$new(
+                "anosimAdjust",
+                anosimAdjust,
+                options=list(
+                    "holm",
+                    "bonferroni",
+                    "BH",
+                    "BY",
+                    "none"),
+                default="holm")
+            private$..showRankPlot <- jmvcore::OptionBool$new(
+                "showRankPlot",
+                showRankPlot,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
             self$.addOption(private$..strata)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
+            self$.addOption(private$..distBinary)
             self$.addOption(private$..seed)
             self$.addOption(private$..anosimN)
+            self$.addOption(private$..permRestriction)
+            self$.addOption(private$..permScheme)
+            self$.addOption(private$..useParallel)
+            self$.addOption(private$..anosimPairwise)
+            self$.addOption(private$..anosimAdjust)
+            self$.addOption(private$..showRankPlot)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -101,27 +168,51 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         strata = function() private$..strata$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
+        distBinary = function() private$..distBinary$value,
         seed = function() private$..seed$value,
-        anosimN = function() private$..anosimN$value),
+        anosimN = function() private$..anosimN$value,
+        permRestriction = function() private$..permRestriction$value,
+        permScheme = function() private$..permScheme$value,
+        useParallel = function() private$..useParallel$value,
+        anosimPairwise = function() private$..anosimPairwise$value,
+        anosimAdjust = function() private$..anosimAdjust$value,
+        showRankPlot = function() private$..showRankPlot$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
         ..strata = NA,
         ..transform = NA,
         ..distance = NA,
+        ..distBinary = NA,
         ..seed = NA,
-        ..anosimN = NA)
+        ..anosimN = NA,
+        ..permRestriction = NA,
+        ..permScheme = NA,
+        ..useParallel = NA,
+        ..anosimPairwise = NA,
+        ..anosimAdjust = NA,
+        ..showRankPlot = NA)
 )
 
 anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "anosimResults",
     inherit = jmvcore::Group,
     active = list(
-        warnings = function() private$.items[["warnings"]],
+        guidance = function() private$.items[["guidance"]],
+        summaryPurpose = function() private$.items[["summaryPurpose"]],
         summary = function() private$.items[["summary"]],
+        warnings = function() private$.items[["warnings"]],
+        globalPurpose = function() private$.items[["globalPurpose"]],
         global = function() private$.items[["global"]],
+        pairwisePurpose = function() private$.items[["pairwisePurpose"]],
         pairwise = function() private$.items[["pairwise"]],
-        note = function() private$.items[["note"]]),
+        rankPlotDescription = function() private$.items[["rankPlotDescription"]],
+        rankPlot = function() private$.items[["rankPlot"]],
+        rankSummaryPurpose = function() private$.items[["rankSummaryPurpose"]],
+        rankSummary = function() private$.items[["rankSummary"]],
+        note = function() private$.items[["note"]],
+        settingsPurpose = function() private$.items[["settingsPurpose"]],
+        settings = function() private$.items[["settings"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -129,14 +220,21 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="",
                 title="ANOSIM")
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
                 options=options,
-                name="warnings",
-                title="Notes and Warnings"))
+                name="guidance",
+                title="Getting started",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="summaryPurpose",
+                title="Data Summary",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="summary",
-                title="Data Summary",
+                title="",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -147,10 +245,21 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="value",
                         `title`="Value",
                         `type`="text"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="warnings",
+                title="",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="globalPurpose",
+                title="Global ANOSIM",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="global",
-                title="Global Test",
+                title="",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -159,21 +268,27 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="text"),
                     list(
                         `name`="value",
-                        `title`="Value",
+                        `title`="R",
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
                         `type`="number",
                         `format`="zto,pvalue"),
                     list(
                         `name`="permutations",
-                        `title`="Permutations",
+                        `title`="Effective permutations",
                         `type`="integer"))))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="pairwisePurpose",
+                title="Pairwise ANOSIM",
+                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
-                title="Pairwise ANOSIM",
+                title="",
+                visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
@@ -186,13 +301,84 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `type`="number"),
                     list(
                         `name`="p",
-                        `title`="p",
+                        `title`="Permutation p",
+                        `type`="number",
+                        `format`="zto,pvalue"),
+                    list(
+                        `name`="padj",
+                        `title`="Adjusted p",
                         `type`="number",
                         `format`="zto,pvalue"))))
-            self$add(jmvcore::Preformatted$new(
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="rankPlotDescription",
+                title="Ranked dissimilarities by pair category",
+                visible=FALSE))
+            self$add(jmvcore::Image$new(
+                options=options,
+                name="rankPlot",
+                title="",
+                visible=FALSE,
+                width=600,
+                height=480,
+                renderFun=".plotRank"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="rankSummaryPurpose",
+                title="Ranked-dissimilarity summary",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="rankSummary",
+                title="",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="category",
+                        `title`="Pair category",
+                        `type`="text"),
+                    list(
+                        `name`="pairs",
+                        `title`="Pairs",
+                        `type`="integer"),
+                    list(
+                        `name`="median",
+                        `title`="Median rank",
+                        `type`="number"),
+                    list(
+                        `name`="q1",
+                        `title`="Q1 rank",
+                        `type`="number"),
+                    list(
+                        `name`="q3",
+                        `title`="Q3 rank",
+                        `type`="number"))))
+            self$add(jmvcore::Html$new(
                 options=options,
                 name="note",
-                title="Notes"))}))
+                title="How to read these results",
+                visible=FALSE))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="settingsPurpose",
+                title="Analysis settings",
+                visible=FALSE))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="settings",
+                title="",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="setting",
+                        `title`="Setting",
+                        `type`="text"),
+                    list(
+                        `name`="value",
+                        `title`="Value",
+                        `type`="text"))))}))
 
 anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "anosimBase",
@@ -202,7 +388,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             super$initialize(
                 package = "tofu",
                 name = "anosim",
-                version = c(0,1,0),
+                version = c(0,2,1),
                 options = options,
                 results = anosimResults$new(options=options),
                 data = data,
@@ -217,22 +403,41 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' ANOSIM
 #'
-#'
+#' Tests whether within-group samples are more similar than between-group
+#' samples using rank-based ANOSIM through vegan::anosim. Includes optional
+#' pairwise comparisons and rank diagnostics.
 #' @param data .
 #' @param vars .
 #' @param factor .
 #' @param strata .
 #' @param transform .
 #' @param distance .
+#' @param distBinary .
 #' @param seed .
 #' @param anosimN .
+#' @param permRestriction .
+#' @param permScheme .
+#' @param useParallel .
+#' @param anosimPairwise .
+#' @param anosimAdjust .
+#' @param showRankPlot .
 #' @return A results object containing:
 #' \tabular{llllll}{
-#'   \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$globalPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$global} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+#'   \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
+#'   \code{results$rankSummaryPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
+#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
@@ -249,8 +454,15 @@ anosim <- function(
     strata = NULL,
     transform = "none",
     distance = "bray",
+    distBinary = FALSE,
     seed = 0,
-    anosimN = 999) {
+    anosimN = 999,
+    permRestriction = "free",
+    permScheme = "free",
+    useParallel = FALSE,
+    anosimPairwise = FALSE,
+    anosimAdjust = "holm",
+    showRankPlot = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("anosim requires jmvcore to be installed (restart may be required)")
@@ -274,8 +486,15 @@ anosim <- function(
         strata = strata,
         transform = transform,
         distance = distance,
+        distBinary = distBinary,
         seed = seed,
-        anosimN = anosimN)
+        anosimN = anosimN,
+        permRestriction = permRestriction,
+        permScheme = permScheme,
+        useParallel = useParallel,
+        anosimPairwise = anosimPairwise,
+        anosimAdjust = anosimAdjust,
+        showRankPlot = showRankPlot)
 
     analysis <- anosimClass$new(
         options = options,

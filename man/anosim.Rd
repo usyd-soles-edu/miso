@@ -11,8 +11,15 @@ anosim(
   strata = NULL,
   transform = "none",
   distance = "bray",
+  distBinary = FALSE,
   seed = 0,
-  anosimN = 999
+  anosimN = 999,
+  permRestriction = "free",
+  permScheme = "free",
+  useParallel = FALSE,
+  anosimPairwise = FALSE,
+  anosimAdjust = "holm",
+  showRankPlot = TRUE
 )
 }
 \arguments{
@@ -28,18 +35,37 @@ anosim(
 
 \item{distance}{.}
 
+\item{distBinary}{.}
+
 \item{seed}{.}
 
 \item{anosimN}{.}
+
+\item{permRestriction}{.}
+
+\item{permScheme}{.}
+
+\item{useParallel}{.}
+
+\item{anosimPairwise}{.}
+
+\item{anosimAdjust}{.}
+
+\item{showRankPlot}{.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
-  \code{results$warnings} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$global} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a preformatted \cr
+  \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
+  \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:

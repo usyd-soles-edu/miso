@@ -1,0 +1,60 @@
+---
+title: Cluster analysis
+name: cluster
+jus: '3.0'
+stage: 0
+compilerMode: tame
+children:
+  - type: VariableSupplier
+    persistentItems: false
+    stretchFactor: 1
+    children:
+      - type: TargetLayoutBox
+        label: Feature variables (required)
+        children:
+          - type: VariablesListBox
+            name: vars
+            isTarget: true
+      - type: TargetLayoutBox
+        label: Sample labels (optional)
+        children:
+          - type: VariablesListBox
+            name: labels
+            maxItemCount: 1
+            isTarget: true
+
+  - type: CollapseBox
+    name: analysisChoices
+    label: Analysis choices
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: transform
+      - type: ComboBox
+        name: distance
+
+  - type: CollapseBox
+    name: plots
+    label: Plots
+    collapsed: false
+    stretchFactor: 1
+    children:
+      - type: ComboBox
+        name: sampleLabels
+      - type: CheckBox
+        name: defineClusters
+        events:
+          change: update_control_states
+      - type: ComboBox
+        name: cutMode
+        events:
+          change: update_control_states
+      - type: TextBox
+        name: numberClusters
+        format: number
+      - type: TextBox
+        name: cutHeight
+        format: number
+
+...
