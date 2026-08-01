@@ -45,3 +45,4 @@ jmvtools::install(pkg = ".")
 - **[jamovi](https://www.jamovi.org)** is the statistical platform tofu runs on.
 
 `tofu` is developed at the University of Sydney by Dr Januar Harianto, Lecturer in Biostatistics and Data Science in the School of Life and Environmental Sciences.
+We acknowledge the use of OpenAI's Codex 5.5 and 5.6-sol in assistance with code testing and maintaining the git commit messages.
