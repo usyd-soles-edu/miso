@@ -53,6 +53,9 @@ build/
 build*/
 dist/
 
+# Local jamovi submission-review material
+jamovi-review/
+
 # other files / folders
 temp/
 .DS_Store
