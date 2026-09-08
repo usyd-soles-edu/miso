@@ -26,7 +26,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             showOrdinationPlot = FALSE, ...) {
 
             super$initialize(
-                package="tofu",
+                package="miso",
                 name="permdisp",
                 requiresData=TRUE,
                 ...)
@@ -275,12 +275,12 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="item",
-                        `title`="Item",
+                        `name`="item", 
+                        `title`="Item", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text"))))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -300,29 +300,29 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="source",
-                        `title`="Source",
+                        `name`="source", 
+                        `title`="Source", 
                         `type`="text"),
                     list(
-                        `name`="df",
-                        `title`="df",
+                        `name`="df", 
+                        `title`="df", 
                         `type`="integer"),
                     list(
-                        `name`="sumsqs",
-                        `title`="Sum Sq",
+                        `name`="sumsqs", 
+                        `title`="Sum Sq", 
                         `type`="number"),
                     list(
-                        `name`="meansq",
-                        `title`="Mean Sq",
+                        `name`="meansq", 
+                        `title`="Mean Sq", 
                         `type`="number"),
                     list(
-                        `name`="f",
-                        `title`="F",
+                        `name`="f", 
+                        `title`="F", 
                         `type`="number"),
                     list(
-                        `name`="p",
-                        `title`="Permutation p",
-                        `type`="number",
+                        `name`="p", 
+                        `title`="Permutation p", 
+                        `type`="number", 
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -337,22 +337,22 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast",
-                        `title`="Contrast",
+                        `name`="contrast", 
+                        `title`="Contrast", 
                         `type`="text"),
                     list(
-                        `name`="statistic",
-                        `title`="t",
+                        `name`="statistic", 
+                        `title`="t", 
                         `type`="number"),
                     list(
-                        `name`="p",
-                        `title`="Permutation p",
-                        `type`="number",
+                        `name`="p", 
+                        `title`="Permutation p", 
+                        `type`="number", 
                         `format`="zto,pvalue"),
                     list(
-                        `name`="padj",
-                        `title`="Adjusted p",
-                        `type`="number",
+                        `name`="padj", 
+                        `title`="Adjusted p", 
+                        `type`="number", 
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -380,44 +380,44 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="group",
-                        `title`="Group",
+                        `name`="group", 
+                        `title`="Group", 
                         `type`="text"),
                     list(
-                        `name`="n",
-                        `title`="n",
+                        `name`="n", 
+                        `title`="n", 
                         `type`="integer"),
                     list(
-                        `name`="centre",
-                        `title`="Group centre",
+                        `name`="centre", 
+                        `title`="Group centre", 
                         `type`="text"),
                     list(
-                        `name`="distance",
-                        `title`="Mean distance",
+                        `name`="distance", 
+                        `title`="Mean distance", 
                         `type`="number"),
                     list(
-                        `name`="median",
-                        `title`="Median distance",
+                        `name`="median", 
+                        `title`="Median distance", 
                         `type`="number"),
                     list(
-                        `name`="q1",
-                        `title`="Q1 distance",
+                        `name`="q1", 
+                        `title`="Q1 distance", 
                         `type`="number"),
                     list(
-                        `name`="q3",
-                        `title`="Q3 distance",
+                        `name`="q3", 
+                        `title`="Q3 distance", 
                         `type`="number"),
                     list(
-                        `name`="sd",
-                        `title`="Standard deviation",
+                        `name`="sd", 
+                        `title`="Standard deviation", 
                         `type`="number"),
                     list(
-                        `name`="min",
-                        `title`="Minimum",
+                        `name`="min", 
+                        `title`="Minimum", 
                         `type`="number"),
                     list(
-                        `name`="max",
-                        `title`="Maximum",
+                        `name`="max", 
+                        `title`="Maximum", 
                         `type`="number"))))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -445,28 +445,28 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="point",
-                        `title`="Point",
+                        `name`="point", 
+                        `title`="Point", 
                         `type`="text"),
                     list(
-                        `name`="pointType",
-                        `title`="Type",
+                        `name`="pointType", 
+                        `title`="Type", 
                         `type`="text"),
                     list(
-                        `name`="group",
-                        `title`="Group",
+                        `name`="group", 
+                        `title`="Group", 
                         `type`="text"),
                     list(
-                        `name`="plotKey",
-                        `title`="Plot key",
+                        `name`="plotKey", 
+                        `title`="Plot key", 
                         `type`="text"),
                     list(
-                        `name`="axis1",
-                        `title`="Axis 1",
+                        `name`="axis1", 
+                        `title`="Axis 1", 
                         `type`="number"),
                     list(
-                        `name`="axis2",
-                        `title`="Axis 2",
+                        `name`="axis2", 
+                        `title`="Axis 2", 
                         `type`="number"))))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -486,12 +486,12 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="setting",
-                        `title`="Setting",
+                        `name`="setting", 
+                        `title`="Setting", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text"))))}))
 
 permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -500,9 +500,9 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     public = list(
         initialize = function(options, data=NULL, datasetId="", analysisId="", revision=0) {
             super$initialize(
-                package = "tofu",
+                package = "miso",
                 name = "permdisp",
-                version = c(0,2,1),
+                version = c(1,0,0),
                 options = options,
                 results = permdispResults$new(options=options),
                 data = data,
@@ -517,8 +517,8 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' PERMDISP
 #'
-#' Tests whether groups differ in multivariate dispersion using
-#' vegan::betadisper and permutation tests. Includes distance-to-centre
+#' Tests whether groups differ in multivariate dispersion using 
+#' vegan::betadisper and permutation tests. Includes distance-to-centre 
 #' summaries, diagnostics, and an optional ordination.
 #' @param data .
 #' @param vars .
@@ -631,3 +631,4 @@ permdisp <- function(
 
     analysis$results
 }
+

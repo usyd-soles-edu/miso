@@ -73,7 +73,7 @@ test_that("negative feature values are rejected with a clear note", {
         factor = "group"
     )
 
-    expect_match(tofu_squish_result(res$guidance), "Negative values detected in feature variables: a")
+    expect_match(miso_squish_result(res$guidance), "Negative values detected in feature variables: a")
 })
 
 test_that("missing rows are excluded and warning text is added", {
@@ -122,7 +122,7 @@ test_that("entirely empty datasets return a clear note instead of crashing", {
     )
 
     expect_match(
-        tofu_squish_result(res$guidance),
+        miso_squish_result(res$guidance),
         "No feature variables with non-zero values remain after filtering\\."
     )
 })
@@ -139,7 +139,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        tofu_squish_result(all_zero$guidance),
+        miso_squish_result(all_zero$guidance),
         "No feature variables with non-zero values remain after filtering\\.|Too few samples \\(0\\) for multivariate analysis\\."
     )
 
@@ -154,7 +154,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        tofu_squish_result(one_group$guidance),
+        miso_squish_result(one_group$guidance),
         "Primary factor 'group' has fewer than 2 groups after filtering\\."
     )
 })
@@ -195,7 +195,7 @@ test_that("count-data distance warns when values are non-integer", {
     )
 
     expect_match(
-        tofu_squish_result(res$warnings),
+        miso_squish_result(res$warnings),
         "'morisita' is designed for count data\\. Non-integer values detected\\."
     )
 })
@@ -215,7 +215,7 @@ test_that("saturated PERMANOVA model reports a failure note instead of crashing"
         )
     )
 
-    expect_match(tofu_squish_result(res$guidance), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
+    expect_match(miso_squish_result(res$guidance), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
     expect_equal(nrow(res$table$asDF), 0L)
 })
 
@@ -417,7 +417,7 @@ test_that("mahalanobis is rejected when n <= p", {
     res <- suppressMessages(permanova(
         data = wide, vars = paste0("g", 1:8), factor = "group",
         distance = "mahalanobis", permN = 9, seed = 123))
-    expect_match(tofu_squish_result(res$guidance), "mahalanobis requires more samples than features")
+    expect_match(miso_squish_result(res$guidance), "mahalanobis requires more samples than features")
 })
 
 test_that("sqrt.dist and additive constant run in PERMANOVA", {
@@ -552,7 +552,7 @@ test_that("nMDS ordination ornaments run without error", {
 })
 
 test_that("narrative HTML is readable, wrapping, and escaped", {
-    html <- tofu_html_block(c(
+    html <- miso_html_block(c(
         "A deliberately long guidance sentence.",
         "<script>alert('x')</script> & more"))
 
@@ -566,7 +566,7 @@ test_that("narrative HTML is readable, wrapping, and escaped", {
     expect_match(html, "&lt;script&gt;", fixed=TRUE)
     expect_match(html, "&amp; more", fixed=TRUE)
 
-    purpose <- tofu_html_block(
+    purpose <- miso_html_block(
         "Tests whether multivariate composition is associated with each model term.",
         ariaLabel="About PERMANOVA table",
         title="PERMANOVA table")
@@ -579,7 +579,7 @@ test_that("narrative HTML is readable, wrapping, and escaped", {
     expect_match(purpose, 'aria-level="3"', fixed=TRUE)
     expect_match(purpose, "PERMANOVA table", fixed=TRUE)
 
-    warning <- tofu_warning_block(
+    warning <- miso_warning_block(
         "Two rows with missing values were excluded.",
         title="Data handling warning")
     expect_match(warning, 'role="note"', fixed=TRUE)

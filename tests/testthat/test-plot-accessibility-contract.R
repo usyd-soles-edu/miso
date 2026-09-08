@@ -1,5 +1,5 @@
 plot_contract_fixture <- function(analysis, suffix) {
-    tofu_fixture_path("jamovi", paste0(analysis, ".", suffix, ".yaml"))
+    miso_fixture_path("jamovi", paste0(analysis, ".", suffix, ".yaml"))
 }
 
 collect_plot_contracts <- function(items, prefix="", ancestorHidden=FALSE) {
@@ -279,17 +279,17 @@ contrast_against_white <- function(hex, alpha=1) {
 }
 
 test_that("shared palette and essential site marks meet contrast contracts", {
-    aesthetics <- .tofuGroupAesthetics(as.character(seq_len(64L)))
+    aesthetics <- .misoGroupAesthetics(as.character(seq_len(64L)))
     palette <- unique(unname(aesthetics$colour))
     expect_true(all(contrast_against_white(palette) >= 4.5))
     expect_true(all(contrast_against_white(palette, alpha=.85) >= 4.5))
-    expect_error(.tofuGroupAesthetics(as.character(seq_len(65L))),
+    expect_error(.misoGroupAesthetics(as.character(seq_len(65L))),
         "at most 64")
 
     pcoaSource <- paste(deparse(getFromNamespace(
-        ".tofuBuildPcoaPlot", "tofu")), collapse="\n")
+        ".misoBuildPcoaPlot", "miso")), collapse="\n")
     permdispSource <- paste(deparse(getFromNamespace(
-        ".buildPermdispOrdinationPlot", "tofu")), collapse="\n")
+        ".buildPermdispOrdinationPlot", "miso")), collapse="\n")
     expect_match(pcoaSource,
         "size[[:space:]]*=[[:space:]]*2\\.2,[[:space:]]+alpha[[:space:]]*=[[:space:]]*0\\.85")
     expect_match(permdispSource,
@@ -305,7 +305,7 @@ test_that("shared palette and essential site marks meet contrast contracts", {
 })
 
 test_that("PCoA loading never steals keyboard focus", {
-    js <- paste(readLines(tofu_fixture_path("jamovi", "js", "pcoa.js"),
+    js <- paste(readLines(miso_fixture_path("jamovi", "js", "pcoa.js"),
         warn=FALSE), collapse="\n")
     expect_match(js, "view_loaded")
     expect_false(grepl("\\.focus\\(", js))

@@ -229,13 +229,13 @@ generate_datasets <- function(output_dir) {
     assert_clean_dataset(small, 24L, 8L, 1L)
     assert_clean_dataset(large, 360L, 48L, 10L)
 
-    write_stable_csv(small, file.path(output_dir, "tofu-small.csv"))
-    write_stable_csv(large, file.path(output_dir, "tofu-large.csv"))
-    write_stable_csv(invalid, file.path(output_dir, "tofu-invalid.csv"))
+    write_stable_csv(small, file.path(output_dir, "miso-small.csv"))
+    write_stable_csv(large, file.path(output_dir, "miso-large.csv"))
+    write_stable_csv(invalid, file.path(output_dir, "miso-invalid.csv"))
 
-    cat("tofu-small.csv: 24 rows, 8 features\n")
-    cat("tofu-large.csv: 360 rows, 48 features\n")
-    cat("tofu-invalid.csv: 8 rows\n")
+    cat("miso-small.csv: 24 rows, 8 features\n")
+    cat("miso-large.csv: 360 rows, 48 features\n")
+    cat("miso-invalid.csv: 8 rows\n")
     cat("dataset assertions: PASS\n")
     invisible(list(small = small, large = large, invalid = invalid))
 }

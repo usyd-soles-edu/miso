@@ -19,7 +19,7 @@ expect_result_visibility <- function(result, visible, hidden) {
 
 test_that("PERMANOVA study design controls use the full option width", {
     ui <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permanova.u.yaml"))
+        miso_fixture_path("jamovi", "permanova.u.yaml"))
     rootNames <- vapply(
         ui$children,
         function(node) if (is.null(node$name)) "" else node$name,
@@ -37,7 +37,7 @@ test_that("PERMANOVA study design controls use the full option width", {
 
 test_that("PERMANOVA narrative results use bounded HTML", {
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permanova.r.yaml"))$items
+        miso_fixture_path("jamovi", "permanova.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_identical(by_name$guidance$type, "Html")
@@ -48,7 +48,7 @@ test_that("PERMANOVA narrative results use bounded HTML", {
 
 test_that("PERMANOVA tables and plot expose concise adjacent purposes", {
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permanova.r.yaml"))$items
+        miso_fixture_path("jamovi", "permanova.r.yaml"))$items
     names <- vapply(results, `[[`, character(1), "name")
     expected <- c(
         summary="summaryPurpose",
@@ -78,7 +78,7 @@ test_that("PERMANOVA tables and plot expose concise adjacent purposes", {
         seed=123)
     for (name in c("summaryPurpose", "tablePurpose", "settingsPurpose")) {
         expect_true(result[[name]]$visible, info=name)
-        purpose <- tofu_squish_result(result[[name]])
+        purpose <- miso_squish_result(result[[name]])
         expect_match(purpose, 'role="note"', fixed=TRUE, info=name)
         expect_match(purpose, "About ", fixed=TRUE, info=name)
         expect_lte(nchar(purpose), 500L)
@@ -96,7 +96,7 @@ test_that("new PERMANOVA shows only complete getting-started guidance", {
         factor="group"
     )
 
-    guidance <- tofu_squish_result(result$guidance)
+    guidance <- miso_squish_result(result$guidance)
     expect_match(guidance, "max-width: 44em", fixed=TRUE)
     expect_match(guidance, "To run PERMANOVA:", fixed=TRUE)
     expect_match(guidance, "1. Add one or more numeric Feature variables.", fixed=TRUE)
@@ -116,7 +116,7 @@ test_that("features without a group show one actionable correction", {
         factor=NULL
     )
 
-    guidance <- tofu_squish_result(result$guidance)
+    guidance <- miso_squish_result(result$guidance)
     expect_match(guidance, "max-width: 44em", fixed=TRUE)
     expect_match(guidance, "PERMANOVA is waiting for a Grouping variable.", fixed=TRUE)
     expect_match(guidance, "Add one categorical variable containing at least two groups.", fixed=TRUE)
@@ -372,7 +372,7 @@ test_that("within-block validation identifies ineffective and singleton blocks",
     )
 
     expect_match(
-        tofu_squish_result(failed$guidance),
+        miso_squish_result(failed$guidance),
         "Grouping variable does not vary within any block")
     expect_false(failed$table$visible)
 
@@ -542,16 +542,16 @@ test_that("interpretation distinguishes simple sequential and marginal models", 
         seed=123
     ))
 
-    expect_match(tofu_squish_result(simple$note),
+    expect_match(miso_squish_result(simple$note),
         "Pseudo-F compares among-group and within-group variation")
-    expect_match(tofu_squish_result(simple$note),
+    expect_match(miso_squish_result(simple$note),
         "R² shows explained variation")
     expect_length(simple$table$notes, 0L)
     expect_length(simple$table$footnotes, 0L)
-    expect_false(grepl("Sequential tests", tofu_squish_result(simple$note)))
+    expect_false(grepl("Sequential tests", miso_squish_result(simple$note)))
     expect_identical(
-        tofu_squish_result(sequential$note),
-        tofu_squish_result(marginal$note))
+        miso_squish_result(sequential$note),
+        miso_squish_result(marginal$note))
 })
 
 permanova_companion_args <- function(...) {
@@ -571,7 +571,7 @@ run_permanova_companion <- function(...) {
 
 test_that("PERMANOVA companion contracts are optional, bounded, and ordered", {
     analysis <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permanova.a.yaml"))
+        miso_fixture_path("jamovi", "permanova.a.yaml"))
     options <- setNames(
         analysis$options,
         vapply(analysis$options, `[[`, character(1), "name"))
@@ -588,7 +588,7 @@ test_that("PERMANOVA companion contracts are optional, bounded, and ordered", {
         fixed=TRUE)
 
     ui <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permanova.u.yaml"))
+        miso_fixture_path("jamovi", "permanova.u.yaml"))
     rootNames <- vapply(ui$children, function(item)
         if (is.null(item$name)) "" else item$name, character(1))
     plots <- ui$children[[match("plots", rootNames)]]
@@ -609,7 +609,7 @@ test_that("PERMANOVA companion contracts are optional, bounded, and ordered", {
         "Model factor")
 
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permanova.r.yaml"))$items
+        miso_fixture_path("jamovi", "permanova.r.yaml"))$items
     names <- vapply(results, `[[`, character(1), "name")
     expect_identical(names[match("table", names) + seq_len(9L)], c(
         "companionPcoaDescription", "companionPcoa",
@@ -644,7 +644,7 @@ test_that("simple companion PCoA automatically displays the primary factor", {
     expect_equal(nrow(result$companionPcoaCentroids$asDF), 3L)
     expect_identical(result$companionPcoaCentroids$asDF$n,
         rep(3L, 3L))
-    description <- tofu_squish_result(result$companionPcoaDescription)
+    description <- miso_squish_result(result$companionPcoaDescription)
     expect_match(description,
         "Visualises sample resemblance and group positions alongside the test",
         fixed=TRUE)
@@ -687,7 +687,7 @@ test_that("multifactor companion requires an eligible explicit display factor", 
         expect_false(result$companionPcoaCentroids$visible)
         expect_equal(nrow(result$companionPcoaSites$asDF), 0L)
         expect_match(
-            tofu_squish_result(result$companionPcoaDescription),
+            miso_squish_result(result$companionPcoaDescription),
             "Choose one categorical model factor to display", fixed=TRUE)
     }
 
@@ -702,10 +702,10 @@ test_that("multifactor companion requires an eligible explicit display factor", 
     expect_identical(unique(additional$companionPcoaSites$asDF$group),
         levels(permanova_state_data()$site))
     expect_match(
-        tofu_squish_result(additional$warnings),
+        miso_squish_result(additional$warnings),
         "does not represent adjusted effects", fixed=TRUE)
     expect_match(
-        tofu_squish_result(additional$warnings),
+        miso_squish_result(additional$warnings),
         "complete model", fixed=TRUE)
 })
 
@@ -759,7 +759,7 @@ test_that("companion eligibility follows factors retained by the fitted model", 
         as.character(data$group[companion$companionPcoaSites$asDF$sourceRow]))
     expect_false(any(grepl(
         "collapsing", companion$table$asDF$source, fixed=TRUE)))
-    warning <- tofu_squish_result(companion$warnings)
+    warning <- miso_squish_result(companion$warnings)
     expect_match(warning,
         "Additional factor 'collapsing' was not retained", fixed=TRUE)
     expect_match(warning,
@@ -781,7 +781,7 @@ test_that("companion coordinates exactly reuse every PERMANOVA distance correcti
         list(sqrt=FALSE, add="lingoes"),
         list(sqrt=FALSE, add="cailliez"))
     data <- permanova_state_data()
-    prep <- tofu_prepare_resemblance(
+    prep <- miso_prepare_resemblance(
         data=data, vars=c("sp1", "sp2", "sp3"), factor="group",
         transform="none", distance="bray", seed=123,
         distBinary=FALSE)
@@ -791,7 +791,7 @@ test_that("companion coordinates exactly reuse every PERMANOVA distance correcti
             showCompanionPcoa=TRUE,
             distSqrt=case$sqrt,
             distAdd=case$add)
-        expected <- .tofuPcoa(
+        expected <- .misoPcoa(
             prep$dist,
             sqrtDist=case$sqrt,
             correction=case$add,
@@ -843,24 +843,24 @@ test_that("all companion display options leave inference and RNG unchanged", {
 })
 
 test_that("companion failure and one-axis geometry preserve inferential output", {
-    originalPcoa <- .tofuPcoa
+    originalPcoa <- .misoPcoa
     pcoaCalls <- 0L
     testthat::local_mocked_bindings(
-        .tofuPcoa=function(...) {
+        .misoPcoa=function(...) {
             pcoaCalls <<- pcoaCalls + 1L
             if (pcoaCalls == 1L)
                 return(list(
                     error=TRUE, message="simulated companion failure"))
             originalPcoa(...)
         },
-        .package="tofu")
+        .package="miso")
     failed <- run_permanova_companion(
         showCompanionPcoa=TRUE, permPairwise=TRUE)
     expect_true(failed$table$visible)
     expect_true(failed$pairwise$visible)
     expect_false(failed$companionPcoa$visible)
     expect_false(failed$companionPcoaSites$visible)
-    expect_match(tofu_squish_result(failed$companionPcoaDescription),
+    expect_match(miso_squish_result(failed$companionPcoaDescription),
         "simulated companion failure", fixed=TRUE)
 
     oneAxis <- suppressWarnings(suppressMessages(permanova(
@@ -875,9 +875,9 @@ test_that("companion failure and one-axis geometry preserve inferential output",
     expect_true(oneAxis$companionPcoaSites$visible)
     expect_true(oneAxis$companionPcoaCentroids$visible)
     expect_true(all(is.na(oneAxis$companionPcoaSites$asDF$PCoA2)))
-    expect_match(tofu_squish_result(oneAxis$companionPcoaDescription),
+    expect_match(miso_squish_result(oneAxis$companionPcoaDescription),
         "two-dimensional companion plot is unavailable", fixed=TRUE)
-    oneAxisDescription <- tofu_squish_result(
+    oneAxisDescription <- miso_squish_result(
         oneAxis$companionPcoaDescription)
     expect_match(oneAxisDescription,
         "Coordinate tables retain the fitted result", fixed=TRUE)
@@ -905,7 +905,7 @@ test_that("companion state clears when toggled off or its model factor is remove
     expect_false(analysis$results$companionPcoaSites$visible)
     expect_equal(length(analysis$results$companionPcoaSites$rowKeys), 0L)
     expect_match(
-        tofu_squish_result(analysis$results$companionPcoaDescription),
+        miso_squish_result(analysis$results$companionPcoaDescription),
         "Choose one categorical model factor", fixed=TRUE)
 
     showOption <- options$option("showCompanionPcoa")
@@ -919,8 +919,8 @@ test_that("companion state clears when toggled off or its model factor is remove
 })
 
 test_that("PERMANOVA prepares once and passes one identical distance object", {
-    originalPrepare <- tofu_prepare_resemblance
-    originalPcoa <- .tofuPcoa
+    originalPrepare <- miso_prepare_resemblance
+    originalPcoa <- .misoPcoa
     originalAdonis <- vegan::adonis2
     prepareCount <- 0L
     pcoaCount <- 0L
@@ -928,18 +928,18 @@ test_that("PERMANOVA prepares once and passes one identical distance object", {
     pcoaDistance <- NULL
     adonisDistance <- NULL
     testthat::local_mocked_bindings(
-        tofu_prepare_resemblance=function(...) {
+        miso_prepare_resemblance=function(...) {
             prepareCount <<- prepareCount + 1L
             value <- originalPrepare(...)
             preparedDistance <<- value$dist
             value
         },
-        .tofuPcoa=function(distance, ...) {
+        .misoPcoa=function(distance, ...) {
             pcoaCount <<- pcoaCount + 1L
             pcoaDistance <<- distance
             originalPcoa(distance, ...)
         },
-        .package="tofu")
+        .package="miso")
     testthat::local_mocked_bindings(
         adonis2=function(formula, ...) {
             adonisDistance <<- get(".dist", envir=parent.frame())
@@ -977,9 +977,9 @@ test_that("companion plot callback uses cached reusable plot data only", {
 
     originalPlotData <- state$plotData
     testthat::local_mocked_bindings(
-        tofu_prepare_resemblance=function(...) stop("unexpected preparation"),
-        .tofuPcoa=function(...) stop("unexpected PCoA refit"),
-        .package="tofu")
+        miso_prepare_resemblance=function(...) stop("unexpected preparation"),
+        .misoPcoa=function(...) stop("unexpected PCoA refit"),
+        .package="miso")
     file <- tempfile(fileext=".png")
     grDevices::png(file, width=600, height=500)
     on.exit({
@@ -1016,15 +1016,15 @@ test_that("more than 64 groups use neutral companion styling without data loss",
     expect_equal(nrow(result$companionPcoaCentroids$asDF), 65L)
     expect_identical(sort(unique(result$companionPcoaSites$asDF$group)),
         sort(levels(groups)))
-    expect_match(tofu_squish_result(result$warnings),
+    expect_match(miso_squish_result(result$warnings),
         "Neutral site styling is used because more than 64 groups", fixed=TRUE)
-    expect_match(tofu_squish_result(result$warnings),
+    expect_match(miso_squish_result(result$warnings),
         "centroids and spiders are omitted from the image", fixed=TRUE)
 })
 
 test_that("PERMANOVA companion JavaScript manages eligibility and focus", {
     js <- paste(readLines(
-        tofu_fixture_path("jamovi", "js", "permanova.js"),
+        miso_fixture_path("jamovi", "js", "permanova.js"),
         warn=FALSE), collapse="\n")
     expect_match(js,
         "pcoaDisplayFactor.setEnabled(requested && multifactor)",
@@ -1047,10 +1047,10 @@ test_that("PERMANOVA companion JavaScript executes control-state behavior", {
     skip_if(!nzchar(node), "Node.js is unavailable")
 
     harness <- normalizePath(
-        tofu_fixture_path("js", "permanova-ui-harness.js"),
+        miso_fixture_path("js", "permanova-ui-harness.js"),
         mustWork=TRUE)
     module <- normalizePath(
-        tofu_fixture_path("jamovi", "js", "permanova.js"),
+        miso_fixture_path("jamovi", "js", "permanova.js"),
         mustWork=TRUE)
     output <- system2(
         node,

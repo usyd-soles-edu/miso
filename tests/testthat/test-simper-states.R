@@ -44,8 +44,8 @@ find_simper_yaml_node <- function(node, name) {
 }
 
 test_that("SIMPER schema follows the approved required-first hierarchy", {
-    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "simper.a.yaml"))$options
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "simper.u.yaml"))
+    options <- yaml::read_yaml(miso_fixture_path("jamovi", "simper.a.yaml"))$options
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "simper.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     option_names <- vapply(options, `[[`, character(1), "name")
 
@@ -89,7 +89,7 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
     expect_true(is.null(find_simper_yaml_node(ui, "distBinary")))
 
     ui_source <- paste(
-        readLines(tofu_fixture_path("jamovi", "simper.u.yaml")),
+        readLines(miso_fixture_path("jamovi", "simper.u.yaml")),
         collapse="\n")
     compact_labels <- c(
         "Feature variables (required)",
@@ -143,7 +143,7 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
 
 test_that("SIMPER UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(tofu_fixture_path("jamovi", "js", "simper.js")),
+        readLines(miso_fixture_path("jamovi", "js", "simper.js")),
         collapse="\n")
 
     expect_match(source, "simperN\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
@@ -176,7 +176,7 @@ test_that("SIMPER transform reference scenario requests the optional mean tables
 
 test_that("SIMPER result schema hides every empty shell and uses approved order", {
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "simper.r.yaml"))$items
+        miso_fixture_path("jamovi", "simper.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
@@ -287,7 +287,7 @@ test_that("new and incomplete SIMPER analyses show one actionable state", {
 })
 
 test_that("default SIMPER is descriptive and hides optional empty output", {
-    result <- suppressWarnings(suppressMessages(tofu::simper(
+    result <- suppressWarnings(suppressMessages(miso::simper(
         data=simper_state_data(),
         vars=c("sp1", "sp2", "sp3"),
         factor="group",
@@ -349,7 +349,7 @@ simper_test_label <- function(pair) {
 }
 
 simper_expected <- function(data, vars, factor, transform="none") {
-    transformed <- tofu_transform_community(as.matrix(data[, vars, drop=FALSE]), transform)
+    transformed <- miso_transform_community(as.matrix(data[, vars, drop=FALSE]), transform)
     group <- droplevels(as.factor(data[[factor]]))
     pairs <- utils::combn(as.character(unique(group)), 2L, simplify=FALSE)
     fit <- vegan::simper(transformed, group, permutations=0L)
@@ -594,7 +594,7 @@ test_that("assessment failure preserves valid descriptive output", {
         },
         .package="vegan")
 
-    result <- suppressWarnings(suppressMessages(tofu::simper(
+    result <- suppressWarnings(suppressMessages(miso::simper(
         data=simper_state_data(),
         vars=c("sp1", "sp2", "sp3"),
         factor="group",
@@ -610,7 +610,7 @@ test_that("assessment failure preserves valid descriptive output", {
     expect_false(result$assessment$visible)
     expect_equal(length(result$assessment$rowKeys), 0L)
     expect_match(
-        tofu_squish_result(result$warnings),
+        miso_squish_result(result$warnings),
         "simulated assessment failure")
 })
 
@@ -1033,7 +1033,7 @@ test_that("two groups default to one contrast plot and optional heatmap is bound
 })
 
 test_that("saved small and large datasets independently confirm descriptive output", {
-    for (dataset in c("tofu-small.csv", "tofu-large.csv")) {
+    for (dataset in c("miso-small.csv", "miso-large.csv")) {
         data <- read.csv(
             test_path("..", "manual", dataset),
             stringsAsFactors=FALSE,

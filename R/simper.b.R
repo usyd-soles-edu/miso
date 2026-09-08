@@ -49,7 +49,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
                 factor=self$options$factor,
@@ -107,14 +107,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .resetResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            tofu_clear_table(self$results$summary)
-            tofu_clear_table(self$results$contrasts)
-            tofu_clear_table(self$results$contributions)
-            tofu_clear_table(self$results$variability)
-            tofu_clear_table(self$results$means)
-            tofu_clear_table(self$results$table)
-            tofu_clear_table(self$results$assessment)
-            tofu_clear_table(self$results$heatmapValues)
+            miso_clear_table(self$results$summary)
+            miso_clear_table(self$results$contrasts)
+            miso_clear_table(self$results$contributions)
+            miso_clear_table(self$results$variability)
+            miso_clear_table(self$results$means)
+            miso_clear_table(self$results$table)
+            miso_clear_table(self$results$assessment)
+            miso_clear_table(self$results$heatmapValues)
             self$results$contributionPlots$clear()
             self$results$contrasts$setNote(key="meaning", note="")
             self$results$contributions$setNote(key="meaning", note="")
@@ -124,7 +124,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$assessment$setNote(key="scope", note="")
             self$results$heatmapDescription$setContent("")
             self$results$note$setContent("")
-            tofu_clear_table(self$results$settings)
+            miso_clear_table(self$results$settings)
             for (name in c(
                     "summaryPurpose", "contrastsPurpose",
                     "contributionsPurpose", "variabilityPurpose",
@@ -147,7 +147,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -177,7 +177,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
+            miso_populate_purposes(self$results, list(
                 summaryPurpose=c(
                     "Data summary",
                     "Summarises included samples and features, including any exclusions."),
@@ -211,7 +211,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -288,7 +288,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     contrast=label,
                     nFirst=sum(as.character(prep$group) == pair[[1L]]),
                     nSecond=sum(as.character(prep$group) == pair[[2L]]),
-                    overall=tofu_num_or_na(fit[[index]]$overall))
+                    overall=miso_num_or_na(fit[[index]]$overall))
 
                 contrastFeatureRows <- lapply(seq_len(nrow(tab)), function(row) {
                     list(
@@ -297,11 +297,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         firstGroup=pair[[1L]],
                         secondGroup=pair[[2L]],
                         feature=tab$feature[[row]],
-                        average=tofu_num_or_na(tab$average[[row]]),
-                        sd=tofu_num_or_na(tab$sd[[row]]),
-                        ratio=tofu_num_or_na(tab$ratio[[row]]),
-                        meanFirst=tofu_num_or_na(tab$ava[[row]]),
-                        meanSecond=tofu_num_or_na(tab$avb[[row]]),
+                        average=miso_num_or_na(tab$average[[row]]),
+                        sd=miso_num_or_na(tab$sd[[row]]),
+                        ratio=miso_num_or_na(tab$ratio[[row]]),
+                        meanFirst=miso_num_or_na(tab$ava[[row]]),
+                        meanSecond=miso_num_or_na(tab$avb[[row]]),
                         contribution=100 * tab$contribution[[row]],
                         cumulative=100 * tab$cumulative[[row]])
                 })
@@ -389,7 +389,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 item$plot$setSize(580, 430)
                 item$description$setContent(
                     private$.plotDescription(contrast))
-                item$valuesPurpose$setContent(tofu_html_block(
+                item$valuesPurpose$setContent(miso_html_block(
                     "Lists the values represented in this contribution plot.",
                     ariaLabel=paste(
                         "About SIMPER contribution values for", contrast),
@@ -411,14 +411,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         rowKey=as.character(row),
                         values=list(
                             feature=as.character(rows$feature[[row]]),
-                            average=tofu_num_or_na(rows$average[[row]]),
-                            contribution=tofu_num_or_na(
+                            average=miso_num_or_na(rows$average[[row]]),
+                            contribution=miso_num_or_na(
                                 rows$contribution[[row]]),
-                            cumulative=tofu_num_or_na(rows$cumulative[[row]]),
+                            cumulative=miso_num_or_na(rows$cumulative[[row]]),
                             firstGroup=as.character(rows$firstGroup[[row]]),
-                            meanFirst=tofu_num_or_na(rows$meanFirst[[row]]),
+                            meanFirst=miso_num_or_na(rows$meanFirst[[row]]),
                             secondGroup=as.character(rows$secondGroup[[row]]),
-                            meanSecond=tofu_num_or_na(rows$meanSecond[[row]]),
+                            meanSecond=miso_num_or_na(rows$meanSecond[[row]]),
                             direction=direction))
                 }
             }
@@ -437,7 +437,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                                     isTRUE(heatmapData$missing[[row]]))
                                 ""
                             else
-                                tofu_num_or_na(
+                                miso_num_or_na(
                                     heatmapData$contribution[[row]]),
                             selected=if (isTRUE(heatmapData$missing[[row]]))
                                 "No" else "Yes"))
@@ -445,7 +445,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .runAssessment = function(prep, displayRows) {
             private$.state$requestedPermutations <- as.integer(self$options$simperN)
-            tofu_set_seed(prep)
+            miso_set_seed(prep)
             fit <- tryCatch(
                 vegan::simper(
                     prep$transformed,
@@ -501,8 +501,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 result <- adjusted[[values$contrastIndex]]
                 if (is.null(dim(result)) || ! values$feature %in% rownames(result))
                     next
-                p <- tofu_num_or_na(result[values$feature, "p"])
-                padj <- tofu_num_or_na(result[values$feature, "padj"])
+                p <- miso_num_or_na(result[values$feature, "p"])
+                padj <- miso_num_or_na(result[values$feature, "padj"])
                 if (! is.finite(p))
                     next
                 self$results$assessment$addRow(
@@ -570,7 +570,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotDescription = function(contrast) {
-            tofu_html_block(
+            miso_html_block(
                 "Shows the leading feature contributions for each contrast.",
                 ariaLabel=paste("About SIMPER contribution plot for", contrast),
                 title="Contribution plot")
@@ -579,14 +579,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .heatmapDescription = function() {
             if (is.null(private$.heatmapData()))
                 return("")
-            tofu_html_block(
+            miso_html_block(
                 "Compares leading feature contributions across contrasts.",
                 ariaLabel="About the SIMPER contrast heatmap",
                 title="Contrast overview heatmap")
         },
 
         .setInterpretation = function(prep, assessmentShown) {
-            self$results$note$setContent(tofu_html_block(paste(
+            self$results$note$setContent(miso_html_block(paste(
                 "SIMPER contributions are descriptive.",
                 "Average/SD shows consistency; permutation p does not replace an overall test."),
                 title="How to read these results"))
@@ -635,8 +635,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(NULL)
             rows <- rows[order(rows$contribution, rows$feature), , drop = FALSE]
             rows$feature <- factor(as.character(rows$feature), levels = unique(as.character(rows$feature)))
-            featureLabels <- .tofuUniqueShortLabels(levels(rows$feature), width = 24L)
-            groupLabels <- .tofuUniqueShortLabels(c(as.character(rows$firstGroup[[1L]]), as.character(rows$secondGroup[[1L]])),
+            featureLabels <- .misoUniqueShortLabels(levels(rows$feature), width = 24L)
+            groupLabels <- .misoUniqueShortLabels(c(as.character(rows$firstGroup[[1L]]), as.character(rows$secondGroup[[1L]])),
                 width = 18L)
             first <- unname(groupLabels[[1L]])
             second <- unname(groupLabels[[2L]])
@@ -658,7 +658,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 breaks = directions, labels = directions, drop = FALSE, name = "Transformed group mean") + ggplot2::scale_x_continuous(labels = function(x) paste0(x,
                 "%"), expand = ggplot2::expansion(mult = c(0, 0.42))) + ggplot2::scale_y_discrete(labels = featureLabels) +
                 ggplot2::labs(x = "Contribution to average dissimilarity (%)", y = NULL, subtitle = sprintf("Top %s or %s%% cumulative; threshold-crossing feature included",
-                    self$options$simperTop, self$options$simperCum)) + .tofuPlotTheme() + ggplot2::theme(legend.position = "bottom",
+                    self$options$simperTop, self$options$simperCum)) + .misoPlotTheme() + ggplot2::theme(legend.position = "bottom",
                 plot.subtitle = ggplot2::element_text(size = 10, colour = "#444444"))
         }
 ,
@@ -699,8 +699,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(NULL)
             dat$feature <- factor(dat$feature, levels = unique(dat$feature))
             dat$contrast <- factor(dat$contrast, levels = unique(dat$contrast))
-            featureLabels <- .tofuUniqueShortLabels(levels(dat$feature), width = 20L)
-            contrastLabels <- .tofuUniqueShortLabels(levels(dat$contrast), width = 24L)
+            featureLabels <- .misoUniqueShortLabels(levels(dat$feature), width = 20L)
+            contrastLabels <- .misoUniqueShortLabels(levels(dat$contrast), width = 24L)
             grid <- dat[, c("feature", "contrast", "missing"), drop = FALSE]
             selected <- dat[!dat$missing, , drop = FALSE]
             ggplot2::ggplot(grid, ggplot2::aes(x = contrast, y = feature)) + ggplot2::geom_tile(fill = "#D9D9D9",
@@ -708,7 +708,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 colour = "white", linewidth = 0.35) + ggplot2::scale_fill_viridis_c(option = "C", direction = -1,
                 na.value = "#D9D9D9", name = "Contribution (%)") + ggplot2::scale_x_discrete(labels = contrastLabels) +
                 ggplot2::scale_y_discrete(labels = featureLabels) + ggplot2::labs(x = "Contrast", y = "Feature") +
-                .tofuPlotTheme() + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 35, hjust = 1,
+                .misoPlotTheme() + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 35, hjust = 1,
                 vjust = 1))
         }
 ,

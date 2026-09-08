@@ -11,14 +11,14 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             transform = "none",
             distance = "bray",
             sampleLabels = "auto",
-            showLabels = "__tofu_unset__",
+            showLabels = "__miso_unset__",
             defineClusters = FALSE,
             cutMode = "number",
             numberClusters = 3,
             cutHeight = 0.5, ...) {
 
             super$initialize(
-                package="tofu",
+                package="miso",
                 name="cluster",
                 requiresData=TRUE,
                 ...)
@@ -95,7 +95,7 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             private$..showLabels <- jmvcore::OptionString$new(
                 "showLabels",
                 showLabels,
-                default="__tofu_unset__",
+                default="__miso_unset__",
                 hidden=TRUE)
             private$..defineClusters <- jmvcore::OptionBool$new(
                 "defineClusters",
@@ -216,12 +216,12 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="item",
-                        `title`="Item",
+                        `name`="item", 
+                        `title`="Item", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text")),
                 clearWith=list(
                     "vars",
@@ -304,32 +304,32 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="recordType",
-                        `title`="Record",
+                        `name`="recordType", 
+                        `title`="Record", 
                         `type`="text"),
                     list(
-                        `name`="displayOrder",
-                        `title`="Display order",
+                        `name`="displayOrder", 
+                        `title`="Display order", 
                         `type`="integer"),
                     list(
-                        `name`="sample",
-                        `title`="Sample",
+                        `name`="sample", 
+                        `title`="Sample", 
                         `type`="text"),
                     list(
-                        `name`="mergeStep",
-                        `title`="Merge step",
+                        `name`="mergeStep", 
+                        `title`="Merge step", 
                         `type`="integer"),
                     list(
-                        `name`="leftChild",
-                        `title`="Left child",
+                        `name`="leftChild", 
+                        `title`="Left child", 
                         `type`="text"),
                     list(
-                        `name`="rightChild",
-                        `title`="Right child",
+                        `name`="rightChild", 
+                        `title`="Right child", 
                         `type`="text"),
                     list(
-                        `name`="height",
-                        `title`="Height",
+                        `name`="height", 
+                        `title`="Height", 
                         `type`="number")),
                 clearWith=list(
                     "vars",
@@ -364,12 +364,12 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="sample",
-                        `title`="Sample",
+                        `name`="sample", 
+                        `title`="Sample", 
                         `type`="text"),
                     list(
-                        `name`="cluster",
-                        `title`="Cluster",
+                        `name`="cluster", 
+                        `title`="Cluster", 
                         `type`="integer")),
                 clearWith=list(
                     "vars",
@@ -418,12 +418,12 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="setting",
-                        `title`="Setting",
+                        `name`="setting", 
+                        `title`="Setting", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text")),
                 clearWith=list(
                     "vars",
@@ -442,9 +442,9 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     public = list(
         initialize = function(options, data=NULL, datasetId="", analysisId="", revision=0) {
             super$initialize(
-                package = "tofu",
+                package = "miso",
                 name = "cluster",
-                version = c(0,2,1),
+                version = c(1,0,0),
                 options = options,
                 results = clusterResults$new(options=options),
                 data = data,
@@ -459,8 +459,8 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' Cluster analysis
 #'
-#' Groups samples by hierarchical clustering of dissimilarities calculated
-#' with vegan::vegdist and stats::hclust. The dendrogram and optional cluster
+#' Groups samples by hierarchical clustering of dissimilarities calculated 
+#' with vegan::vegdist and stats::hclust. The dendrogram and optional cluster 
 #' memberships are descriptive.
 #' @param data .
 #' @param vars .
@@ -505,7 +505,7 @@ cluster <- function(
     transform = "none",
     distance = "bray",
     sampleLabels = "auto",
-    showLabels = "__tofu_unset__",
+    showLabels = "__miso_unset__",
     defineClusters = FALSE,
     cutMode = "number",
     numberClusters = 3,
@@ -543,3 +543,4 @@ cluster <- function(
 
     analysis$results
 }
+

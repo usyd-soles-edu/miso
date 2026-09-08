@@ -11,7 +11,7 @@ cluster(
   transform = "none",
   distance = "bray",
   sampleLabels = "auto",
-  showLabels = "__tofu_unset__",
+  showLabels = "__miso_unset__",
   defineClusters = FALSE,
   cutMode = "number",
   numberClusters = 3,
@@ -46,12 +46,17 @@ label modes were introduced.}
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
-  \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
   \code{results$dendrogramDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
+  \code{results$dendrogramStructurePurpose} \tab \tab \tab \tab \tab a html \cr
+  \code{results$dendrogramStructure} \tab \tab \tab \tab \tab a table \cr
+  \code{results$membershipPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$membership} \tab \tab \tab \tab \tab a table \cr
   \code{results$interpretation} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
@@ -62,5 +67,7 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$summary)}
 }
 \description{
-Cluster analysis
+Groups samples by hierarchical clustering of dissimilarities calculated 
+with vegan::vegdist and stats::hclust. The dendrogram and optional cluster 
+memberships are descriptive.
 }

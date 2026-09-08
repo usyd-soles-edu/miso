@@ -1,7 +1,7 @@
-Package: tofu
+Package: miso
 Type: Package
-Title: Multivariate Abundance Workflows for jamovi
-Version: 0.2.1
+Title: Multivariate Inference, Similarity and Ordination (MISO)
+Version: 1.0.0
 Author: Januar Harianto
 Maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
 Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and cluster
@@ -9,12 +9,10 @@ Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and clust
     The module uses a shared transformation and dissimilarity workflow powered
     by the vegan R package.
 License: GPL (>= 2)
-URL: https://github.com/usyd-soles-edu/tofu
-BugReports: https://github.com/usyd-soles-edu/tofu/issues
 Encoding: UTF-8
 Imports: jmvcore (>= 0.8.5), R6, vegan, permute, ggplot2
 Suggests:
     testthat (>= 3.0.0),
     yaml
 Config/testthat/edition: 3
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.0.0

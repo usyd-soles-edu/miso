@@ -1,6 +1,6 @@
 # jamovi UI smoke-test runbook
 
-This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised the tofu analyses on the saved baseline workbooks and clean CSV fixtures. It is intended for future Codex sessions and is deliberately separate from the user-facing `jamovi-functionality-guide.md`.
+This runbook records the Computer Use procedures that successfully launched jamovi from a fully quit state and exercised the module analyses on the saved baseline workbooks and clean CSV fixtures. It is intended for future Codex sessions and is deliberately separate from the user-facing `jamovi-functionality-guide.md`.
 
 ## Current automated scope
 
@@ -75,7 +75,7 @@ Run every analysis from both clean CSVs so cached workbook output cannot satisfy
 
 ### Pending PCoA procedure
 
-1. Create **Analyses → tofu → PCoA — Visualise distance structure** from each clean CSV. Confirm no-variable guidance and no blank result, then assign the feature range. Use None, Bray-Curtis, Binary off, Square-root distances off, and Additive correction None.
+1. Create **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PCoA — Visualise distance structure** from each clean CSV. Confirm no-variable guidance and no blank result, then assign the feature range. Use None, Bray-Curtis, Binary off, Square-root distances off, and Additive correction None.
 2. Verify the 600 × 500 **Principal coordinates ordination**, equal physical axis scaling, adjacent **Ordination description**, complete **Site Coordinates**, **Eigenvalues**, **Interpretation**, and **Settings**. Compare small and large checkpoints with `reference-results.csv` and direct `vegan::wcmdscale`; compare coordinate magnitudes because whole axes may reflect.
 3. Add `group`. Verify colour-plus-shape encoding and complete group values in the coordinate table. Select **Show group centroids**, then **Connect sites to centroids**; verify **Group Centroids**, effective-layer text, and invariant coordinates/eigenvalues.
 4. Run None, Lingoes, and Cailliez corrections. Verify the selected correction and finite constant in Settings and direct `vegan::wcmdscale(add = ...)` parity. Test Square-root distances separately.
@@ -95,11 +95,11 @@ Run these checks for every analysis above on at least the small result, and repe
 
 ### Task 10 evidence and promotion rule
 
-For each assertion, record: build identifier, operating system, jamovi/tofu versions, dataset, analysis, option state, expected text/value, observed text/value, pass/fail, and screenshot path for failures. Save accessibility snapshots or compact extracted evidence for named sections and dimensions; do not save recalculated `.omv` files. Record small and large results separately.
+For each assertion, record: build identifier, operating system, jamovi and module versions, dataset, analysis, option state, expected text/value, observed text/value, pass/fail, and screenshot path for failures. Save accessibility snapshots or compact extracted evidence for named sections and dimensions; do not save recalculated `.omv` files. Record small and large results separately.
 
 ### Live plotting-overhaul evidence — 22 July 2026
 
-Environment: tofu 0.2.0 freshly built and installed into jamovi 2.7.36 on macOS Tahoe 26.5.2. Every analysis was created from `tofu-small.csv` (24 rows, 8 feature variables) and `tofu-large.csv` (360 rows, 48 feature variables); no cached workbook output was used.
+Environment: superseded pre-rename module build (0.2.0), freshly built and installed into jamovi 2.7.36 on macOS Tahoe 26.5.2; re-record with Multivariate Inference, Similarity and Ordination (MISO) 1.0.0 at the next smoke run. Every analysis was created from `miso-small.csv` (24 rows, 8 feature variables) and `miso-large.csv` (360 rows, 48 feature variables); no cached workbook output was used.
 
 - PCoA: the ordination, Site Coordinates, Eigenvalues, interpretation, and Settings appeared on both datasets with all site rows retained. A live defect exposed `NaN` for explained percentages on non-positive axes; the raw cells were changed to blanks, covered by a regression test, rebuilt, reinstalled, and confirmed finite in jamovi.
 - PERMANOVA: the inferential table appeared on both datasets. Enabling the companion PCoA, group centroids, and spiders produced the named images and full coordinate/centroid tables without changing the PERMANOVA table.
@@ -109,7 +109,7 @@ Environment: tofu 0.2.0 freshly built and installed into jamovi 2.7.36 on macOS 
 - nMDS: the two-dimensional ordination, Site Scores, Shepard diagram, and pair table appeared on both datasets. The large description disclosed that 1,000 of 64,620 diagnostic pairs were displayed while the fit used all finite pairs. With seed 123 on the small dataset, toggling Shepard left stress and site coordinates unchanged.
 - Cluster analysis: uncut, three-cluster number-cut, and height-0.5 states were exercised on the small dataset; branches and the Dendrogram structure stayed invariant while membership followed the cut toggle. The large dataset automatically hid labels above 40 samples and disclosed that decision. A live defect exposed `NaN` in structurally absent leaf/merge cells; those cells were changed to blanks, regression-tested, rebuilt, reinstalled, and confirmed finite in jamovi.
 - Scale and accessibility: the accessibility tree preserved image → adjacent description → table-alternative order in the exercised results. Forward and reverse keyboard traversal reached the nMDS target boxes, analysis choices, plot controls, and optional sections without leaving the analysis pane. SIMPER and nMDS remained readable and reachable through the exact 100 → 110 → 120 → 133 → 150 → 170 → 200% zoom sequence and were restored to 100%.
-- Narrow layout: all seven analyses remained contained when the application was reduced until the results pane was approximately 320 px wide. Narrative, plots, and tables did not paint across the pane boundary, but jamovi retained a fixed-width report page and exposed a horizontal scrollbar rather than satisfying the stricter reflow assertion in the procedure above. Treat this assertion as not passed; do not describe it as tofu text overflow without first separating host-page behaviour from avoidable module text width.
+- Narrow layout: all seven analyses remained contained when the application was reduced until the results pane was approximately 320 px wide. Narrative, plots, and tables did not paint across the pane boundary, but jamovi retained a fixed-width report page and exposed a horizontal scrollbar rather than satisfying the stricter reflow assertion in the procedure above. Treat this assertion as not passed; do not describe it as module text overflow without first separating host-page behaviour from avoidable module text width.
 
 Still unverified: full keyboard traversal and recalculation-focus recovery across all seven analyses, five-group SIMPER, the one-positive-axis PCoA fixture, live PCoA correction variants, deliberate long-label fixtures, every optional nMDS overlay, Cluster Show/Hide label invariance, 400% macOS magnification, VoiceOver speech, Windows NVDA, nMDS five-group rendering, and hidden legacy Binary/3D controls.
 
@@ -117,22 +117,22 @@ Only after the corresponding procedure is physically exercised may its item move
 
 ## Test assets
 
-- Small: `tests/manual/workbooks/tofu-small-baselines.omv`
-- Large: `tests/manual/workbooks/tofu-large-baselines.omv`
-- Clean small CSV: `tests/manual/tofu-small.csv`
-- Clean large CSV: `tests/manual/tofu-large.csv`
+- Small: `tests/manual/workbooks/miso-small-baselines.omv`
+- Large: `tests/manual/workbooks/miso-large-baselines.omv`
+- Clean small CSV: `tests/manual/miso-small.csv`
+- Clean large CSV: `tests/manual/miso-large.csv`
 - Full-precision references: `tests/manual/reference-results.csv`
 
-Install the tofu build under test before starting. The `.omv` files contain cached results, so opening a workbook is not itself evidence that the current build works.
+Install the Multivariate Inference, Similarity and Ordination (MISO) build under test before starting. The `.omv` files contain cached results, so opening a workbook is not itself evidence that the current build works.
 
 ### Install safeguard
 
-Delete the existing `tofu_0.2.1.jmo` before running `jmvtools::install(pkg=".")`. The current compiler can report process exit code 0 after a YAML compilation error and leave the old archive in place. Treat the install as successful only when all of the following are true:
+Delete the existing `miso_1.0.0.jmo` before running `jmvtools::install(pkg=".")`. The current compiler can report process exit code 0 after a YAML compilation error and leave the old archive in place. Treat the install as successful only when all of the following are true:
 
 - the output does not contain `Unable to compile` or `Could not install module`;
-- a freshly dated `tofu_0.2.1.jmo` exists;
-- the output contains both `Installing tofu_0.2.1.jmo` and `Module installed successfully`; and
-- `~/Library/Application Support/jamovi/modules/tofu/jamovi.yaml` has a fresh modification time.
+- a freshly dated `miso_1.0.0.jmo` exists;
+- the output contains both `Installing miso_1.0.0.jmo` and `Module installed successfully`; and
+- `~/Library/Application Support/jamovi/modules/miso/jamovi.yaml` has a fresh modification time.
 
 For the current PERMANOVA redesign, also inspect the installed `ui/permanova.js` for `Feature variables (required)`, the Free default, the `studyVariables` supplier, and four real `update_control_states` event handlers. A compiled `execute: function(ui) { }` means the unsupported `changed:` event alias was used instead of the working `change:` spelling. For nMDS, inspect installed `ui/nmds.js` for the short optional-variable labels and the two nearby tips. For SIMPER, inspect installed `ui/simper.js` for `Show detailed statistics`, `Contribution variability`, and `Group means`.
 
@@ -228,16 +228,16 @@ This ordering minimizes launches, file dialogs, recalculations, and leftover win
 1. Call `sky.get_app_state({ app: "jamovi", disableDiff: true })`.
 2. In the returned state, locate the window's `full screen button` whose secondary action is `zoom the window`.
 3. Invoke `sky.perform_secondary_action()` with the exact exposed action `zoom the window`.
-4. Fetch a fresh full state and confirm that the tofu module is listed in the Analyses ribbon.
+4. Fetch a fresh full state and confirm that the Multivariate Inference, Similarity and Ordination (MISO) module is listed in the Analyses ribbon.
 
 This provides consistent geometry. The remaining workflow should still use accessibility elements rather than coordinates.
 
 ### 2. Open the small workbook
 
 1. Locate and click the `File` pop-up button from the latest state.
-2. Select `tofu-small-baselines.omv` from Recent files when present.
-3. If it is not recent, use **Open** and browse to `tests/manual/workbooks/tofu-small-baselines.omv`.
-4. Wait until the window title is `tofu-small-baselines` and the data status reports 24 rows.
+2. Select `miso-small-baselines.omv` from Recent files when present.
+3. If it is not recent, use **Open** and browse to `tests/manual/workbooks/miso-small-baselines.omv`.
+4. Wait until the window title is `miso-small-baselines` and the data status reports 24 rows.
 
 ### 3. Recalculate small PERMANOVA
 
@@ -269,8 +269,8 @@ The shortened Residual and Total rows are intentional. Their missing Pseudo-F an
 ### 5. Open and recalculate the large workbook
 
 1. Open the File menu from the latest state.
-2. Select `tofu-large-baselines.omv`.
-3. Wait until the window title is `tofu-large-baselines` and the data status reports 360 rows.
+2. Select `miso-large-baselines.omv`.
+3. Wait until the window title is `miso-large-baselines` and the data status reports 360 rows.
 4. Activate `container PERMANOVA- Results`.
 5. Confirm that Random seed is `123` and Permutations is `199`.
 6. Repeat the committed seed sequence `123` to `124` to `123`, pressing Return and polling for each corresponding **Analysis settings** value.
@@ -291,7 +291,7 @@ Again, Residual and Total must have blank F and p cells, and `NaN` must not appe
 
 ### 7. Run the PERMANOVA state matrix from a clean CSV
 
-Open `tests/manual/tofu-small.csv`, create a new **Analyses → tofu → PERMANOVA — Test group differences**, and fetch a fresh accessibility state after every change.
+Open `tests/manual/miso-small.csv`, create a new **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PERMANOVA — Test group differences**, and fetch a fresh accessibility state after every change.
 
 1. With no variables assigned, assert that **Getting started** contains both required steps. Assert that `Data Summary`, `PERMANOVA Table`, `Pairwise PERMANOVA`, `How to read these results`, and `Analysis settings` are absent from the accessibility tree.
 2. Assign `feature_01`–`feature_08` to **Feature variables (required)** using keyboard selection and the transfer arrow. Assert that **Action needed** asks for a categorical Grouping variable and that result tables remain absent.
@@ -327,7 +327,7 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Small baseline
 
-1. Open `tofu-small-baselines.omv`, activate `container SIMPER- Results`, and fetch a fresh full state.
+1. Open `miso-small-baselines.omv`, activate `container SIMPER- Results`, and fetch a fresh full state.
 2. Change **Top N features** from `10` to `9`. Wait for **Analysis settings** to display `9`.
 3. Assert that the visible **Descriptive feature contributions** table has only `Contrast`, `Feature`, `Contribution (%)`, and `Cumulative (%)`. The legacy wide internal table must not appear.
 4. Confirm three contrasts and the expected first rows: A vs B `feature_04` at about `21.2`, A vs C `feature_01` at about `26.3`, and B vs C `feature_04` at about `24.4`.
@@ -339,7 +339,7 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Large baseline
 
-1. Open `tofu-large-baselines.omv`, activate SIMPER, and change Top N `10 → 9`.
+1. Open `miso-large-baselines.omv`, activate SIMPER, and change Top N `10 → 9`.
 2. Assert **Data Summary** reports 360 analysed samples, 48 features, three groups, and three contrasts.
 3. Assert exactly 9 contribution rows per contrast, 27 data rows total. The A vs B first row is `feature_47`, contribution `6.54`, cumulative `6.54`.
 4. Confirm the compact main table, plot, and settings appear without horizontal overflow or stale small-data rows.
@@ -348,7 +348,7 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Small baseline
 
-1. Open `tofu-small-baselines.omv`, activate `container nMDS- Results`, and confirm eight required features, `group`, `temperature` plus `pH`, None/Bray-Curtis, Shepard on, feature scores off, environmental permutations `99`, seed `123`, starts `20`, and iterations `200`.
+1. Open `miso-small-baselines.omv`, activate `container nMDS- Results`, and confirm eight required features, `group`, `temperature` plus `pH`, None/Bray-Curtis, Shepard on, feature scores off, environmental permutations `99`, seed `123`, starts `20`, and iterations `200`.
 2. Change seed `123 → 124 → 123`. Wait for **Analysis settings** after each change and do not read the environmental rows until the requested seed appears there. At seed 123, expect stress about `0.1636`, 24 **Site Scores**, temperature r² about `.292` with p `.060`, and pH r² about `.238` with p `.100`.
 3. Remove `group`. The ordination, Site Scores, and Environmental Fit must remain; group styling controls become unavailable and the plot description reports no grouping. Restore `group` and confirm stress/configuration are unchanged.
 4. Remove `pH`, then all environmental variables. Environmental Fit and vectors must follow the requested variables while the base ordination remains. Restore `temperature` and `pH`.
@@ -362,7 +362,7 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Large baseline
 
-1. Open `tofu-large-baselines.omv`, activate nMDS, and change seed `123 → 124 → 123`.
+1. Open `miso-large-baselines.omv`, activate nMDS, and change seed `123 → 124 → 123`.
 2. At seed 123, expect stress about `.1844`, 360 Site Scores, temperature r² about `.385` with p `.010`, and pH r² about `.529` with p `.010`.
 3. Select Feature Scores, hulls, the 1-SD ellipse, and spiders. Assert 48 Feature Score rows, unchanged Site Scores, all requested layers in the plot description, two environmental vectors, and truthful feature-label omission text.
 4. Clear the optional layers and confirm the base Site Scores remain unchanged.
@@ -371,14 +371,14 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Small baseline
 
-1. Open `tofu-small-baselines.omv`, activate ANOSIM, and change seed `123 → 124 → 123` to force recalculation.
+1. Open `miso-small-baselines.omv`, activate ANOSIM, and change seed `123 → 124 → 123` to force recalculation.
 2. At seed 123, assert Global R is about `.495` and permutation p is `.001`.
 3. Select **Pairwise ANOSIM comparisons** with Holm adjustment. Assert the A vs B row has R about `.678` and adjusted p `.003`.
 4. Clear Pairwise. Assert its table disappears and **P-value adjustment** becomes unavailable.
 
 #### Large baseline
 
-1. Open `tofu-large-baselines.omv`, activate ANOSIM, and change seed `123 → 124 → 123`.
+1. Open `miso-large-baselines.omv`, activate ANOSIM, and change seed `123 → 124 → 123`.
 2. At seed 123, assert Global R is about `.829` and permutation p is `.005`.
 3. Select Pairwise with Holm adjustment. Assert the A vs B row has R about `.985` and adjusted p `.015`.
 4. Clear Pairwise and assert that its table disappears without stale rows.
@@ -387,7 +387,7 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Small baseline
 
-1. Open `tofu-small-baselines.omv`, activate PERMDISP, and change seed `123 → 124 → 123`.
+1. Open `miso-small-baselines.omv`, activate PERMDISP, and change seed `123 → 124 → 123`.
 2. At seed 123 with the median centre, assert F is about `1.69`, permutation p is about `.219`, and mean distances for A/B/C are about `.160 / .163 / .221`.
 3. Assert the Residuals-row F and p cells are blank rather than `NaN`.
 4. Select **Pairwise dispersion comparisons** with Holm adjustment. Assert the table appears and the A vs B row has t about `−0.0926` and p about `.920`.
@@ -396,13 +396,13 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 #### Large baseline
 
-1. Open `tofu-large-baselines.omv`, activate PERMDISP, and change seed `123 → 124 → 123`.
+1. Open `miso-large-baselines.omv`, activate PERMDISP, and change seed `123 → 124 → 123`.
 2. At seed 123, assert F is about `372.5`, permutation p is `.005`, and mean distances for A/B/C are about `.158 / .182 / .247`.
 3. Select Pairwise with Holm adjustment. Assert the table is populated and adjusted p values are `.015`; clear Pairwise and assert its table disappears.
 
 ### 14. Run the shared invalid-input matrix
 
-Open `tests/manual/tofu-invalid.csv`, create a new PERMANOVA, and return to a clean analysis before each case.
+Open `tests/manual/miso-invalid.csv`, create a new PERMANOVA, and return to a clean analysis before each case.
 
 1. Assign only `group`. Assert **Getting started** shows both required steps and no inferential table appears.
 2. Assign `valid_01` and `valid_02` without a group. Assert the guidance requests a Grouping variable and no inferential table appears.
@@ -419,7 +419,7 @@ Use the clean CSV fixtures because the saved baseline workbooks predate Cluster 
 
 #### Small dataset
 
-1. Open `tests/manual/tofu-small.csv` and create **Analyses → tofu → Cluster analysis — Visualise sample similarity**.
+1. Open `tests/manual/miso-small.csv` and create **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → Cluster analysis — Visualise sample similarity**.
 2. Assign `feature_01`–`feature_08` to **Feature variables (required)**.
 3. Assert **Data summary** reports 24 samples, 8 features, and zero exclusions.
 4. Confirm the group-average dendrogram is visibly drawn, uses row numbers when **Sample labels (optional)** is empty, and **Analysis settings** reports None, Bray-Curtis, Group average (UPGMA), Data row numbers, and labels shown.
@@ -428,7 +428,7 @@ Use the clean CSV fixtures because the saved baseline workbooks predate Cluster 
 
 #### Large dataset
 
-1. Open `tests/manual/tofu-large.csv`, create Cluster analysis, and assign `feature_01`–`feature_48`.
+1. Open `tests/manual/miso-large.csv`, create Cluster analysis, and assign `feature_01`–`feature_48`.
 2. Assert **Data summary** reports 360 samples, 48 features, and zero exclusions.
 3. With **Show sample labels** selected, assert that the crowding warning appears and the dendrogram remains visible.
 4. Clear **Show sample labels**. Assert that the crowding warning disappears, the dendrogram remains visible, and settings report labels not shown.

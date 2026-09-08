@@ -17,7 +17,7 @@ expected_dir <- if (length(expected_arg) == 1L) {
 } else {
     manual_dir
 }
-tmp <- tempfile("tofu-manual-")
+tmp <- tempfile("miso-manual-")
 dir.create(tmp, recursive = TRUE)
 on.exit(unlink(tmp, recursive = TRUE, force = TRUE), add = TRUE)
 
@@ -72,9 +72,9 @@ run_script("generate-datasets.R", tmp)
 run_script("generate-reference-results.R", tmp)
 
 files <- c(
-    "tofu-small.csv",
-    "tofu-large.csv",
-    "tofu-invalid.csv",
+    "miso-small.csv",
+    "miso-large.csv",
+    "miso-invalid.csv",
     "reference-results.csv",
     "reference-session-info.txt"
 )

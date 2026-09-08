@@ -1,4 +1,4 @@
-.tofuGroupAesthetics <- function(groups) {
+.misoGroupAesthetics <- function(groups) {
     groupLabels <- sort(
         unique(as.character(stats::na.omit(groups))),
         method = "radix"
@@ -39,7 +39,7 @@
     )
 }
 
-.tofuJitter <- function(n, width = 0.16, seed = 104729L) {
+.misoJitter <- function(n, width = 0.16, seed = 104729L) {
     hadSeed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
     if (hadSeed)
         oldSeed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
@@ -56,7 +56,7 @@
     stats::runif(n, -width, width)
 }
 
-.tofuShortLabel <- function(value, width = 24L) {
+.misoShortLabel <- function(value, width = 24L) {
     if (length(width) != 1L ||
             !is.numeric(width) ||
             !is.finite(width) ||
@@ -86,7 +86,7 @@
     value
 }
 
-.tofuUniqueShortLabels <- function(values, width = 24L) {
+.misoUniqueShortLabels <- function(values, width = 24L) {
     if (length(width) != 1L || !is.numeric(width) || !is.finite(width) ||
             width < 4L || width != floor(width) ||
             width > .Machine$integer.max) {
@@ -95,7 +95,7 @@
     width <- as.integer(width)
     identities <- unique(as.character(values))
     identities <- identities[!is.na(identities)]
-    labels <- .tofuShortLabel(identities, width=width)
+    labels <- .misoShortLabel(identities, width=width)
     names(labels) <- identities
     collisions <- duplicated(labels) | duplicated(labels, fromLast=TRUE)
     if (!any(collisions))
@@ -122,7 +122,7 @@
     labels
 }
 
-.tofuPlotTheme <- function(baseSize = 12) {
+.misoPlotTheme <- function(baseSize = 12) {
     ggplot2::theme_minimal(base_size = baseSize) +
         ggplot2::theme(
             panel.grid.minor = ggplot2::element_blank(),
@@ -132,7 +132,7 @@
         )
 }
 
-.tofuPlotDisclosure <- function(shown, total, noun = "observations") {
+.misoPlotDisclosure <- function(shown, total, noun = "observations") {
     validateCount <- function(value, name) {
         if (length(value) != 1L ||
                 !is.numeric(value) ||

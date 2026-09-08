@@ -159,7 +159,7 @@ expect_nmds_plot_inside_frame <- function(data) {
         inherits(plot$coordinates, "CoordFixed") ||
             identical(plot$coordinates$ratio, 1),
         info="coord_equal must keep equal physical units on both axes")
-    expect_identical(plot$theme, .tofuPlotTheme())
+    expect_identical(plot$theme, .misoPlotTheme())
 
     limits <- plot$coordinates$limits
     expect_true(all(is.finite(limits$x)))
@@ -221,7 +221,7 @@ find_nmds_yaml_node <- function(node, name) {
 }
 
 test_that("nMDS schema preserves the API and exposes the approved student contract", {
-    analysis <- yaml::read_yaml(tofu_fixture_path("jamovi", "nmds.a.yaml"))
+    analysis <- yaml::read_yaml(miso_fixture_path("jamovi", "nmds.a.yaml"))
     options <- analysis$options
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     names_in_order <- vapply(options, `[[`, character(1), "name")
@@ -253,7 +253,7 @@ test_that("nMDS schema preserves the API and exposes the approved student contra
 })
 
 test_that("nMDS UI uses required-first progressive disclosure", {
-    ui_path <- tofu_fixture_path("jamovi", "nmds.u.yaml")
+    ui_path <- miso_fixture_path("jamovi", "nmds.u.yaml")
     ui <- yaml::read_yaml(ui_path)
     expect_false(find_nmds_yaml_node(ui, "analysisChoices")$collapsed)
     expect_false(find_nmds_yaml_node(ui, "plots")$collapsed)
@@ -269,7 +269,7 @@ test_that("nMDS UI uses required-first progressive disclosure", {
     expect_false(grepl("Fits descriptive vectors", ui_source, fixed=TRUE))
     expect_false(grepl("Dimensions: 2 for new analyses", ui_source, fixed=TRUE))
 
-    source_path <- tofu_fixture_path("jamovi", "js", "nmds.js")
+    source_path <- miso_fixture_path("jamovi", "js", "nmds.js")
     expect_true(file.exists(source_path), info="compiled nMDS UI controller is missing")
     if (! file.exists(source_path))
         return(invisible())
@@ -286,7 +286,7 @@ test_that("nMDS UI uses required-first progressive disclosure", {
 
 test_that("nMDS result schema contains no initially visible shell", {
     items <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "nmds.r.yaml"))$items
+        miso_fixture_path("jamovi", "nmds.r.yaml"))$items
     by_name <- setNames(items, vapply(items, `[[`, character(1), "name"))
 
     expect_true(all(vapply(items, function(x) identical(x$visible, FALSE), logical(1))))
@@ -960,7 +960,7 @@ test_that("overlay-only plots use independent group and layer encodings", {
         plot$layers,
         function(layer) class(layer$geom)[[1L]],
         character(1))
-    shared <- .tofuGroupAesthetics(assignedStyles$group)
+    shared <- .misoGroupAesthetics(assignedStyles$group)
     colourScale <- plot$scales$get_scales("colour")
     linetypeScale <- plot$scales$get_scales("linetype")
     linewidthScale <- plot$scales$get_scales("linewidth")
@@ -1330,7 +1330,7 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
 
     expect_true(shownPrivate$.state$shepardValid)
     expect_s3_class(plot, "ggplot")
-    expect_identical(plot$theme, .tofuPlotTheme())
+    expect_identical(plot$theme, .misoPlotTheme())
     expect_true("GeomPoint" %in% geomClasses)
     expect_true(any(geomClasses %in% c("GeomLine", "GeomPath")))
     expect_identical(shownPrivate$.state$shepardData, expectedData)
@@ -1660,18 +1660,18 @@ test_that("visible nMDS output never exposes NaN or Inf text", {
 })
 
 test_that("small and large fixtures match independent rotation-invariant nMDS fits", {
-    expect_nmds_matches_independent(nmds_fixture("tofu-small.csv"), k=2L)
-    expect_nmds_matches_independent(nmds_fixture("tofu-large.csv"), k=2L)
+    expect_nmds_matches_independent(nmds_fixture("miso-small.csv"), k=2L)
+    expect_nmds_matches_independent(nmds_fixture("miso-large.csv"), k=2L)
 })
 
 test_that("small and large fixture renderers keep features, arrows, and labels inside the plot frame", {
-    expect_nmds_plot_inside_frame(nmds_fixture("tofu-small.csv"))
-    expect_nmds_plot_inside_frame(nmds_fixture("tofu-large.csv"))
+    expect_nmds_plot_inside_frame(nmds_fixture("miso-small.csv"))
+    expect_nmds_plot_inside_frame(nmds_fixture("miso-large.csv"))
 })
 
 test_that("legacy 3D fixture matches an independent full configuration", {
     actual <- expect_nmds_matches_independent(
-        nmds_fixture("tofu-small.csv"), k=3L)
+        nmds_fixture("miso-small.csv"), k=3L)
     runtimeTitle <- actual$results$ordination$title
     scenarios <- read.csv(
         test_path("..", "manual", "scenarios.csv"),
@@ -1699,7 +1699,7 @@ test_that("legacy 3D fixture matches an independent full configuration", {
 })
 
 test_that("legacy Binary is exactly inert for the fixture baseline", {
-    data <- nmds_fixture("tofu-small.csv")
+    data <- nmds_fixture("miso-small.csv")
     vars <- grep("^feature_[0-9]+$", names(data), value=TRUE)
     options <- list(
         data=data,

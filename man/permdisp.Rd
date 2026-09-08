@@ -69,17 +69,23 @@ permdisp(
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+  \code{results$anovaPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
+  \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$plot} \tab \tab \tab \tab \tab an image \cr
   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$plot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$distancesPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
-  \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$ordinationScoresPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordinationScores} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
@@ -90,5 +96,7 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$summary)}
 }
 \description{
-PERMDISP
+Tests whether groups differ in multivariate dispersion using 
+vegan::betadisper and permutation tests. Includes distance-to-centre 
+summaries, diagnostics, and an optional ordination.
 }

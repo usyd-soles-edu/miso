@@ -57,14 +57,19 @@ anosim(
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+  \code{results$globalPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$global} \tab \tab \tab \tab \tab a table \cr
+  \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
   \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
+  \code{results$rankSummaryPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
@@ -75,5 +80,7 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$summary)}
 }
 \description{
-ANOSIM
+Tests whether within-group samples are more similar than between-group 
+samples using rank-based ANOSIM through vegan::anosim. Includes optional 
+pairwise comparisons and rank diagnostics.
 }

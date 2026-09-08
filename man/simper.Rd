@@ -54,18 +54,27 @@ simper(
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+  \code{results$contrastsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
+  \code{results$contributionsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
+  \code{results$variabilityPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$variability} \tab \tab \tab \tab \tab a table \cr
+  \code{results$meansPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$means} \tab \tab \tab \tab \tab a table \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
   \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
-  \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
   \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
+  \code{results$heatmapValuesPurpose} \tab \tab \tab \tab \tab a html \cr
+  \code{results$heatmapValues} \tab \tab \tab \tab \tab a table \cr
+  \code{results$assessmentPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
@@ -76,5 +85,7 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$summary)}
 }
 \description{
-SIMPER
+Describes how individual features contribute to average Bray-Curtis 
+dissimilarity between groups using vegan::simper. Optional permutation 
+results are exploratory rather than an overall group test.
 }

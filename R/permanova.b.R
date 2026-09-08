@@ -26,7 +26,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            if (tofu_is_missing_var(self$options$factor)) {
+            if (miso_is_missing_var(self$options$factor)) {
                 private$.showGuidance(
                     paste(
                         "PERMANOVA is waiting for a Grouping variable.",
@@ -36,7 +36,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             if (identical(self$options$permScheme, "stratified") &&
-                    tofu_is_missing_var(self$options$strata)) {
+                    miso_is_missing_var(self$options$strata)) {
                 private$.showGuidance(
                     paste(
                         "Within-block permutations require a Blocking variable.",
@@ -45,7 +45,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
                 factor=self$options$factor,
@@ -74,8 +74,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$warnings,
                 prep$warnings,
                 permutation$warnings)
-            private$.state$cl <- tofu_parallel(self$options$useParallel)
-            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
+            private$.state$cl <- miso_parallel(self$options$useParallel)
+            on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
 
             main <- private$.runPermanova(prep)
             if (! main$success) {
@@ -92,7 +92,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            tofu_populate_summary(
+            miso_populate_summary(
                 self$results,
                 prep,
                 self$options$transform,
@@ -143,16 +143,16 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "companionPcoaCentroidsPurpose", "pairwisePurpose",
                     "settingsPurpose"))
                 self$results[[name]]$setContent("")
-            tofu_clear_table(self$results$summary)
-            tofu_clear_table(self$results$table)
-            tofu_clear_table(self$results$companionPcoaSites)
-            tofu_clear_table(self$results$companionPcoaCentroids)
-            tofu_clear_table(self$results$pairwise)
+            miso_clear_table(self$results$summary)
+            miso_clear_table(self$results$table)
+            miso_clear_table(self$results$companionPcoaSites)
+            miso_clear_table(self$results$companionPcoaCentroids)
+            miso_clear_table(self$results$pairwise)
             self$results$pairwise$setNote(
                 key="scope",
                 note="")
             self$results$note$setContent("")
-            tofu_clear_table(self$results$settings)
+            miso_clear_table(self$results$settings)
 
             for (name in c(
                     "guidance", "warnings", "summary", "summaryPurpose",
@@ -168,7 +168,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -182,7 +182,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
+            miso_populate_purposes(self$results, list(
                 summaryPurpose=c(
                     "Data summary",
                     "Summarises included samples and features, including any exclusions."),
@@ -210,7 +210,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -225,7 +225,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             fit <- tryCatch(
-                .tofuPcoa(
+                .misoPcoa(
                     prep$dist,
                     sqrtDist=self$options$distSqrt,
                     correction=self$options$distAdd,
@@ -243,7 +243,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            plotData <- .tofuPcoaPlotData(
+            plotData <- .misoPcoaPlotData(
                 fit,
                 showCentroids=self$options$pcoaCentroids,
                 showSpiders=self$options$pcoaSpiders)
@@ -272,7 +272,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .companionDisplayFactor = function(prep, model) {
             eligible <- names(model$factorColumns)
             multifactor <- length(eligible) > 1L
-            requested <- tofu_clean_vars(self$options$pcoaDisplayFactor)
+            requested <- miso_clean_vars(self$options$pcoaDisplayFactor)
             notice <- character()
             if (!multifactor) {
                 selected <- eligible[[1L]]
@@ -350,7 +350,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showCompanionInstruction = function(message) {
             self$results$companionPcoaDescription$setContent(
-                tofu_html_block(c(
+                miso_html_block(c(
                     paste(
                         "Shows a two-dimensional representation of the",
                         "dissimilarities used by PERMANOVA; nearby points",
@@ -385,8 +385,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         site=fit$siteNames[[i]],
                         sourceRow=as.integer(prep$rowIndex[[i]]),
                         group=groups[[i]],
-                        PCoA1=tofu_num_or_na(axis1[[i]]),
-                        PCoA2=tofu_num_or_na(axis2[[i]])))
+                        PCoA1=miso_num_or_na(axis1[[i]]),
+                        PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -405,8 +405,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     list(
                         group=group,
                         n=as.integer(fit$groupSizes[[group]]),
-                        PCoA1=tofu_num_or_na(fit$centroids[i, 1L]),
-                        PCoA2=tofu_num_or_na(axis2[[i]])))
+                        PCoA1=miso_num_or_na(fit$centroids[i, 1L]),
+                        PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -415,7 +415,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 selectionNotice=character()) {
             available <- !is.null(plotData) && isTRUE(plotData$available)
             self$results$companionPcoaDescription$setContent(
-                tofu_html_block(
+                miso_html_block(
                     if (available)
                         "Visualises sample resemblance and group positions alongside the test."
                     else
@@ -509,7 +509,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 }
             }
 
-            control <- tofu_permutation(
+            control <- miso_permutation(
                 self$options$permN,
                 scheme,
                 block)
@@ -535,7 +535,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .runPermanova = function(prep) {
-            tofu_set_seed(prep)
+            miso_set_seed(prep)
             model <- private$.makeModelData(prep)
             result <- tryCatch(
                 private$.adonisModel(prep, model),
@@ -549,12 +549,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 notApplicable <- rn[i] %in% c("Residual", "Total")
                 rowKey <- as.character(i)
                 values <- list(
-                    source=tofu_display_term(rn[i], prep),
-                    df=tofu_num_or_na(tab[i, "Df"]),
-                    sumsqs=tofu_num_or_na(tab[i, "SumOfSqs"]),
-                    r2=tofu_num_or_na(tab[i, "R2"]),
-                    f=if (notApplicable) "" else tofu_num_or_na(tab[i, "F"]),
-                    p=if (notApplicable) "" else tofu_num_or_na(tab[i, "Pr(>F)"]))
+                    source=miso_display_term(rn[i], prep),
+                    df=miso_num_or_na(tab[i, "Df"]),
+                    sumsqs=miso_num_or_na(tab[i, "SumOfSqs"]),
+                    r2=miso_num_or_na(tab[i, "R2"]),
+                    f=if (notApplicable) "" else miso_num_or_na(tab[i, "F"]),
+                    p=if (notApplicable) "" else miso_num_or_na(tab[i, "Pr(>F)"]))
                 self$results$table$addRow(rowKey=rowKey, values=values)
             }
 
@@ -582,7 +582,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             vegan::adonis2(
                 formula,
                 data=model$data,
-                permutations=tofu_permutation(
+                permutations=miso_permutation(
                     self$options$permN,
                     self$options$permScheme,
                     model$strata),
@@ -666,7 +666,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     subPrep$covariates <- prep$covariates[idx, , drop=FALSE]
                 contrast <- paste(pair, collapse=" vs ")
 
-                tofu_set_seed(subPrep)
+                miso_set_seed(subPrep)
                 result <- tryCatch(
                     private$.adonisModel(subPrep),
                     error=function(e) e)
@@ -681,8 +681,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 }
 
                 tab <- as.data.frame(result)
-                f <- tofu_num_or_na(tab[1, "F"])
-                p <- tofu_num_or_na(tab[1, "Pr(>F)"])
+                f <- miso_num_or_na(tab[1, "F"])
+                p <- miso_num_or_na(tab[1, "Pr(>F)"])
                 if (! is.finite(f) || ! is.finite(p)) {
                     warnings <- c(
                         warnings,
@@ -739,7 +739,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .setInterpretation = function(prep, model, pairwiseShown) {
-            self$results$note$setContent(tofu_html_block(paste(
+            self$results$note$setContent(miso_html_block(paste(
                 "Pseudo-F compares among-group and within-group variation.",
                     "R\u00B2 shows explained variation, and permutation p tests the null model."),
                 title="How to read these results"))
@@ -790,7 +790,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .listLabel = function(value) {
-            value <- tofu_clean_vars(value)
+            value <- miso_clean_vars(value)
             if (length(value) == 0L) "None" else paste(value, collapse=", ")
         },
 

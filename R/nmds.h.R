@@ -25,7 +25,7 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             nmdsEnvPerm = 99, ...) {
 
             super$initialize(
-                package="tofu",
+                package="miso",
                 name="nmds",
                 requiresData=TRUE,
                 ...)
@@ -295,12 +295,12 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="item",
-                        `title`="Item",
+                        `name`="item", 
+                        `title`="Item", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text")),
                 clearWith=list(
                     "vars",
@@ -423,27 +423,27 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="row",
-                        `title`="Row",
+                        `name`="row", 
+                        `title`="Row", 
                         `type`="integer"),
                     list(
-                        `name`="NMDS1",
-                        `title`="NMDS1",
-                        `type`="number",
+                        `name`="NMDS1", 
+                        `title`="NMDS1", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="NMDS2",
-                        `title`="NMDS2",
-                        `type`="number",
+                        `name`="NMDS2", 
+                        `title`="NMDS2", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="NMDS3",
-                        `title`="NMDS3",
-                        `type`="number",
+                        `name`="NMDS3", 
+                        `title`="NMDS3", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="group",
-                        `title`="Group",
+                        `name`="group", 
+                        `title`="Group", 
                         `type`="text")),
                 clearWith=list(
                     "vars",
@@ -494,12 +494,12 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="item",
-                        `title`="Item",
+                        `name`="item", 
+                        `title`="Item", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text")),
                 clearWith=list(
                     "vars",
@@ -599,19 +599,19 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="dissimilarity",
-                        `title`="Observed dissimilarity",
-                        `type`="number",
+                        `name`="dissimilarity", 
+                        `title`="Observed dissimilarity", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="ordinationDistance",
-                        `title`="Ordination distance",
-                        `type`="number",
+                        `name`="ordinationDistance", 
+                        `title`="Ordination distance", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="monotonicFit",
-                        `title`="Monotone fitted distance",
-                        `type`="number",
+                        `name`="monotonicFit", 
+                        `title`="Monotone fitted distance", 
+                        `type`="number", 
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -662,41 +662,41 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="variable",
-                        `title`="Variable",
+                        `name`="variable", 
+                        `title`="Variable", 
                         `type`="text"),
                     list(
-                        `name`="r2",
-                        `title`="r\u00B2",
-                        `type`="number",
+                        `name`="r2", 
+                        `title`="r\u00B2", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="p",
-                        `title`="p (unadjusted)",
-                        `type`="number",
+                        `name`="p", 
+                        `title`="p (unadjusted)", 
+                        `type`="number", 
                         `format`="zto,pvalue"),
                     list(
-                        `name`="samples",
-                        `title`="n",
+                        `name`="samples", 
+                        `title`="n", 
                         `type`="integer"),
                     list(
-                        `name`="permutations",
-                        `title`="Permutations",
+                        `name`="permutations", 
+                        `title`="Permutations", 
                         `type`="integer"),
                     list(
-                        `name`="NMDS1",
-                        `title`="NMDS1",
-                        `type`="number",
+                        `name`="NMDS1", 
+                        `title`="NMDS1", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="NMDS2",
-                        `title`="NMDS2",
-                        `type`="number",
+                        `name`="NMDS2", 
+                        `title`="NMDS2", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="NMDS3",
-                        `title`="NMDS3",
-                        `type`="number",
+                        `name`="NMDS3", 
+                        `title`="NMDS3", 
+                        `type`="number", 
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -770,23 +770,23 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="feature",
-                        `title`="Feature",
+                        `name`="feature", 
+                        `title`="Feature", 
                         `type`="text"),
                     list(
-                        `name`="NMDS1",
-                        `title`="NMDS1",
-                        `type`="number",
+                        `name`="NMDS1", 
+                        `title`="NMDS1", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="NMDS2",
-                        `title`="NMDS2",
-                        `type`="number",
+                        `name`="NMDS2", 
+                        `title`="NMDS2", 
+                        `type`="number", 
                         `format`="zto"),
                     list(
-                        `name`="NMDS3",
-                        `title`="NMDS3",
-                        `type`="number",
+                        `name`="NMDS3", 
+                        `title`="NMDS3", 
+                        `type`="number", 
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -837,12 +837,12 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="setting",
-                        `title`="Setting",
+                        `name`="setting", 
+                        `title`="Setting", 
                         `type`="text"),
                     list(
-                        `name`="value",
-                        `title`="Value",
+                        `name`="value", 
+                        `title`="Value", 
                         `type`="text")),
                 clearWith=list(
                     "vars",
@@ -869,9 +869,9 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     public = list(
         initialize = function(options, data=NULL, datasetId="", analysisId="", revision=0) {
             super$initialize(
-                package = "tofu",
+                package = "miso",
                 name = "nmds",
-                version = c(0,2,1),
+                version = c(1,0,0),
                 options = options,
                 results = nmdsResults$new(options=options),
                 data = data,
@@ -886,8 +886,8 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' nMDS
 #'
-#' Produces a non-metric multidimensional scaling ordination through
-#' vegan::metaMDS. Reports stress and convergence and can add group, feature,
+#' Produces a non-metric multidimensional scaling ordination through 
+#' vegan::metaMDS. Reports stress and convergence and can add group, feature, 
 #' environmental, and Shepard diagnostics.
 #' @param data .
 #' @param vars .
@@ -1001,3 +1001,4 @@ nmds <- function(
 
     analysis$results
 }
+

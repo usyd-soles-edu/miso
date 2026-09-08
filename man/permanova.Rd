@@ -72,8 +72,9 @@ permanova(
 \item{showCompanionPcoa}{Whether to show a descriptive PCoA based on the
 exact distance settings used by PERMANOVA.}
 
-\item{pcoaDisplayFactor}{For multifactor models, the primary or additional
-categorical model factor used to identify groups in the companion PCoA.}
+\item{pcoaDisplayFactor}{For multifactor models, choose the same primary or
+additional factor already included and retained in the fitted PERMANOVA
+model; other variables are rejected.}
 
 \item{pcoaCentroids}{Whether to draw and tabulate group centroids in the
 companion PCoA.}
@@ -85,15 +86,21 @@ centroid; spiders also show centroids.}
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
+  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
+  \code{results$tablePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
-  \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
   \code{results$companionPcoaDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
+  \code{results$companionPcoaSitesPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$companionPcoaSites} \tab \tab \tab \tab \tab a table \cr
+  \code{results$companionPcoaCentroidsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$companionPcoaCentroids} \tab \tab \tab \tab \tab a table \cr
+  \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
   \code{results$note} \tab \tab \tab \tab \tab a html \cr
+  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
@@ -104,5 +111,7 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$summary)}
 }
 \description{
-PERMANOVA
+Tests whether multivariate composition is associated with one or more 
+predictors using PERMANOVA through vegan::adonis2. Supports restricted 
+permutations, pairwise comparisons, and a descriptive companion PCoA.
 }

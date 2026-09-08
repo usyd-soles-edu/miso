@@ -1,10 +1,10 @@
 ---
 name: anosim
 title: ANOSIM
-menuGroup: tofu
+menuGroup: miso
 menuTitle: ANOSIM
 menuSubtitle: Rank-based alternative
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Tests whether within-group samples are more similar than between-group samples using rank-based ANOSIM through vegan::anosim. Includes optional pairwise comparisons and rank diagnostics.

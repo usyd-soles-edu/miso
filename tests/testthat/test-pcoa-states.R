@@ -1,5 +1,5 @@
 pcoa_small_data <- function() {
-    path <- testthat::test_path("..", "manual", "tofu-small.csv")
+    path <- testthat::test_path("..", "manual", "miso-small.csv")
     utils::read.csv(path, check.names=FALSE)
 }
 
@@ -51,7 +51,7 @@ pcoa_plot_stub <- function(groups) {
 test_that("PCoA core matches direct wcmdscale for every correction path", {
     data <- pcoa_small_data()
     vars <- pcoa_feature_names(data)
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=vars, factor=NULL, transform="none",
         distance="bray", seed=0, requireFactor=FALSE,
         distBinary=FALSE)
@@ -70,7 +70,7 @@ test_that("PCoA core matches direct wcmdscale for every correction path", {
             expectedDistance,
             k=attr(expectedDistance, "Size") - 1L,
             eig=TRUE, add=case$add, x.ret=TRUE)
-        actual <- .tofuPcoa(
+        actual <- .misoPcoa(
             prepared$dist,
             correction=case$correction,
             sqrtDist=case$sqrt)
@@ -123,11 +123,11 @@ test_that("PCoA core preserves identities and computes exact group centres", {
     data <- pcoa_small_data()[1:12, ]
     vars <- pcoa_feature_names(data)
     rownames(data) <- paste0("site_", seq_len(nrow(data)))
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=vars, factor="group", transform="none",
         distance="bray", seed=0, requireFactor=FALSE,
         distBinary=FALSE)
-    actual <- .tofuPcoa(prepared$dist, groups=prepared$group)
+    actual <- .misoPcoa(prepared$dist, groups=prepared$group)
 
     expect_identical(actual$siteNames, rownames(prepared$transformed))
     expect_identical(names(actual$groups), actual$siteNames)
@@ -140,11 +140,11 @@ test_that("PCoA core preserves identities and computes exact group centres", {
             sum(actual$groups == group))
     }
 
-    expect_true(.tofuPcoa(prepared$dist,
+    expect_true(.misoPcoa(prepared$dist,
         groups=prepared$group[-1L])$error)
     badGroups <- as.character(prepared$group)
     badGroups[[1L]] <- NA_character_
-    expect_true(.tofuPcoa(prepared$dist, groups=badGroups)$error)
+    expect_true(.misoPcoa(prepared$dist, groups=badGroups)$error)
 })
 
 test_that("PCoA preserves long, colliding, and duplicate site identities", {
@@ -155,7 +155,7 @@ test_that("PCoA preserves long, colliding, and duplicate site identities", {
         "duplicate site", "duplicate site", "short", "another")
     distance <- stats::dist(matrix)
     attr(distance, "Labels") <- labels
-    result <- .tofuPcoa(distance)
+    result <- .misoPcoa(distance)
     expect_false(result$error)
     expect_identical(result$siteNames, labels)
     expect_identical(rownames(result$points), labels)
@@ -174,49 +174,49 @@ test_that("PCoA analysis retains source rows after filtering", {
 
 test_that("PCoA core reports non-Euclidean and degenerate states honestly", {
     data <- pcoa_small_data()
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=pcoa_feature_names(data), factor=NULL,
         transform="none", distance="bray", seed=0,
         requireFactor=FALSE, distBinary=FALSE)
-    result <- .tofuPcoa(prepared$dist)
+    result <- .misoPcoa(prepared$dist)
     expect_true(any(result$negative))
     expect_true(any(grepl("negative eigenvalue", result$warnings)))
     expect_true(all(is.na(result$explained[result$negative])))
 
     nonFinite <- prepared$dist
     nonFinite[[1L]] <- NA_real_
-    expect_match(.tofuPcoa(nonFinite)$message, "non-finite")
+    expect_match(.misoPcoa(nonFinite)$message, "non-finite")
     negative <- prepared$dist
     negative[[1L]] <- -1
-    expect_match(.tofuPcoa(negative)$message, "non-negative")
+    expect_match(.misoPcoa(negative)$message, "non-negative")
     zero <- stats::as.dist(matrix(0, 4, 4))
-    expect_match(.tofuPcoa(zero)$message, "All dissimilarities are zero")
-    expect_match(.tofuPcoa(matrix(1, 2, 2))$message,
+    expect_match(.misoPcoa(zero)$message, "All dissimilarities are zero")
+    expect_match(.misoPcoa(matrix(1, 2, 2))$message,
         "prepared dissimilarity")
 
-    oneAxis <- .tofuPcoa(stats::dist(matrix(seq_len(5), ncol=1L)))
+    oneAxis <- .misoPcoa(stats::dist(matrix(seq_len(5), ncol=1L)))
     expect_false(oneAxis$error)
     expect_identical(oneAxis$positiveAxisCount, 1L)
-    expect_false(.tofuPreparePcoaPlot(oneAxis)$available)
+    expect_false(.misoPreparePcoaPlot(oneAxis)$available)
 })
 
 test_that("PCoA plot is equal-scaled, accessible, deterministic, and honest", {
     data <- pcoa_small_data()
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=pcoa_feature_names(data), factor="group",
         transform="none", distance="bray", seed=0,
         requireFactor=FALSE, distBinary=FALSE)
-    result <- .tofuPcoa(prepared$dist, groups=prepared$group)
+    result <- .misoPcoa(prepared$dist, groups=prepared$group)
 
     set.seed(781)
     before <- .Random.seed
-    plotData <- .tofuPreparePcoaPlot(
+    plotData <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=10L)
-    plot <- .tofuBuildPcoaPlot(plotData)
+    plot <- .misoBuildPcoaPlot(plotData)
     expect_identical(.Random.seed, before)
     expect_s3_class(plot, "ggplot")
     expect_identical(plot$coordinates$ratio, 1)
-    expect_identical(plot$theme, .tofuPlotTheme())
+    expect_identical(plot$theme, .misoPlotTheme())
     expect_identical(plotData$displayed, 10L)
     expect_identical(plotData$total, nrow(result$points))
     expect_identical(plotData$sites$centroid1,
@@ -234,17 +234,17 @@ test_that("PCoA plot is equal-scaled, accessible, deterministic, and honest", {
     expect_true("colour" %in% scaleAesthetics)
     expect_true("shape" %in% scaleAesthetics)
 
-    ungrouped <- .tofuPcoa(prepared$dist)
-    ungroupedData <- .tofuPreparePcoaPlot(
+    ungrouped <- .misoPcoa(prepared$dist)
+    ungroupedData <- .misoPreparePcoaPlot(
         ungrouped, showCentroids=TRUE, showSpiders=TRUE)
     expect_false(ungroupedData$grouped)
     expect_false(ungroupedData$showCentroids)
     expect_false(ungroupedData$showSpiders)
-    expect_s3_class(.tofuBuildPcoaPlot(ungroupedData), "ggplot")
+    expect_s3_class(.misoBuildPcoaPlot(ungroupedData), "ggplot")
 
     set.seed(782)
     beforeCore <- .Random.seed
-    invisible(.tofuPcoa(prepared$dist, groups=prepared$group))
+    invisible(.misoPcoa(prepared$dist, groups=prepared$group))
     expect_identical(.Random.seed, beforeCore)
 })
 
@@ -254,7 +254,7 @@ test_that("PCoA capped selection is exact, balanced, and identity-stable", {
 
     set.seed(783)
     before <- .Random.seed
-    selected <- .tofuPcoaBalancedIndices(
+    selected <- .misoPcoaBalancedIndices(
         groups, maxPoints=12L, identities=identities)
     expect_identical(.Random.seed, before)
     expect_length(selected, 12L)
@@ -267,14 +267,14 @@ test_that("PCoA capped selection is exact, balanced, and identity-stable", {
     expect_identical(attr(selected, "omittedGroups"), character())
 
     reordered <- rev(seq_along(groups))
-    selectedReordered <- .tofuPcoaBalancedIndices(
+    selectedReordered <- .misoPcoaBalancedIndices(
         groups[reordered], maxPoints=12L,
         identities=identities[reordered])
     expect_identical(
         identities[selected],
         identities[reordered][selectedReordered])
 
-    constrained <- .tofuPcoaBalancedIndices(
+    constrained <- .misoPcoaBalancedIndices(
         groups, maxPoints=3L, identities=identities)
     expect_length(constrained, 3L)
     expect_identical(attr(constrained, "displayedGroups"),
@@ -290,9 +290,9 @@ test_that("PCoA cap handles more singleton groups than the point budget", {
 
     set.seed(784)
     before <- .Random.seed
-    first <- .tofuPreparePcoaPlot(
+    first <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=1000L)
-    second <- .tofuPreparePcoaPlot(
+    second <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=1000L)
     expect_identical(.Random.seed, before)
     expect_identical(first, second)
@@ -308,12 +308,12 @@ test_that("PCoA cap handles more singleton groups than the point budget", {
     expect_null(first$centroids)
     expect_false(any(c("centroid1", "centroid2") %in% names(first$sites)))
 
-    description <- paste(.tofuPcoaSamplingDisclosure(first), collapse=" ")
+    description <- paste(.misoPcoaSamplingDisclosure(first), collapse=" ")
     expect_match(description, "1000 of 1001 sites are shown", fixed=TRUE)
     expect_match(description, "1 is omitted from the image", fixed=TRUE)
     expect_match(description, "1 group is omitted from the image", fixed=TRUE)
 
-    plot <- .tofuBuildPcoaPlot(first)
+    plot <- .misoBuildPcoaPlot(first)
     expect_s3_class(plot, "ggplot")
     geomClasses <- vapply(plot$layers,
         function(layer) class(layer$geom)[[1L]], character(1))
@@ -323,7 +323,7 @@ test_that("PCoA cap handles more singleton groups than the point budget", {
 test_that("PCoA capped grouped overlays cover only represented groups", {
     groups <- rep(c("A", "B", "C", "D", "E"), each=3L)
     result <- pcoa_plot_stub(groups)
-    plotData <- .tofuPreparePcoaPlot(
+    plotData <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=3L)
 
     expect_false(plotData$neutral)
@@ -337,10 +337,10 @@ test_that("PCoA capped grouped overlays cover only represented groups", {
     expect_identical(plotData$sites$centroid2,
         unname(result$centroids[expectedRows, 2L]))
     expect_match(
-        paste(.tofuPcoaSamplingDisclosure(plotData), collapse=" "),
+        paste(.misoPcoaSamplingDisclosure(plotData), collapse=" "),
         "2 groups are omitted from the image", fixed=TRUE)
 
-    plot <- .tofuBuildPcoaPlot(plotData)
+    plot <- .misoBuildPcoaPlot(plotData)
     expect_s3_class(plot, "ggplot")
     geomClasses <- vapply(plot$layers,
         function(layer) class(layer$geom)[[1L]], character(1))
@@ -350,10 +350,10 @@ test_that("PCoA capped grouped overlays cover only represented groups", {
 test_that("PCoA uses neutral styling beyond the supported group palette", {
     values <- cbind(seq_len(65), (seq_len(65)^2) %% 17)
     groups <- factor(paste0("group_", sprintf("%02d", seq_len(65))))
-    result <- .tofuPcoa(stats::dist(values), groups=groups)
-    plotData <- .tofuPreparePcoaPlot(
+    result <- .misoPcoa(stats::dist(values), groups=groups)
+    plotData <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE)
-    plot <- .tofuBuildPcoaPlot(plotData)
+    plot <- .misoBuildPcoaPlot(plotData)
     expect_true(plotData$neutral)
     expect_false(plotData$showCentroids)
     expect_false(plotData$showSpiders)
@@ -394,7 +394,7 @@ test_that("PCoA analysis hides empty output and clears stale output", {
         identical(result$eigenvalues$getCell(
             rowKey=as.character(i), col="explained")$value, "")
     }, logical(1))))
-    expect_match(tofu_squish_result(result$ordinationDescription),
+    expect_match(miso_squish_result(result$ordinationDescription),
         "Maps the main dimensions of dissimilarity among samples")
 
     varsOption <- analysis$options$option("vars")
@@ -421,7 +421,7 @@ test_that("PCoA one-axis analysis retains tables without a blank image", {
     expect_true(result$sites$visible)
     expect_true(result$eigenvalues$visible)
     expect_true(all(is.na(result$sites$asDF$PCoA2)))
-    expect_match(tofu_squish_result(result$ordinationDescription),
+    expect_match(miso_squish_result(result$ordinationDescription),
         "two-dimensional plot is unavailable", ignore.case=TRUE)
     settings <- stats::setNames(
         result$settings$asDF$value, result$settings$asDF$setting)
@@ -448,9 +448,9 @@ test_that("PCoA plot options do not change numerical results", {
 })
 
 test_that("PCoA schema and menu follow the approved student contract", {
-    analysis <- yaml::read_yaml(tofu_fixture_path("jamovi", "pcoa.a.yaml"))
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "pcoa.u.yaml"))
-    results <- yaml::read_yaml(tofu_fixture_path("jamovi", "pcoa.r.yaml"))
+    analysis <- yaml::read_yaml(miso_fixture_path("jamovi", "pcoa.a.yaml"))
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "pcoa.u.yaml"))
+    results <- yaml::read_yaml(miso_fixture_path("jamovi", "pcoa.r.yaml"))
     byName <- setNames(analysis$options,
         vapply(analysis$options, `[[`, character(1), "name"))
     optionOrder <- vapply(analysis$options, `[[`, character(1), "name")
@@ -490,7 +490,7 @@ test_that("PCoA schema and menu follow the approved student contract", {
     expect_identical(image$height, 500L)
     expect_identical(image$renderFun, ".plotPcoa")
 
-    module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
+    module <- yaml::read_yaml(miso_fixture_path("jamovi", "0000.yaml"))
     expect_match(module$description, "using vegan and ggplot2", fixed=TRUE)
     expect_false(grepl("base R", module$description, fixed=TRUE))
     names <- vapply(module$analyses, `[[`, character(1), "name")
@@ -502,7 +502,7 @@ test_that("PCoA schema and menu follow the approved student contract", {
     if (file.exists(namespacePath))
         expect_true("export(pcoa)" %in% readLines(namespacePath, warn=FALSE))
 
-    js <- readLines(tofu_fixture_path("jamovi", "js", "pcoa.js"),
+    js <- readLines(miso_fixture_path("jamovi", "js", "pcoa.js"),
         warn=FALSE)
     expect_match(paste(js, collapse="\n"),
         "showCentroids\\.setEnabled\\(grouped\\)")
@@ -519,7 +519,7 @@ test_that("PCoA grouped and ungrouped plots render to PNG", {
             factor=factorName,
             showCentroids=!is.null(factorName),
             showSpiders=!is.null(factorName))
-        plot <- .tofuBuildPcoaPlot(
+        plot <- .misoBuildPcoaPlot(
             analysis$.__enclos_env__$private$.state$plotData)
         path <- tempfile(fileext=".png")
         on.exit(unlink(path), add=TRUE)

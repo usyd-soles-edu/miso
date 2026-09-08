@@ -36,7 +36,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
                 factor=NULL,
@@ -107,7 +107,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.populateMembership()
             private$.setWarnings(private$.state$warnings)
             private$.populateDescription()
-            self$results$interpretation$setContent(tofu_html_block(paste(
+            self$results$interpretation$setContent(miso_html_block(paste(
                 "Merge height shows dissimilarity.",
                 "Branches can rotate around a merge without changing the clustering."),
                 title="How to read this dendrogram"))
@@ -116,13 +116,13 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .resetResults = function() {
             self$results$guidance$setContent("")
-            tofu_clear_table(self$results$summary)
+            miso_clear_table(self$results$summary)
             self$results$warnings$setContent("")
             self$results$dendrogramDescription$setContent("")
-            tofu_clear_table(self$results$dendrogramStructure)
-            tofu_clear_table(self$results$membership)
+            miso_clear_table(self$results$dendrogramStructure)
+            miso_clear_table(self$results$membership)
             self$results$interpretation$setContent("")
-            tofu_clear_table(self$results$settings)
+            miso_clear_table(self$results$settings)
             for (name in c(
                     "summaryPurpose", "dendrogramStructurePurpose",
                     "membershipPurpose", "settingsPurpose"))
@@ -139,7 +139,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -157,7 +157,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
+            miso_populate_purposes(self$results, list(
                 summaryPurpose=c(
                     "Data summary",
                     "Summarises included samples and features, including any exclusions."),
@@ -176,14 +176,14 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
             if (length(warnings) == 0L)
                 return()
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
         .sampleLabels = function(prep) {
             rowLabels <- as.character(prep$rowIndex)
             selected <- self$options$labels
-            if (tofu_is_missing_var(selected))
+            if (miso_is_missing_var(selected))
                 return(list(
                     labels=rowLabels,
                     source="Data row numbers",
@@ -333,7 +333,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescription = function() {
-            self$results$dendrogramDescription$setContent(tofu_html_block(
+            self$results$dendrogramDescription$setContent(miso_html_block(
                 "Shows how samples merge into clusters as dissimilarity increases.",
                 ariaLabel="About the cluster dendrogram",
                 title="Group-average cluster dendrogram"))
@@ -410,7 +410,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         mergeStep=as.integer(mergeStep),
                         leftChild=childLabel(children[[1L]]),
                         rightChild=childLabel(children[[2L]]),
-                        height=tofu_num_or_na(fit$height[[mergeStep]])))
+                        height=miso_num_or_na(fit$height[[mergeStep]])))
                 rowKey <- rowKey + 1L
             }
         },
@@ -538,7 +538,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 x=nodeX,
                 y=nodeHeight,
                 stringsAsFactors=FALSE)
-            labelMap <- .tofuUniqueShortLabels(labels, width=24L)
+            labelMap <- .misoUniqueShortLabels(labels, width=24L)
             leaf <- data.frame(
                 sampleIndex=fit$order,
                 x=seq_len(n),
@@ -570,7 +570,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             else length(unique(membership))
             if (clusterCount > 0L && clusterCount <= 64L) {
                 keys <- as.character(sort(unique(leaf$cluster)))
-                aesthetics <- .tofuGroupAesthetics(keys)
+                aesthetics <- .misoGroupAesthetics(keys)
                 plot <- plot + ggplot2::geom_point(data = leaf, ggplot2::aes(x = x, y = y, colour = clusterKey,
                     shape = clusterKey), size = 2.2, stroke = 0.55) + ggplot2::scale_colour_manual(name = "Cluster",
                     values = aesthetics$colour[keys]) + ggplot2::scale_shape_manual(name = "Cluster", values = aesthetics$shape[keys])
@@ -590,7 +590,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 leaf$x
             else NULL, labels = axisLabels, expand = ggplot2::expansion(mult = c(0.015, 0.015)), guide = ggplot2::guide_axis(check.overlap = FALSE)) +
                 ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.02, 0.06))) + ggplot2::labs(x = "Samples",
-                y = paste(private$.distanceLabel(self$options$distance), "dissimilarity")) + .tofuPlotTheme() +
+                y = paste(private$.distanceLabel(self$options$distance), "dissimilarity")) + .misoPlotTheme() +
                 ggplot2::theme(axis.text.x = if (isTRUE(showLabels))
                     ggplot2::element_text(angle = 55, hjust = 1, vjust = 1, size = 10)
                 else ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank(),

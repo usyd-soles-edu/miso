@@ -11,7 +11,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state <- list(prep=NULL, pcoa=NULL, plotData=NULL)
             private$.resetResults()
 
-            requestedVars <- tofu_clean_vars(self$options$vars)
+            requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) == 0L) {
                 private$.showGuidance(
                     paste(
@@ -24,7 +24,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             analysisData <- self$data
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=analysisData,
                 vars=requestedVars,
                 factor=self$options$factor,
@@ -38,7 +38,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            fit <- .tofuPcoa(
+            fit <- .misoPcoa(
                 prep$dist,
                 correction=self$options$correction,
                 sqrtDist=self$options$sqrtDist,
@@ -50,7 +50,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             private$.state$prep <- prep
             private$.state$pcoa <- fit
-            private$.state$plotData <- .tofuPreparePcoaPlot(
+            private$.state$plotData <- .misoPreparePcoaPlot(
                 fit,
                 showCentroids=self$options$showCentroids,
                 showSpiders=self$options$showSpiders)
@@ -80,7 +80,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             for (name in c("summary", "sites", "centroids", "eigenvalues",
                     "settings")) {
                 table <- self$results[[name]]
-                tofu_clear_table(table)
+                miso_clear_table(table)
                 table$.__enclos_env__$private$.rowNames <- character()
             }
             for (name in c(
@@ -94,7 +94,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -118,7 +118,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
+            miso_populate_purposes(self$results, list(
                 summaryPurpose=c(
                     "Data summary",
                     "Summarises included samples and features, including any exclusions."),
@@ -140,7 +140,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
             if (length(warnings) == 0L)
                 return()
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -201,8 +201,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     site=fit$siteNames[[i]],
                     sourceRow=as.integer(prep$rowIndex[[i]]),
                     group=groups[[i]],
-                    PCoA1=tofu_num_or_na(axis1[[i]]),
-                    PCoA2=tofu_num_or_na(axis2[[i]])))
+                    PCoA1=miso_num_or_na(axis1[[i]]),
+                    PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -220,8 +220,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.addRow(self$results$centroids, list(
                     group=group,
                     n=fit$groupSizes[[group]],
-                    PCoA1=tofu_num_or_na(fit$centroids[i, 1L]),
-                    PCoA2=tofu_num_or_na(axis2[[i]])))
+                    PCoA1=miso_num_or_na(fit$centroids[i, 1L]),
+                    PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -232,10 +232,10 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     fit$negative[[i]]) "Negative" else "Zero"
                 private$.addRow(self$results$eigenvalues, list(
                     axis=paste0("PCoA", i),
-                    eigenvalue=tofu_num_or_na(fit$eigenvalues[[i]]),
+                    eigenvalue=miso_num_or_na(fit$eigenvalues[[i]]),
                     sign=sign,
                     explained=if (fit$positive[[i]])
-                        tofu_num_or_na(fit$explained[[i]])
+                        miso_num_or_na(fit$explained[[i]])
                     else
                         ""))
             }
@@ -249,7 +249,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .populateDescription = function() {
             plotData <- private$.state$plotData
             if (!isTRUE(plotData$available)) {
-                self$results$ordinationDescription$setContent(tofu_html_block(
+                self$results$ordinationDescription$setContent(miso_html_block(
                     paste(
                         "A two-dimensional plot is unavailable.",
                         "Coordinate and eigenvalue tables retain the fitted result."),
@@ -257,14 +257,14 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     title="Principal coordinates ordination"))
                 return()
             }
-            self$results$ordinationDescription$setContent(tofu_html_block(
+            self$results$ordinationDescription$setContent(miso_html_block(
                 "Maps the main dimensions of dissimilarity among samples.",
                 ariaLabel="About PCoA ordination",
                 title="Principal coordinates ordination"))
         },
 
         .populateInterpretation = function() {
-            self$results$interpretation$setContent(tofu_html_block(paste(
+            self$results$interpretation$setContent(miso_html_block(paste(
                 "Closer points are more similar.",
                 "Axis labels report the variation represented by each displayed coordinate."),
                 title="How to read this ordination"))
@@ -353,7 +353,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotPcoa = function(image, ...) {
-            plot <- .tofuBuildPcoaPlot(private$.state$plotData)
+            plot <- .misoBuildPcoaPlot(private$.state$plotData)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

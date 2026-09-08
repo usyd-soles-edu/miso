@@ -1,10 +1,10 @@
 ---
 name: simper
 title: SIMPER
-menuGroup: tofu
+menuGroup: miso
 menuTitle: SIMPER
 menuSubtitle: Feature contributions
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Describes how individual features contribute to average Bray-Curtis dissimilarity between groups using vegan::simper. Optional permutation results are exploratory rather than an overall group test.

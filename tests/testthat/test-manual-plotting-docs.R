@@ -121,9 +121,9 @@ test_that("checked-in PCoA references use direct vegan checkpoints", {
             expected_metrics)
     expect_true(all(grepl("vegan::wcmdscale|complete.cases",
         pcoa$reference_function)))
-    expect_false(any(grepl("\\.tofuPcoa", pcoa$reference_function)))
+    expect_false(any(grepl("\\.misoPcoa", pcoa$reference_function)))
 
-    for (dataset in c("tofu-small.csv", "tofu-large.csv")) {
+    for (dataset in c("miso-small.csv", "miso-large.csv")) {
         data <- read.csv(manual_path(dataset), stringsAsFactors=FALSE,
             check.names=FALSE)
         features <- data[grep("^feature_[0-9]+$", names(data), value=TRUE)]
@@ -150,7 +150,7 @@ test_that("checked-in PCoA references use direct vegan checkpoints", {
             "negative eigenvalue count"=sum(negative),
             "negative eigenvalue sum"=sum(eigenvalues[negative]))
 
-        scenario <- if (identical(dataset, "tofu-small.csv")) {
+        scenario <- if (identical(dataset, "miso-small.csv")) {
             "pcoa-small-baseline"
         } else {
             "pcoa-large-baseline"

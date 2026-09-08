@@ -44,10 +44,10 @@ cluster_private <- function(analysis) {
 }
 
 test_that("cluster schema exposes a compact plots workflow", {
-    analysis <- yaml::read_yaml(tofu_fixture_path("jamovi", "cluster.a.yaml"))
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "cluster.u.yaml"))
+    analysis <- yaml::read_yaml(miso_fixture_path("jamovi", "cluster.a.yaml"))
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "cluster.u.yaml"))
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "cluster.r.yaml"))$items
+        miso_fixture_path("jamovi", "cluster.r.yaml"))$items
     options <- analysis$options
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     result_by_name <- setNames(
@@ -73,7 +73,7 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_equal(by_name$cutHeight$default, .5)
     expect_equal(by_name$cutHeight$min, 0)
     expect_identical(by_name$showLabels$type, "String")
-    expect_identical(by_name$showLabels$default, "__tofu_unset__")
+    expect_identical(by_name$showLabels$default, "__miso_unset__")
     expect_true(by_name$showLabels$hidden)
     expect_null(cluster_yaml_node(ui, "showLabels"))
 
@@ -107,7 +107,7 @@ test_that("cluster schema exposes a compact plots workflow", {
 
 test_that("cluster JS enables only the relevant cut control", {
     js <- paste(
-        readLines(tofu_fixture_path("jamovi", "js", "cluster.js"), warn=FALSE),
+        readLines(miso_fixture_path("jamovi", "js", "cluster.js"), warn=FALSE),
         collapse="\n")
     expect_match(js, "ui.cutMode.setEnabled(defining)", fixed=TRUE)
     expect_match(
@@ -156,10 +156,10 @@ test_that("default cluster output is explicitly uncut", {
     expect_null(private$.state$membership)
     expect_null(private$.state$cutLine)
     expect_match(
-        tofu_squish_result(result$dendrogramDescription),
+        miso_squish_result(result$dendrogramDescription),
         "merge into clusters as dissimilarity increases")
     expect_match(
-        tofu_squish_result(result$interpretation),
+        miso_squish_result(result$interpretation),
         "Merge height shows dissimilarity")
     plot <- private$.buildDendrogram()
     expect_s3_class(plot, "ggplot")
@@ -312,8 +312,8 @@ test_that("new analyses retain automatic labels above and below the threshold", 
         vars=paste0("feature_0", 1:4),
         labels="sample")
 
-    expect_identical(small$options$showLabels, "__tofu_unset__")
-    expect_identical(large$options$showLabels, "__tofu_unset__")
+    expect_identical(small$options$showLabels, "__miso_unset__")
+    expect_identical(large$options$showLabels, "__miso_unset__")
     expect_true(cluster_private(small)$.state$showLabels)
     expect_false(cluster_private(large)$.state$showLabels)
     expect_identical(
@@ -324,7 +324,7 @@ test_that("new analyses retain automatic labels above and below the threshold", 
         "current")
     expect_false(grepl(
         "inherited",
-        tofu_squish_result(small$results$dendrogramDescription)))
+        miso_squish_result(small$results$dendrogramDescription)))
 })
 
 test_that("current sample-label choices supersede legacy values", {
@@ -345,7 +345,7 @@ test_that("current sample-label choices supersede legacy values", {
         expect_identical(private$.state$showLabels, case$shown)
         expect_false(grepl(
             "inherited",
-            tofu_squish_result(
+            miso_squish_result(
                 analysis$results$dendrogramDescription)))
     }
 })
@@ -639,7 +639,7 @@ test_that("invalid cut settings clear membership without losing the valid dendro
     expect_null(cluster_private(analysis)$.state$membership)
     expect_null(cluster_private(analysis)$.state$cutLine)
     expect_match(
-        tofu_squish_result(analysis$results$warnings),
+        miso_squish_result(analysis$results$warnings),
         "whole number from 2 to 18")
 
     numberOption$.__enclos_env__$private$.value <- 4
@@ -656,7 +656,7 @@ test_that("invalid cut settings clear membership without losing the valid dendro
     expect_false(analysis$results$membership$visible)
     expect_equal(length(analysis$results$membership$rowKeys), 0L)
     expect_match(
-        tofu_squish_result(analysis$results$warnings),
+        miso_squish_result(analysis$results$warnings),
         "below")
 })
 
@@ -683,7 +683,7 @@ test_that("full labels are preserved while plot labels are collision safe", {
     expect_true(all(nchar(plotData$leaf$plotLabel) <= 24L))
     expect_length(unique(plotData$leaf$plotLabel), nrow(data))
     expect_match(
-        tofu_squish_result(analysis$results$warnings),
+        miso_squish_result(analysis$results$warnings),
         "full labels are retained")
 })
 
@@ -701,8 +701,8 @@ test_that("missing and duplicate labels never change clustering", {
 
     expect_identical(labelled_private$.state$fit$merge, unlabelled_private$.state$fit$merge)
     expect_equal(labelled_private$.state$fit$height, unlabelled_private$.state$fit$height)
-    expect_match(tofu_squish_result(labelled$results$warnings), "missing sample label")
-    expect_match(tofu_squish_result(labelled$results$warnings), "Duplicate sample labels")
+    expect_match(miso_squish_result(labelled$results$warnings), "missing sample label")
+    expect_match(miso_squish_result(labelled$results$warnings), "Duplicate sample labels")
     expect_true(any(grepl("\\[row [23]\\]", labelled_private$.state$labels)))
     expect_true("Row 4" %in% labelled_private$.state$labels)
 })
@@ -742,7 +742,7 @@ test_that("nine clusters add visible numbers when shapes begin to repeat", {
         sort(unique(as.integer(private$.state$membership))),
         seq_len(9L))
 
-    aesthetics <- .tofuGroupAesthetics(as.character(seq_len(9L)))
+    aesthetics <- .misoGroupAesthetics(as.character(seq_len(9L)))
     expect_lt(length(unique(unname(aesthetics$shape))), 9L)
     plot <- private$.buildDendrogram()
     geom_classes <- vapply(
@@ -861,7 +861,7 @@ test_that("cluster source contracts and fixtures stay byte identical", {
         c("jamovi/js/cluster.js", "jamovi/js/cluster.js"))
     for (pair in pairs) {
         source <- readBin(file.path(root, pair[[1L]]), "raw", n=1e6)
-        fixture <- readBin(tofu_fixture_path(pair[[2L]]), "raw", n=1e6)
+        fixture <- readBin(miso_fixture_path(pair[[2L]]), "raw", n=1e6)
         expect_identical(source, fixture, info=pair[[1L]])
     }
 
@@ -869,7 +869,7 @@ test_that("cluster source contracts and fixtures stay byte identical", {
         readLines(file.path(root, "R", "cluster.h.R"), warn=FALSE),
         collapse="\n")
     expect_match(header, "sampleLabels = \"auto\"", fixed=TRUE)
-    expect_match(header, "showLabels = \"__tofu_unset__\"", fixed=TRUE)
+    expect_match(header, "showLabels = \"__miso_unset__\"", fixed=TRUE)
     expect_match(header, "defineClusters = FALSE", fixed=TRUE)
     expect_match(header, "numberClusters = 3", fixed=TRUE)
     expect_match(header, "dendrogramDescription", fixed=TRUE)

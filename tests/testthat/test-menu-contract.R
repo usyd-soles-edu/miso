@@ -1,5 +1,5 @@
 test_that("Multivariate Inference, Similarity and Ordination (MISO) uses one flat task-labelled analysis menu", {
-    module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
+    module <- yaml::read_yaml(miso_fixture_path("jamovi", "0000.yaml"))
     analyses <- module$analyses
 
     expect_identical(
@@ -26,7 +26,7 @@ test_that("Multivariate Inference, Similarity and Ordination (MISO) uses one fla
 })
 
 test_that("every library analysis has a public description", {
-    module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
+    module <- yaml::read_yaml(miso_fixture_path("jamovi", "0000.yaml"))
 
     descriptions <- vapply(
         module$analyses,

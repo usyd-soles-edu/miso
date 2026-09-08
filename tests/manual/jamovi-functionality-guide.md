@@ -1,4 +1,4 @@
-# Testing tofu in jamovi
+# Testing Multivariate Inference, Similarity and Ordination (MISO) in jamovi
 
 This guide tests the module you see and use in jamovi. It is organised by analysis, so if you changed PERMANOVA you can go directly to **Test PERMANOVA**. The tests check that controls are wired correctly, results render, warnings are useful, and key values agree with direct calls to `vegan`.
 
@@ -8,9 +8,9 @@ A test passes when its output matches the stated reference. It does **not** pass
 
 Do this before trusting any jamovi result:
 
-1. If tofu is already installed, open jamovi, select **Modules** in the top-right, open the installed-modules view, and remove **tofu**.
+1. If Multivariate Inference, Similarity and Ordination (MISO) is already installed, open jamovi, select **Modules** in the top-right, open the installed-modules view, and remove **Multivariate Inference, Similarity and Ordination (MISO)**.
 2. Fully quit jamovi.
-3. In a terminal, change to the tofu repository and confirm the path:
+3. In a terminal, change to the Multivariate Inference, Similarity and Ordination (MISO) repository and confirm the path:
 
    ```bash
    pwd
@@ -22,16 +22,16 @@ Do this before trusting any jamovi result:
    R -q -e 'jmvtools::install(pkg = ".")'
    ```
 
-5. Relaunch jamovi. Open **Analyses → tofu** and confirm that seven items are present: PERMANOVA, ANOSIM, PERMDISP, SIMPER, nMDS, Cluster analysis, and PCoA.
+5. Relaunch jamovi. Open **Analyses → Multivariate Inference, Similarity and Ordination (MISO)** and confirm that seven items are present: PERMANOVA, ANOSIM, PERMDISP, SIMPER, nMDS, Cluster analysis, and PCoA.
 6. Open PERMANOVA and confirm **Plots → Show companion PCoA** is available. Open PERMDISP and confirm **Distance-to-centre diagnostic** is selected by default. Open Cluster analysis and confirm **Define clusters** is optional. Open PCoA and confirm it includes **Feature variables (required)**, **Grouping variable (optional)**, **Plots**, and **Advanced corrections**.
 
-Record the operating system plus the jamovi and tofu versions with your test notes. The version alone is not proof that the new build loaded because two local builds may share a version number. If the menu or controls do not match this guide, remove tofu, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
+Record the operating system plus the jamovi and Multivariate Inference, Similarity and Ordination (MISO) versions with your test notes. The version alone is not proof that the new build loaded because two local builds may share a version number. If the menu or controls do not match this guide, remove the Multivariate Inference, Similarity and Ordination (MISO) module, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
 
 ### Choose a test scope
 
 | Scope | Use it when | Run |
 |---|---|---|
-| Quick card | You changed one analysis | That analysis with `tofu-small.csv` |
+| Quick card | You changed one analysis | That analysis with `miso-small.csv` |
 | Functionality regression | You changed its controls or results | Its small-data quick card, advanced checks, and 199-permutation large-data check |
 | Full release regression | Shared preprocessing changed or a release is being prepared | All quick cards, advanced and negative checks, then the 999-permutation large-data robustness pass |
 
@@ -41,16 +41,16 @@ The 199- and 999-permutation large-data checks are alternative scopes. You do no
 
 The manual-test files are:
 
-- [`tofu-small.csv`](tofu-small.csv): 24 samples and 8 abundance features; use this for readable correctness checks.
-- [`tofu-large.csv`](tofu-large.csv): 360 samples and 48 independently generated features; use this as a second correctness and robustness check.
-- [`tofu-invalid.csv`](tofu-invalid.csv): dedicated bad-input cases; use it only for the negative checks.
+- [`miso-small.csv`](miso-small.csv): 24 samples and 8 abundance features; use this for readable correctness checks.
+- [`miso-large.csv`](miso-large.csv): 360 samples and 48 independently generated features; use this as a second correctness and robustness check.
+- [`miso-invalid.csv`](miso-invalid.csv): dedicated bad-input cases; use it only for the negative checks.
 - [`reference-results.csv`](reference-results.csv): full-precision audit values behind the rounded checkpoints below.
-- [`tofu-small-baselines.omv`](workbooks/tofu-small-baselines.omv): the small dataset with PERMANOVA, ANOSIM, PERMDISP, SIMPER, and nMDS configured.
-- [`tofu-large-baselines.omv`](workbooks/tofu-large-baselines.omv): the large dataset with PERMANOVA, ANOSIM, PERMDISP, SIMPER, and nMDS configured.
+- [`miso-small-baselines.omv`](workbooks/miso-small-baselines.omv): the small dataset with PERMANOVA, ANOSIM, PERMDISP, SIMPER, and nMDS configured.
+- [`miso-large-baselines.omv`](workbooks/miso-large-baselines.omv): the large dataset with PERMANOVA, ANOSIM, PERMDISP, SIMPER, and nMDS configured.
 
 To open a file, select **File (☰) → Open → This PC → Browse**, navigate to `tests/manual`, and select the CSV.
 
-For a faster repeat run, open one of the `.omv` workbooks instead. Install the current tofu build first, then force each saved analysis to recalculate by changing a documented control and restoring it. Do not judge a new build from cached workbook results. Cluster analysis and PCoA are not saved in these workbooks, so create them from the CSV. These repository-only workbooks are excluded from the installed module.
+For a faster repeat run, open one of the `.omv` workbooks instead. Install the current Multivariate Inference, Similarity and Ordination (MISO) build first, then force each saved analysis to recalculate by changing a documented control and restoring it. Do not judge a new build from cached workbook results. Cluster analysis and PCoA are not saved in these workbooks, so create them from the CSV. These repository-only workbooks are excluded from the installed module.
 
 Before analysing either clean dataset, open each column's **Setup** and confirm:
 
@@ -65,7 +65,7 @@ To assign one variable, drag it into the named target box, or select it and use 
 
 jamovi recalculates automatically; there is no **Run** button. Wait until the spinner or progress message disappears and all named result sections have appeared. If you edit test data, reopen the clean CSV before starting another card.
 
-### What tofu currently supports
+### What Multivariate Inference, Similarity and Ordination (MISO) currently supports
 
 This table describes current computation, including controls that are visible but limited or ignored.
 
@@ -80,14 +80,14 @@ This table describes current computation, including controls that are visible bu
 | Pairwise output | Optional | Optional | Optional | No | No | Group contrasts | No |
 | Main plots | Optional companion PCoA | Ranked-dissimilarity diagnostic | Distance-to-centre diagnostic; optional ordination | Ordination and Shepard diagnostic | Dendrogram; optional cut | Separate contribution plots; optional heatmap | Principal coordinates ordination |
 
-Enabling **Parallel processing** can show that the option does not alter results or cause an error. It cannot prove that worker processes ran, because tofu may silently fall back to serial execution.
+Enabling **Parallel processing** can show that the option does not alter results or cause an error. It cannot prove that worker processes ran, because the module may silently fall back to serial execution.
 
 ### Test PERMANOVA
 
 **What this validates:** the student workflow, state-specific guidance, multivariate group comparison through `vegan::adonis2`, conditional Pairwise output, truthful permutation restrictions, shared preprocessing, and the optional descriptive PCoA.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → PERMANOVA — Test group differences**.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PERMANOVA — Test group differences**.
 3. Before assigning anything, confirm that **Getting started** says to add numeric Feature variables and one categorical Grouping variable. No empty result table should appear.
 4. Move `feature_01`–`feature_08` to **Feature variables (required)**. Confirm that **Action needed** now asks for a Grouping variable and that no result table appears.
 5. Move `group` to **Grouping variable (required)**.
@@ -132,7 +132,7 @@ Pass when **Data Summary**, **PERMANOVA Table**, **How to read these results**, 
 
 </details>
 
-For the large-data confirmation, open `tofu-large.csv`, assign `feature_01`–`feature_48`, repeat the baseline with **199 permutations**, and expect pseudo-F approximately **116.1245**, R² approximately **0.3941**, and p **.005**.
+For the large-data confirmation, open `miso-large.csv`, assign `feature_01`–`feature_48`, repeat the baseline with **199 permutations**, and expect pseudo-F approximately **116.1245**, R² approximately **0.3941**, and p **.005**.
 
 If the analysis fails, first confirm the feature columns are numeric, `group` is nominal, **Free** was selected unless a real block was assigned, and the newly built module is loaded.
 
@@ -140,8 +140,8 @@ If the analysis fails, first confirm the feature columns are numeric, `group` is
 
 **What this validates:** the student workflow, explicit incomplete states, global rank-based comparison, optional pairwise contrasts, and one truthful permutation design shared by both.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → ANOSIM — Rank-based alternative**.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → ANOSIM — Rank-based alternative**.
 3. Before assigning anything, confirm that **Getting started** explains ANOSIM and names both required steps. No empty result table should appear.
 4. Move `feature_01`–`feature_08` to **Feature variables (required)**. Confirm that **Action needed** asks for a Grouping variable and that no result table appears.
 5. Move `group` to **Grouping variable (required)**.
@@ -174,14 +174,14 @@ Pass when **Data Summary**, **Global ANOSIM**, **Ranked dissimilarities by pair 
 
 </details>
 
-For `tofu-large.csv`, assign all 48 features and use **199 permutations**. Expect Global R approximately **0.8289** and Permutation p **.005**. Then select Pairwise and expect adjusted p **.015** for all three contrasts, with R approximately 0.9852, 0.7891, and 0.8187 for A vs B, A vs C, and B vs C respectively.
+For `miso-large.csv`, assign all 48 features and use **199 permutations**. Expect Global R approximately **0.8289** and Permutation p **.005**. Then select Pairwise and expect adjusted p **.015** for all three contrasts, with R approximately 0.9852, 0.7891, and 0.8187 for A vs B, A vs C, and B vs C respectively.
 
 ### Test PERMDISP
 
 **What this validates:** the required-input guidance, distances to group centres, the dispersion permutation test, its accessible distribution summary and plot, and conditional pairwise output.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → PERMDISP — Check group dispersion**. Before assigning variables, only **Getting started** should appear in the report.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PERMDISP — Check group dispersion**. Before assigning variables, only **Getting started** should appear in the report.
 3. Move `feature_01`–`feature_08` to **Feature variables (required)** and `group` to **Grouping variable (required)**.
 4. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, **Group centre: Median**, and clear **Pairwise dispersion comparisons**. **P-value adjustment** should be disabled.
 5. Leave **Advanced options** at its defaults: Binary off, Square-root distances off, Additive constant None, and Bias adjustment off.
@@ -215,14 +215,14 @@ Pass when **Data Summary**, **Distances to Group Centre**, **Dispersion Test**, 
 
 </details>
 
-For `tofu-large.csv`, use all 48 features and **199 permutations**. Expect F approximately **372.4867**, p **.005**, and mean distances A/B/C approximately **0.1583 / 0.1822 / 0.2472**.
+For `miso-large.csv`, use all 48 features and **199 permutations**. Expect F approximately **372.4867**, p **.005**, and mean distances A/B/C approximately **0.1583 / 0.1822 / 0.2472**.
 
 ### Test nMDS
 
 **What this validates:** ordination, stress reporting, environmental fitting, group overlays, and the Shepard diagram.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → nMDS — Visualise sample patterns**.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → nMDS — Visualise sample patterns**.
 3. Move `feature_01`–`feature_08` to **Feature variables (required)**, `group` to **Grouping variable (optional)**, and `temperature` plus `pH` to **Environmental variables (optional)**.
 4. In **Analysis choices**, select **None** and **Bray-Curtis**. New analyses use two dimensions.
 5. In **Output choices**, select **Show Shepard diagram** and clear **Show feature scores**.
@@ -259,14 +259,14 @@ Pass when **Data Summary**, **Two-dimensional nMDS ordination**, **Stress and co
 
 </details>
 
-For `tofu-large.csv`, use all 48 features with the same settings. Expect stress approximately **0.1844**, temperature r² approximately **0.385** with p **.010**, and pH r² approximately **0.529** with p **.010**. Confirm 360 **Site Scores**, 48 **Feature Scores** when requested, both plots, and two environmental vectors. With all three descriptive group overlays selected, the site configuration must remain unchanged; do not compare coordinate signs.
+For `miso-large.csv`, use all 48 features with the same settings. Expect stress approximately **0.1844**, temperature r² approximately **0.385** with p **.010**, and pH r² approximately **0.529** with p **.010**. Confirm 360 **Site Scores**, 48 **Feature Scores** when requested, both plots, and two environmental vectors. With all three descriptive group overlays selected, the site configuration must remain unchanged; do not compare coordinate signs.
 
 ### Test cluster analysis
 
 **What this validates:** Bray-Curtis calculation, group-average hierarchical clustering, sample labels, and bounded dendrogram output.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → Cluster analysis — Visualise sample similarity**.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → Cluster analysis — Visualise sample similarity**.
 3. Before assigning anything, confirm that **Getting started** asks for numeric Feature variables and no empty plot or table appears.
 4. Move `feature_01`–`feature_08` to **Feature variables (required)** and `sample_id` to **Sample labels (optional)**.
 5. Under **Analysis choices**, select **Transformation: None** and **Dissimilarity index: Bray-Curtis**.
@@ -293,14 +293,14 @@ Pass when the dendrogram is populated, all 24 sample labels are contained within
 
 </details>
 
-For `tofu-large.csv`, use all 48 features and clear **Show sample labels**. **Data summary** should report 360 samples and 48 features, and the dendrogram should render without a report-width overflow. Selecting **Show sample labels** should give a crowding warning rather than failing.
+For `miso-large.csv`, use all 48 features and clear **Show sample labels**. **Data summary** should report 360 samples and 48 features, and the dendrogram should render without a report-width overflow. Selecting **Show sample labels** should give a crowding warning rather than failing.
 
 ### Test SIMPER
 
 **What this validates:** Bray-Curtis feature contributions, compact output, top-N and cumulative filtering, optional details, and the exploratory permutation assessment.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → SIMPER — Feature contributions**.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → SIMPER — Feature contributions**.
 3. Move `feature_01`–`feature_08` to **Feature variables (required)** and `group` to **Grouping variable (required)**.
 4. In **Analysis choices**, select transformation **None**. Read the adjacent **Tip**: transformations affect contributions and the displayed means use transformed values. SIMPER is fixed to Bray-Curtis.
 5. Under **Features shown**, enter **Top N features: 10** and **Cumulative contribution (%): 70**. Clear **Show detailed statistics**.
@@ -330,14 +330,14 @@ Pass when **Data Summary**, **Contrast summary**, the four-column **Descriptive 
 
 </details>
 
-For `tofu-large.csv`, use all 48 features, **Top N features: 9**, and the 70% cumulative threshold. **Data Summary** should report 360 samples, 48 features, three groups, and three contrasts. Exactly nine contribution rows should appear per contrast. The first features for A vs B, A vs C, and B vs C should be `feature_47`, `feature_45`, and `feature_45`, with first contributions approximately **6.54%**, **6.85%**, and **7.10%**.
+For `miso-large.csv`, use all 48 features, **Top N features: 9**, and the 70% cumulative threshold. **Data Summary** should report 360 samples, 48 features, three groups, and three contrasts. Exactly nine contribution rows should appear per contrast. The first features for A vs B, A vs C, and B vs C should be `feature_47`, `feature_45`, and `feature_45`, with first contributions approximately **6.54%**, **6.85%**, and **7.10%**.
 
 ### Test PCoA
 
 **What this validates:** descriptive principal coordinates analysis through `vegan::wcmdscale`, the exact resemblance preprocessing, eigenvalue accounting, accessible plot alternatives, corrections, and optional grouping overlays. PCoA has no significance test: pass or fail is determined by the stated coordinates, eigenvalues, sections, and interface states—not by separation between groups.
 
-1. Open `tofu-small.csv`.
-2. Select **Analyses → tofu → PCoA — Visualise distance structure**.
+1. Open `miso-small.csv`.
+2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PCoA — Visualise distance structure**.
 3. Before assigning variables, confirm **Getting started** asks for two or more numeric Feature variables and no empty image or table appears.
 4. Move `feature_01`–`feature_08` to **Feature variables (required)**. Leave **Grouping variable (optional)** empty initially.
 5. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, and clear **Binary (presence/absence)**.
@@ -361,7 +361,7 @@ Pass when **Data Summary**, **Principal coordinates ordination**, **Ordination d
 <details>
 <summary>PCoA functionality regression checks</summary>
 
-- **Direct vegan parity:** in R, read the same CSV, select the feature columns, calculate `d <- vegan::vegdist(features, method = "bray")`, then run `fit <- vegan::wcmdscale(d, k = nrow(features) - 1, eig = TRUE, add = FALSE, x.ret = TRUE)`. Compare the first two positive `fit$eig` values, percentages calculated against `sum(fit$eig[fit$eig > 0])`, the negative count and sum, and `abs(fit$points[1, 1:2])` with the checkpoints above. Do not use tofu's internal PCoA helper to create the reference.
+- **Direct vegan parity:** in R, read the same CSV, select the feature columns, calculate `d <- vegan::vegdist(features, method = "bray")`, then run `fit <- vegan::wcmdscale(d, k = nrow(features) - 1, eig = TRUE, add = FALSE, x.ret = TRUE)`. Compare the first two positive `fit$eig` values, percentages calculated against `sum(fit$eig[fit$eig > 0])`, the negative count and sum, and `abs(fit$points[1, 1:2])` with the checkpoints above. Do not use the module internal PCoA helper to create the reference.
 - **Grouping overlays:** move `group` to **Grouping variable (optional)**. Confirm points use both colour and shape and full group identities remain in **Site Coordinates**. Select **Show group centroids**, then **Connect sites to centroids**. Confirm **Group Centroids** appears with three groups and n = 8 each, the description names both layers, and selecting spiders also draws centroids. Clearing both controls must leave site coordinates and eigenvalues unchanged.
 - **Corrections:** under **Advanced corrections**, select **Lingoes**, then **Cailliez**. Each run must report its correction and constant in **Settings**, update coordinates/eigenvalues, and complete without `NaN` or `Inf`. Restore None. Separately select **Square-root distances** and confirm the description and settings disclose it; restore the default.
 - **One positive axis:** in a disposable copy of the data, create two continuous columns containing proportional values such as `0,1,2,3,4` and `0,2,4,6,8`. Assign only those columns, select Euclidean, and leave grouping empty. Confirm **Site Coordinates** and **Eigenvalues** remain, the description explains that only one positive axis is available, and no blank ordination image appears.
@@ -369,11 +369,11 @@ Pass when **Data Summary**, **Principal coordinates ordination**, **Ordination d
 
 </details>
 
-For `tofu-large.csv`, assign all 48 features and repeat the defaults. Expect 360 samples, PCoA1/PCoA2 eigenvalues approximately **5.29746 / 5.09098**, explained percentages approximately **16.9022% / 16.2434%**, absolute first-site coordinates approximately **0.14261 / 0.08661**, and 210 negative eigenvalues summing to approximately **−7.30426**. Add `group`, centroids, and spiders. Pass when the plot is bounded, tables retain all 360 sites, any plotted-point limit is disclosed, and neither the options nor report requires horizontal scrolling.
+For `miso-large.csv`, assign all 48 features and repeat the defaults. Expect 360 samples, PCoA1/PCoA2 eigenvalues approximately **5.29746 / 5.09098**, explained percentages approximately **16.9022% / 16.2434%**, absolute first-site coordinates approximately **0.14261 / 0.08661**, and 210 negative eigenvalues summing to approximately **−7.30426**. Add `group`, centroids, and spiders. Pass when the plot is bounded, tables retain all 360 sites, any plotted-point limit is disclosed, and neither the options nor report requires horizontal scrolling.
 
 ### Shared negative-input checks
 
-Open `tofu-invalid.csv` and use PERMANOVA unless stated otherwise. Reopen the file before each check. Before the all-zero-feature check, set `all_zero_feature` to **Continuous** under **Variables → Edit**; jamovi imports this constant column as Nominal by default.
+Open `miso-invalid.csv` and use PERMANOVA unless stated otherwise. Reopen the file before each check. Before the all-zero-feature check, set `all_zero_feature` to **Continuous** under **Variables → Edit**; jamovi imports this constant column as Nominal by default.
 
 | Check | What to assign | Expected current behaviour |
 |---|---|---|
@@ -392,7 +392,7 @@ After the 199-permutation functionality checks pass, a release tester may repeat
 
 ### Maintaining this guide
 
-When tofu changes, use these sources together:
+When the module changes, use these sources together:
 
 - menu paths: `jamovi/0000.yaml`
 - option labels, choices, and defaults: `jamovi/*.a.yaml`
@@ -410,4 +410,4 @@ Rscript tests/manual/generate-reference-results.R --write
 Rscript tests/manual/verify-fixtures.R
 ```
 
-The generators call `vegan` directly and do not source tofu implementation files. See `tests/manual/reference-session-info.txt` for the recorded R, vegan, permute, RNG, and platform details.
+The generators call `vegan` directly and do not source module implementation files. See `tests/manual/reference-session-info.txt` for the recorded R, vegan, permute, RNG, and platform details.

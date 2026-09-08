@@ -56,8 +56,8 @@ find_anosim_yaml_node <- function(node, name) {
 }
 
 test_that("ANOSIM schema follows the approved required-first hierarchy", {
-    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "anosim.a.yaml"))$options
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "anosim.u.yaml"))
+    options <- yaml::read_yaml(miso_fixture_path("jamovi", "anosim.a.yaml"))$options
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "anosim.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
 
     expect_identical(by_name$vars$title, "Feature variables (required)")
@@ -84,7 +84,7 @@ test_that("ANOSIM schema follows the approved required-first hierarchy", {
 
 test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(tofu_fixture_path("jamovi", "js", "anosim.js")),
+        readLines(miso_fixture_path("jamovi", "js", "anosim.js")),
         collapse="\n")
 
     expect_match(
@@ -97,7 +97,7 @@ test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
 
 test_that("ANOSIM result schema hides every empty shell", {
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "anosim.r.yaml"))$items
+        miso_fixture_path("jamovi", "anosim.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
@@ -349,7 +349,7 @@ test_that("ANOSIM rank plot degrades gracefully above 64 groups", {
     expect_s3_class(private$.buildRankPlot(), "ggplot")
     expect_identical(nrow(analysis$results$rankSummary$asDF), 66L)
     expect_match(
-        tofu_squish_result(analysis$results$rankPlotDescription),
+        miso_squish_result(analysis$results$rankPlotDescription),
         "ranked dissimilarities underlying the ANOSIM statistic")
 })
 
@@ -407,7 +407,7 @@ test_that("ANOSIM rank diagnostic visibility toggles without changing inference"
     expect_equal(hidden$global$asDF, shown$global$asDF, tolerance=0)
     expect_identical(hidden$settings$asDF, shown$settings$asDF)
 
-    description <- tofu_squish_result(shown$rankPlotDescription)
+    description <- miso_squish_result(shown$rankPlotDescription)
     expect_match(description, "ranked dissimilarities")
     expect_match(description, "ANOSIM statistic")
     plain_description <- gsub("<[^>]+>", "", description)
@@ -519,7 +519,7 @@ test_that("ineffective ANOSIM blocks stop inference", {
         seed=123
     )
 
-    expect_match(tofu_squish_result(result$guidance), "does not vary within any block")
+    expect_match(miso_squish_result(result$guidance), "does not vary within any block")
     expect_false(result$global$visible)
     expect_equal(nrow(result$global$asDF), 0L)
 })
@@ -547,7 +547,7 @@ test_that("blocked pairwise ANOSIM uses the displayed permutation design", {
         fit <- vegan::anosim(
             stats::as.dist(distance_matrix[keep, keep, drop=FALSE]),
             droplevels(data$group[keep]),
-            permutations=tofu_permutation(19, "stratified", droplevels(data$block[keep])))
+            permutations=miso_permutation(19, "stratified", droplevels(data$block[keep])))
         expected[[paste(pair, collapse=" vs ")]] <- c(
             r=as.numeric(fit$statistic), p=as.numeric(fit$signif))
     }
@@ -582,7 +582,7 @@ test_that("Series ANOSIM uses row order within the displayed blocks", {
     expected_global <- vegan::anosim(
         distance,
         data$group,
-        permutations=tofu_permutation(19, "series", data$block))
+        permutations=miso_permutation(19, "series", data$block))
     expect_equal(result$global$asDF$value, as.numeric(expected_global$statistic))
     expect_equal(result$global$asDF$p, as.numeric(expected_global$signif))
 
@@ -707,7 +707,7 @@ test_that("ANOSIM interpretation explains negative R and settings are effective"
         anosimN=19,
         seed=123
     )))
-    interpretation <- tofu_squish_result(result$note)
+    interpretation <- miso_squish_result(result$note)
     settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
 
     expect_match(interpretation, "R measures rank separation")

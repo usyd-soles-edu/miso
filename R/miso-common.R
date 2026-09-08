@@ -1,15 +1,15 @@
-tofu_clean_vars <- function(x) {
+miso_clean_vars <- function(x) {
     if (is.null(x) || length(x) == 0)
         character()
     else
         x[! is.na(x) & x != ""]
 }
 
-tofu_is_missing_var <- function(x) {
+miso_is_missing_var <- function(x) {
     is.null(x) || length(x) == 0 || all(is.na(x) | x == "")
 }
 
-tofu_transform_community <- function(x, transform) {
+miso_transform_community <- function(x, transform) {
     switch(transform,
         none = x,
         sqrt = sqrt(x),
@@ -29,21 +29,21 @@ tofu_transform_community <- function(x, transform) {
         x)
 }
 
-tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
+miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
     warnings <- character()
 
     if (length(vars) == 0)
         return(list(error=TRUE, message="Select one or more feature variables."))
-    if (requireFactor && tofu_is_missing_var(factor))
+    if (requireFactor && miso_is_missing_var(factor))
         return(list(error=TRUE, message="Select a primary grouping factor."))
 
     species <- vars
-    primary <- if (tofu_is_missing_var(factor)) NULL else factor[[1]]
-    extra <- tofu_clean_vars(extraVars)
+    primary <- if (miso_is_missing_var(factor)) NULL else factor[[1]]
+    extra <- miso_clean_vars(extraVars)
     extra <- setdiff(extra, c(primary, species))
-    strata <- tofu_clean_vars(strata)
+    strata <- miso_clean_vars(strata)
     strata <- setdiff(strata, c(species, primary, extra))
-    covs <- tofu_clean_vars(covariates)
+    covs <- miso_clean_vars(covariates)
     covs <- setdiff(covs, c(species, primary, extra, strata))
     selected <- unique(c(species, primary, extra, strata, covs))
     selected <- selected[selected %in% names(data)]
@@ -113,7 +113,7 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
             return(list(error=TRUE, message=sprintf("Primary factor '%s' has fewer than 2 groups after filtering.", primary)))
     }
 
-    transformed <- tryCatch(tofu_transform_community(commMat, transform), error=function(e) e)
+    transformed <- tryCatch(miso_transform_community(commMat, transform), error=function(e) e)
     if (inherits(transformed, "error"))
         return(list(error=TRUE, message=paste0("Transformation failed: ", transformed$message)))
     if (any(! is.finite(transformed)))
@@ -172,7 +172,7 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         seed=seed)
 }
 
-tofu_summary_rows <- function(prep, transform, distance) {
+miso_summary_rows <- function(prep, transform, distance) {
     list(
         c("Samples used", as.character(prep$rowsUsed)),
         c("Feature variables used", as.character(prep$varsUsed)),
@@ -183,16 +183,16 @@ tofu_summary_rows <- function(prep, transform, distance) {
     )
 }
 
-tofu_clear_table <- function(table) {
+miso_clear_table <- function(table) {
     try(table$deleteRows(), silent=TRUE)
 }
 
-tofu_set_seed <- function(prep) {
+miso_set_seed <- function(prep) {
     if (! is.na(prep$seed))
         set.seed(prep$seed)
 }
 
-tofu_num_or_na <- function(x) {
+miso_num_or_na <- function(x) {
     x <- suppressWarnings(as.numeric(x))
     if (length(x) == 0 || is.na(x) || ! is.finite(x))
         NA_real_
@@ -200,7 +200,7 @@ tofu_num_or_na <- function(x) {
         x
 }
 
-tofu_html_escape <- function(value) {
+miso_html_escape <- function(value) {
     value <- gsub("&", "&amp;", as.character(value), fixed=TRUE)
     value <- gsub("<", "&lt;", value, fixed=TRUE)
     value <- gsub(">", "&gt;", value, fixed=TRUE)
@@ -208,17 +208,17 @@ tofu_html_escape <- function(value) {
     gsub("'", "&#39;", value, fixed=TRUE)
 }
 
-tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
+miso_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
     paragraphs <- as.character(paragraphs)
     paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
-    escaped <- tofu_html_escape(paragraphs)
+    escaped <- miso_html_escape(paragraphs)
     escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
     accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {
         ""
     } else {
         paste0(
             ' role="note" aria-label="',
-            tofu_html_escape(as.character(ariaLabel[[1L]])),
+            miso_html_escape(as.character(ariaLabel[[1L]])),
             '"')
     }
     heading <- if (is.null(title) || !nzchar(title)) {
@@ -227,7 +227,7 @@ tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
         paste0(
             '<div role="heading" aria-level="3" ',
             'style="margin: 0 0 0.35em 0; font-weight: 600;">',
-            tofu_html_escape(as.character(title[[1L]])),
+            miso_html_escape(as.character(title[[1L]])),
             '</div>\n')
     }
     paste0(
@@ -244,19 +244,19 @@ tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
         '\n</div>')
 }
 
-tofu_warning_block <- function(paragraphs, title="Data handling warning",
+miso_warning_block <- function(paragraphs, title="Data handling warning",
         ariaLabel=title) {
     paragraphs <- as.character(paragraphs)
     paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
-    escaped <- tofu_html_escape(paragraphs)
+    escaped <- miso_html_escape(paragraphs)
     escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
-    title <- tofu_html_escape(as.character(title[[1L]]))
+    title <- miso_html_escape(as.character(title[[1L]]))
     accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {
         ""
     } else {
         paste0(
             ' aria-label="',
-            tofu_html_escape(as.character(ariaLabel[[1L]])),
+            miso_html_escape(as.character(ariaLabel[[1L]])),
             '"')
     }
     paste0(
@@ -276,13 +276,13 @@ tofu_warning_block <- function(paragraphs, title="Data handling warning",
         '\n</div>')
 }
 
-tofu_populate_purposes <- function(results, purposes) {
+miso_populate_purposes <- function(results, purposes) {
     for (name in names(purposes)) {
         purpose <- purposes[[name]]
         if (length(purpose) != 2L)
             stop("each result purpose requires a label and one sentence",
                 call.=FALSE)
-        results[[name]]$setContent(tofu_html_block(
+        results[[name]]$setContent(miso_html_block(
             purpose[[2L]],
             ariaLabel=paste("About", purpose[[1L]]),
             title=purpose[[1L]]))
@@ -290,13 +290,13 @@ tofu_populate_purposes <- function(results, purposes) {
     invisible(NULL)
 }
 
-tofu_populate_summary <- function(results, prep, transform, distance) {
-    rows <- tofu_summary_rows(prep, transform, distance)
+miso_populate_summary <- function(results, prep, transform, distance) {
+    rows <- miso_summary_rows(prep, transform, distance)
     for (i in seq_along(rows))
         results$summary$addRow(rowKey=as.character(i), values=list(item=rows[[i]][1], value=rows[[i]][2]))
 }
 
-tofu_display_term <- function(term, prep) {
+miso_display_term <- function(term, prep) {
     labels <- c(.f1=prep$primary)
     if (length(prep$extra) > 0) {
         for (i in seq_along(prep$extra))
@@ -315,7 +315,7 @@ tofu_display_term <- function(term, prep) {
 }
 
 # Parallel cluster lifecycle. enabled=FALSE or cluster creation fails -> NULL (vegan runs serial).
-tofu_parallel <- function(enabled, n=NULL) {
+miso_parallel <- function(enabled, n=NULL) {
     if (! isTRUE(enabled)) return(NULL)
     cores <- if (is.null(n) || n < 2) max(2, parallel::detectCores() - 1L) else as.integer(n)
     cl <- tryCatch(parallel::makeCluster(cores), error=function(e) NULL)
@@ -327,13 +327,13 @@ tofu_parallel <- function(enabled, n=NULL) {
     cl
 }
 
-tofu_parallel_stop <- function(cl) {
+miso_parallel_stop <- function(cl) {
     if (! is.null(cl)) try(parallel::stopCluster(cl), silent=TRUE)
 }
 
-# Build a permute::how() from a tofu scheme preset. strata is the blocking factor
+# Build a permute::how() from the module's scheme preset. strata is the blocking factor
 # VECTOR (not a name); 'free' ignores it. 'series' assumes sample order = sequence order.
-tofu_permutation <- function(permN, scheme=c("free","stratified","series"), strata=NULL) {
+miso_permutation <- function(permN, scheme=c("free","stratified","series"), strata=NULL) {
     scheme <- match.arg(scheme)
     nperm <- as.integer(permN)
     blocks <- if (is.null(strata) || length(strata) == 0) NULL else as.factor(strata)

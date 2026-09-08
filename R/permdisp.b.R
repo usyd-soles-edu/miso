@@ -45,10 +45,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            private$.state$cl <- tofu_parallel(self$options$useParallel)
-            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
+            private$.state$cl <- miso_parallel(self$options$useParallel)
+            on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
                 factor=self$options$factor,
@@ -61,7 +61,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            tofu_populate_summary(
+            miso_populate_summary(
                 self$results,
                 prep,
                 self$options$transform,
@@ -88,11 +88,11 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .resetResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            tofu_clear_table(self$results$summary)
-            tofu_clear_table(self$results$distances)
-            tofu_clear_table(self$results$anova)
-            tofu_clear_table(self$results$pairwise)
-            tofu_clear_table(self$results$ordinationScores)
+            miso_clear_table(self$results$summary)
+            miso_clear_table(self$results$distances)
+            miso_clear_table(self$results$anova)
+            miso_clear_table(self$results$pairwise)
+            miso_clear_table(self$results$ordinationScores)
             ordinationScores <- self$results$ordinationScores
             ordinationScores$.__enclos_env__$private$.rowNames <- character()
             self$results$anova$setNote(
@@ -104,7 +104,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$note$setContent("")
             self$results$plotDescription$setContent("")
             self$results$ordinationDescription$setContent("")
-            tofu_clear_table(self$results$settings)
+            miso_clear_table(self$results$settings)
             for (name in c(
                     "summaryPurpose", "anovaPurpose", "pairwisePurpose",
                     "distancesPurpose", "ordinationScoresPurpose",
@@ -123,7 +123,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
@@ -155,7 +155,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
+            miso_populate_purposes(self$results, list(
                 summaryPurpose=c(
                     "Data summary",
                     "Summarises included samples and features, including any exclusions."),
@@ -183,12 +183,12 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
         .runDispersion = function(prep) {
-            tofu_set_seed(prep)
+            miso_set_seed(prep)
             fit <- tryCatch(
                 vegan::betadisper(
                     prep$dist,
@@ -234,7 +234,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             perm <- tryCatch(
                 vegan::permutest(
                     fit,
-                    permutations=tofu_permutation(
+                    permutations=miso_permutation(
                         self$options$permN,
                         restriction,
                         NULL),
@@ -254,16 +254,16 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 notApplicable <- source %in% c("Residual", "Residuals")
                 values <- list(
                     source=source,
-                    df=tofu_num_or_na(atab[i, "Df"]),
-                    sumsqs=tofu_num_or_na(atab[i, "Sum Sq"]),
-                    meansq=tofu_num_or_na(atab[i, "Mean Sq"]),
-                    f=if (notApplicable) "" else tofu_num_or_na(atab[i, "F"]),
-                    p=if (notApplicable) "" else tofu_num_or_na(atab[i, "Pr(>F)"]))
+                    df=miso_num_or_na(atab[i, "Df"]),
+                    sumsqs=miso_num_or_na(atab[i, "Sum Sq"]),
+                    meansq=miso_num_or_na(atab[i, "Mean Sq"]),
+                    f=if (notApplicable) "" else miso_num_or_na(atab[i, "F"]),
+                    p=if (notApplicable) "" else miso_num_or_na(atab[i, "Pr(>F)"]))
                 self$results$anova$addRow(
                     rowKey=as.character(i),
                     values=values)
                 if (! notApplicable && is.na(private$.state$pValue))
-                    private$.state$pValue <- tofu_num_or_na(atab[i, "Pr(>F)"])
+                    private$.state$pValue <- miso_num_or_na(atab[i, "Pr(>F)"])
             }
             self$results$anova$setNote(
                 key="structuralCells",
@@ -282,7 +282,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             pt <- tryCatch(
                 vegan::permutest(
                     fit,
-                    permutations=tofu_permutation(
+                    permutations=miso_permutation(
                         self$options$permN,
                         restriction,
                         NULL),
@@ -328,9 +328,9 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     rowKey=as.character(shown),
                     values=list(
                         contrast=gsub("-", " vs ", label, fixed=TRUE),
-                        statistic=tofu_num_or_na(tstat[[i]]),
-                        p=tofu_num_or_na(pperm[[i]]),
-                        padj=tofu_num_or_na(padj[[i]])))
+                        statistic=miso_num_or_na(tstat[[i]]),
+                        p=miso_num_or_na(pperm[[i]]),
+                        padj=miso_num_or_na(padj[[i]])))
             }
             if (length(failed) > 0L)
                 private$.state$warnings <- c(
@@ -359,13 +359,13 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         group=values$group,
                         n=values$n,
                         centre=values$centre,
-                        distance=tofu_num_or_na(values$mean),
-                        median=tofu_num_or_na(values$median),
-                        q1=tofu_num_or_na(values$q1),
-                        q3=tofu_num_or_na(values$q3),
-                        sd=tofu_num_or_na(values$sd),
-                        min=tofu_num_or_na(values$min),
-                        max=tofu_num_or_na(values$max)))
+                        distance=miso_num_or_na(values$mean),
+                        median=miso_num_or_na(values$median),
+                        q1=miso_num_or_na(values$q1),
+                        q3=miso_num_or_na(values$q3),
+                        sd=miso_num_or_na(values$sd),
+                        min=miso_num_or_na(values$min),
+                        max=miso_num_or_na(values$max)))
             }
         },
 
@@ -373,7 +373,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(private$.state$distanceDiagnostic) ||
                     !isTRUE(self$options$showDistancePlot))
                 return()
-            self$results$plotDescription$setContent(tofu_html_block(
+            self$results$plotDescription$setContent(miso_html_block(
                 "Shows the distribution of distances to centre within each group.",
                 ariaLabel="About distances to group centre",
                 title="Distance-to-centre plot"))
@@ -390,8 +390,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 for (i in seq_len(nrow(coordinates))) {
                     values <- coordinates[i, , drop = FALSE]
                     self$results$ordinationScores$addRow(rowKey = as.character(i), values = list(point = values$point,
-                        pointType = values$pointType, group = values$group, plotKey = values$plotKey, axis1 = tofu_num_or_na(values$axis1),
-                        axis2 = tofu_num_or_na(values$axis2)))
+                        pointType = values$pointType, group = values$group, plotKey = values$plotKey, axis1 = miso_num_or_na(values$axis1),
+                        axis2 = miso_num_or_na(values$axis2)))
                 }
             }
             if (is.null(ordination) || !isTRUE(ordination$available)) {
@@ -402,7 +402,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     sprintf(paste("%d of %d fitted sites could not be plotted because", "finite coordinates were unavailable for a site or",
                         "its assigned group centre."), ordination$unplottable, ordination$total)
                 else character()
-                self$results$ordinationDescription$setContent(tofu_html_block(
+                self$results$ordinationDescription$setContent(miso_html_block(
                     c(reason, omitted),
                     ariaLabel="About PERMDISP ordination",
                     title="PERMDISP ordination"))
@@ -424,7 +424,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             else sprintf(paste("%d of %d plot-eligible sites and connecting segments are", "shown; %d are omitted from the image by the deterministic",
                 "display cap but retained in the coordinate table."), ordination$displayed, ordination$plotEligible,
                 ordination$plotEligible - ordination$displayed)
-            self$results$ordinationDescription$setContent(tofu_html_block(
+            self$results$ordinationDescription$setContent(miso_html_block(
                 "Shows samples and the group centres used by PERMDISP.",
                 ariaLabel="About PERMDISP ordination",
                 title="PERMDISP ordination"))
@@ -468,7 +468,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .setInterpretation = function(prep, pairwiseShown) {
-            self$results$note$setContent(tofu_html_block(paste(
+            self$results$note$setContent(miso_html_block(paste(
                 "PERMDISP tests multivariate spread, not group location.",
                 "Compare the test with the distance plot."),
                 title="How to read these results"))

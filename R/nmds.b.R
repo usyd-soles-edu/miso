@@ -10,7 +10,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .run = function() {
             private$.resetResults()
 
-            requestedVars <- tofu_clean_vars(self$options$vars)
+            requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) < 2L) {
                 if (length(requestedVars) == 0L) {
                     private$.showGuidance(
@@ -40,7 +40,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$options$distance
             }
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=requestedVars,
                 transform=self$options$transform,
@@ -111,7 +111,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 wascores=isTRUE(self$options$nmdsSpecies),
                 autotransform=FALSE,
                 trace=FALSE)
-            tofu_set_seed(prep)
+            miso_set_seed(prep)
             fit <- tryCatch(withCallingHandlers(
                 do.call(
                     vegan::metaMDS,
@@ -208,11 +208,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .htmlEscape = function(value) {
-            tofu_html_escape(value)
+            miso_html_escape(value)
         },
 
         .htmlBlock = function(paragraphs, ariaLabel=NULL, title=NULL) {
-            tofu_html_block(
+            miso_html_block(
                 paragraphs,
                 ariaLabel=ariaLabel,
                 title=title)
@@ -344,7 +344,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .groupAssignmentSummary = function() {
-            requested <- tofu_clean_vars(self$options$factor)
+            requested <- miso_clean_vars(self$options$factor)
             if (length(requested) == 0L)
                 return("None")
             name <- requested[[1L]]
@@ -358,7 +358,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .environmentRequestSummary = function() {
-            requested <- unique(tofu_clean_vars(self$options$nmdsEnv))
+            requested <- unique(miso_clean_vars(self$options$nmdsEnv))
             if (length(requested) == 0L)
                 "None"
             else
@@ -369,7 +369,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
     .clearTable = function(table) {
-        tofu_clear_table(table)
+        miso_clear_table(table)
         # jmvcore::Table$deleteRows() does not clear its cached row names.
         table$.__enclos_env__$private$.rowNames <- character()
     },
@@ -619,7 +619,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
             hasWarnings <- length(private$.state$warnings) > 0L
             if (hasWarnings)
-                self$results$warnings$setContent(tofu_warning_block(
+                self$results$warnings$setContent(miso_warning_block(
                     unique(private$.state$warnings)))
             for (name in c(
                     "summary", "summaryPurpose", "ordination",
@@ -638,7 +638,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
+            miso_populate_purposes(self$results, list(
                 summaryPurpose=c(
                     "Data summary",
                     "Summarises included samples and features, including any exclusions."),
@@ -663,7 +663,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .prepareGroup = function(prep) {
-            groupName <- tofu_clean_vars(self$options$factor)
+            groupName <- miso_clean_vars(self$options$factor)
             if (length(groupName) == 0L)
                 return()
             groupName <- groupName[[1L]]
@@ -721,7 +721,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .groupStyles = function(levels, includeMissing=FALSE) {
-            aesthetics <- .tofuGroupAesthetics(levels)
+            aesthetics <- .misoGroupAesthetics(levels)
             styles <- data.frame(
                 group=levels,
                 colour=unname(aesthetics$colour[levels]),
@@ -1015,7 +1015,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .prepareEnvironmental = function(prep) {
-            requested <- unique(tofu_clean_vars(self$options$nmdsEnv))
+            requested <- unique(miso_clean_vars(self$options$nmdsEnv))
             if (length(requested) == 0L)
                 return()
 
@@ -1056,15 +1056,15 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     rowKey=row$name,
                     values=list(
                         variable=row$name,
-                        r2=tofu_num_or_na(row$r2),
-                        p=tofu_num_or_na(row$p),
+                        r2=miso_num_or_na(row$r2),
+                        p=miso_num_or_na(row$p),
                         samples=row$samples,
                         permutations=row$permutations,
-                        NMDS1=tofu_num_or_na(endpoints[i, 1L]),
-                        NMDS2=tofu_num_or_na(endpoints[i, 2L]),
+                        NMDS1=miso_num_or_na(endpoints[i, 1L]),
+                        NMDS2=miso_num_or_na(endpoints[i, 2L]),
                         NMDS3=if (identical(
                             private$.state$effectiveK, 3L)) {
-                            tofu_num_or_na(endpoints[i, 3L])
+                            miso_num_or_na(endpoints[i, 3L])
                         } else {
                             NA_real_
                         }))
@@ -1164,7 +1164,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateInterpretation = function() {
-            self$results$note$setContent(tofu_html_block(paste(
+            self$results$note$setContent(miso_html_block(paste(
                 "Closer points are more similar; axis direction is arbitrary, so check stress.",
                 "Feature scores are descriptive."),
                 title="How to read this ordination"))
@@ -1174,7 +1174,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             prep <- private$.state$prep
             fit <- private$.state$fit
             k <- private$.state$effectiveK
-            requestedEnv <- unique(tofu_clean_vars(self$options$nmdsEnv))
+            requestedEnv <- unique(miso_clean_vars(self$options$nmdsEnv))
             envRows <- private$.state$envRows
             if (is.null(private$.state$groupLabels)) {
                 grouping <- "None"
@@ -1302,11 +1302,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     self$results$shepardPairs$addRow(
                         rowKey=as.character(i),
                         values=list(
-                            dissimilarity=tofu_num_or_na(
+                            dissimilarity=miso_num_or_na(
                                 shepardPairs$dissimilarity[[i]]),
-                            ordinationDistance=tofu_num_or_na(
+                            ordinationDistance=miso_num_or_na(
                                 shepardPairs$ordinationDistance[[i]]),
-                            monotonicFit=tofu_num_or_na(
+                            monotonicFit=miso_num_or_na(
                                 shepardPairs$monotonicFit[[i]])))
 
             isThreeDimensional <- identical(k, 3L)
@@ -1329,10 +1329,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 groupValue <- if (is.null(groups)) "" else groups[[i]]
                 values <- list(
                     row=prep$rowIndex[[i]],
-                    NMDS1=tofu_num_or_na(sites[i, 1L]),
-                    NMDS2=tofu_num_or_na(sites[i, 2L]),
+                    NMDS1=miso_num_or_na(sites[i, 1L]),
+                    NMDS2=miso_num_or_na(sites[i, 2L]),
                     NMDS3=if (isThreeDimensional)
-                        tofu_num_or_na(sites[i, 3L])
+                        miso_num_or_na(sites[i, 3L])
                     else
                         NA_real_,
                     group=groupValue)
@@ -1348,10 +1348,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         rowKey=as.character(i),
                         values=list(
                             feature=featureNames[[i]],
-                            NMDS1=tofu_num_or_na(features[i, 1L]),
-                            NMDS2=tofu_num_or_na(features[i, 2L]),
+                            NMDS1=miso_num_or_na(features[i, 1L]),
+                            NMDS2=miso_num_or_na(features[i, 2L]),
                             NMDS3=if (isThreeDimensional)
-                                tofu_num_or_na(features[i, 3L])
+                                miso_num_or_na(features[i, 3L])
                             else
                                 NA_real_))
             }
@@ -1417,7 +1417,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 if (is.na(stress))
                     "Stress unavailable"
                 else sprintf("Stress = %.3f", stress)
-            }) + .tofuPlotTheme()
+            }) + .misoPlotTheme()
             spiderData <- if (isTRUE(overlays$effective[["spider"]]))
                 private$.overlaySegmentData(overlays$spider, "Group spider")
             else data.frame()
@@ -1591,7 +1591,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 ggplot2::labs(
                     x="Observed dissimilarity",
                     y="Ordination distance") +
-                .tofuPlotTheme()
+                .misoPlotTheme()
         },
 
         .plotShepard = function(image, ...) {

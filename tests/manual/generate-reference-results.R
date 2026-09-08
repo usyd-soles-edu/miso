@@ -487,7 +487,7 @@ reference_pcoa <- function(data, dataset, scenario_id) {
 generate_references <- function(output_dir) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     scenarios <- read.csv(file.path("tests", "manual", "scenarios.csv"), stringsAsFactors = FALSE, check.names = FALSE)
-    datasets <- c("tofu-small.csv", "tofu-large.csv")
+    datasets <- c("miso-small.csv", "miso-large.csv")
     data <- setNames(lapply(datasets, function(name) {
         read.csv(file.path(output_dir, name), stringsAsFactors = FALSE, check.names = FALSE)
     }), datasets)
@@ -495,8 +495,8 @@ generate_references <- function(output_dir) {
     rows <- list()
     for (dataset in datasets) {
         current <- data[[dataset]]
-        permutations <- if (identical(dataset, "tofu-small.csv")) 999L else 199L
-        size <- if (identical(dataset, "tofu-small.csv")) "small" else "large"
+        permutations <- if (identical(dataset, "miso-small.csv")) 999L else 199L
+        size <- if (identical(dataset, "miso-small.csv")) "small" else "large"
         rows[[length(rows) + 1L]] <- reference_permanova(current, dataset, paste0("permanova-", size, "-baseline"), permutations)
         rows[[length(rows) + 1L]] <- reference_anosim(current, dataset, paste0("anosim-", size, "-baseline"), permutations)
         rows[[length(rows) + 1L]] <- reference_permdisp(current, dataset, paste0("permdisp-", size, "-baseline"), permutations)
@@ -505,20 +505,20 @@ generate_references <- function(output_dir) {
         rows[[length(rows) + 1L]] <- reference_pcoa(current, dataset, paste0("pcoa-", size, "-baseline"))
     }
 
-    small <- data[["tofu-small.csv"]]
-    rows[[length(rows) + 1L]] <- reference_permanova(small, "tofu-small.csv", "permanova-small-hellinger", 999L, transform = "hellinger", distance = "euclidean")
-    rows[[length(rows) + 1L]] <- reference_permanova(small, "tofu-small.csv", "permanova-small-pa", 999L, transform = "pa", distance = "jaccard", binary = TRUE)
-    rows[[length(rows) + 1L]] <- reference_anosim(small, "tofu-small.csv", "anosim-small-blocked", 999L, strata = small$block)
-    rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-centroid", 999L, centre = "centroid", bias = TRUE)
-    rows[[length(rows) + 1L]] <- reference_permdisp(small, "tofu-small.csv", "permdisp-small-legacy-stratified", 999L, scheme = "stratified")
-    rows[[length(rows) + 1L]] <- reference_nmds(small, "tofu-small.csv", "nmds-small-binary-noop", binary = TRUE)
+    small <- data[["miso-small.csv"]]
+    rows[[length(rows) + 1L]] <- reference_permanova(small, "miso-small.csv", "permanova-small-hellinger", 999L, transform = "hellinger", distance = "euclidean")
+    rows[[length(rows) + 1L]] <- reference_permanova(small, "miso-small.csv", "permanova-small-pa", 999L, transform = "pa", distance = "jaccard", binary = TRUE)
+    rows[[length(rows) + 1L]] <- reference_anosim(small, "miso-small.csv", "anosim-small-blocked", 999L, strata = small$block)
+    rows[[length(rows) + 1L]] <- reference_permdisp(small, "miso-small.csv", "permdisp-small-centroid", 999L, centre = "centroid", bias = TRUE)
+    rows[[length(rows) + 1L]] <- reference_permdisp(small, "miso-small.csv", "permdisp-small-legacy-stratified", 999L, scheme = "stratified")
+    rows[[length(rows) + 1L]] <- reference_nmds(small, "miso-small.csv", "nmds-small-binary-noop", binary = TRUE)
     rows[[length(rows) + 1L]] <- reference_nmds(
-        small, "tofu-small.csv", "nmds-small-legacy-3d",
+        small, "miso-small.csv", "nmds-small-legacy-3d",
         k = 3L, feature_scores = TRUE)
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-transform", transform = "sqrt", details = TRUE)
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-distance-noop", selected_distance = "euclidean", binary = TRUE)
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-assessment", assessment = TRUE, permutations = 19L)
-    rows[[length(rows) + 1L]] <- reference_simper(small, "tofu-small.csv", "simper-small-details", details = TRUE)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "miso-small.csv", "simper-small-transform", transform = "sqrt", details = TRUE)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "miso-small.csv", "simper-small-distance-noop", selected_distance = "euclidean", binary = TRUE)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "miso-small.csv", "simper-small-assessment", assessment = TRUE, permutations = 19L)
+    rows[[length(rows) + 1L]] <- reference_simper(small, "miso-small.csv", "simper-small-details", details = TRUE)
 
     result <- do.call(rbind, rows)
     result <- result[order(result$dataset, result$analysis, result$scenario_id, result$result_slot, result$metric), ]
@@ -533,7 +533,7 @@ generate_references <- function(output_dir) {
     stopifnot(all(is.finite(stress) & stress > 0 & stress < 0.2))
 
     for (dataset in datasets) {
-        size <- if (identical(dataset, "tofu-small.csv")) "small" else "large"
+        size <- if (identical(dataset, "miso-small.csv")) "small" else "large"
         scenario <- paste0("permdisp-", size, "-baseline")
         means <- result[
             result$dataset == dataset & result$scenario_id == scenario &
@@ -591,7 +591,7 @@ generate_references <- function(output_dir) {
         current <- result[result$scenario_id == scenario, ]
         stopifnot(
             nrow(current) == 9L,
-            all(current$reference_function != ".tofuPcoa"),
+            all(current$reference_function != ".misoPcoa"),
             all(c(
                 "rows used", "PCoA1 eigenvalue", "PCoA2 eigenvalue",
                 "PCoA1 explained percent", "PCoA2 explained percent",
@@ -624,8 +624,8 @@ generate_references <- function(output_dir) {
     writeLines(metadata, file.path(output_dir, "reference-session-info.txt"), useBytes = TRUE)
 
     for (analysis in c("PERMANOVA", "ANOSIM", "PERMDISP", "nMDS", "SIMPER", "PCoA")) {
-        stopifnot(any(result$analysis == analysis & result$dataset == "tofu-small.csv"))
-        stopifnot(any(result$analysis == analysis & result$dataset == "tofu-large.csv"))
+        stopifnot(any(result$analysis == analysis & result$dataset == "miso-small.csv"))
+        stopifnot(any(result$analysis == analysis & result$dataset == "miso-large.csv"))
         cat(analysis, "small and large references: PASS\n")
     }
     cat("reference assertions: PASS\n")

@@ -1,10 +1,10 @@
 ---
 name: cluster
 title: Cluster analysis
-menuGroup: tofu
+menuGroup: miso
 menuTitle: Cluster analysis
 menuSubtitle: Visualise sample similarity
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Groups samples by hierarchical clustering of dissimilarities calculated with vegan::vegdist and stats::hclust. The dendrogram and optional cluster memberships are descriptive.
@@ -125,7 +125,7 @@ options:
   - name: showLabels
     title: Legacy sample labels
     type: String
-    default: __tofu_unset__
+    default: __miso_unset__
     hidden: true
     description: Compatibility value for analyses saved before sample label modes were introduced.
 
