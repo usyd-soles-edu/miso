@@ -18,8 +18,11 @@ options:
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
 
   - name: factor
     title: Grouping variable (required)

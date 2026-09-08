@@ -36,6 +36,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             analysisData <- self$data
+            # Unsupported feature assignments are rejected by the shared
+            # preparation seam after this analysis has cleared stale outputs.
             prep <- miso_prepare_resemblance(
                 data=analysisData,
                 vars=requestedVars,

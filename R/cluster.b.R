@@ -57,7 +57,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance=self$options$distance,
                 seed=0,
                 requireFactor=FALSE)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(prep$message)
                 return()
             }

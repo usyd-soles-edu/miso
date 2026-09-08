@@ -63,7 +63,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 seed=self$options$seed,
                 strata=self$options$strata,
                 distBinary=self$options$distBinary)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(prep$message)
                 return()
             }

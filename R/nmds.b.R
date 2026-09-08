@@ -62,7 +62,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 seed=self$options$seed,
                 requireFactor=FALSE,
                 distBinary=FALSE)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 if (grepl("Too few samples", prep$message, fixed=TRUE)) {
                     private$.showGuidance("Action needed", sprintf(
                         "A %d-dimensional nMDS needs at least %d usable sites. Check missing feature values and Feature variable assignments.",

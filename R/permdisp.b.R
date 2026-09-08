@@ -70,7 +70,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance=self$options$distance,
                 seed=self$options$seed,
                 distBinary=self$options$distBinary)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(prep$message)
                 return()
             }

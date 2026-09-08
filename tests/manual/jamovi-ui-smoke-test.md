@@ -115,6 +115,22 @@ Still unverified: full keyboard traversal and recalculation-focus recovery acros
 
 Only after the corresponding procedure is physically exercised may its item move into **Current automated scope**. Update that section with the exact date, environment, datasets, and states tested. Pending, skipped, and platform-unavailable checks must remain explicitly unverified.
 
+## Integer-coded feature assignment matrix
+
+For each analysis, repeat the clean-small-CSV assignment with the same feature columns set to integer storage and the jamovi measure type set in turn to **Continuous**, **Nominal**, and **Ordinal**. The Nominal and Ordinal rows must calculate the same retained sample count, tables, and finite values as Continuous; a text-valued feature assignment must show the analysis-level error while the titled result shells remain visible and blank.
+
+| Analysis | Integer Nominal feature assignment | Integer Ordinal feature assignment |
+|---|---|---|
+| PERMANOVA | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+| ANOSIM | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+| PERMDISP | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+| nMDS | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+| PCoA | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+| Cluster analysis | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+| SIMPER | `feature_01`–`feature_08` as integer Nominal | `feature_01`–`feature_08` as integer Ordinal |
+
+Record the assignment, retained rows, and the analysis error/shell state in the smoke evidence; do not save recalculated workbooks.
+
 ## Test assets
 
 - Small: `tests/manual/workbooks/miso-small-baselines.omv`

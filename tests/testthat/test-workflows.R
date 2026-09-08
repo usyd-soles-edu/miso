@@ -46,7 +46,107 @@ test_that("missing selected columns are reported by option validation", {
     )
 })
 
-test_that("non-numeric feature variables are rejected by option validation", {
+test_that("integer-coded nominal and ordinal feature variables match numeric outcomes", {
+    numeric_data <- workflow_data()
+    integer_data <- numeric_data
+    integer_data[c("sp1", "sp2", "sp3")] <- lapply(
+        integer_data[c("sp1", "sp2", "sp3")], as.integer)
+
+    run_analysis <- function(name, data) {
+        args <- list(
+            data=data,
+            vars=c("sp1", "sp2", "sp3"),
+            factor="group")
+        if (name == "cluster") args$factor <- NULL
+        if (! name %in% c("pcoa", "cluster")) args$seed <- 123
+        if (name %in% c("permanova", "permdisp")) args$permN <- 19
+        if (name == "anosim") args$anosimN <- 19
+        if (name == "simper") args$simperN <- 19
+        if (name == "nmds") {
+            args$nmdsTrymax <- 2
+            args$nmdsShepard <- FALSE
+        }
+        suppressWarnings(suppressMessages(do.call(get(name), args)))
+    }
+
+    finite_tables <- function(result) {
+        lapply(result$items, function(output) {
+            if (! inherits(output, "Table")) return(NULL)
+            df <- output$asDF
+            lapply(df, function(column) {
+                if (! is.numeric(column)) return(TRUE)
+                all(is.na(column) | is.finite(column))
+            })
+        })
+    }
+
+    for (analysis_name in c("permanova", "anosim", "permdisp", "nmds",
+            "pcoa", "cluster", "simper")) {
+        numeric_result <- run_analysis(analysis_name, numeric_data)
+        integer_result <- run_analysis(analysis_name, integer_data)
+        numeric_summary <- numeric_result$summary$asDF
+        integer_summary <- integer_result$summary$asDF
+        expect_identical(integer_summary$item, numeric_summary$item,
+            info=analysis_name)
+        expect_identical(integer_summary$value, numeric_summary$value,
+            info=analysis_name)
+        expect_identical(
+            lapply(numeric_result$items, function(output)
+                if (inherits(output, "Table")) output$asDF else NULL),
+            lapply(integer_result$items, function(output)
+                if (inherits(output, "Table")) output$asDF else NULL),
+            info=analysis_name)
+        expect_true(all(unlist(finite_tables(integer_result))), info=analysis_name)
+    }
+})
+
+test_that("integer-coded factor features normalize before resemblance preparation", {
+    data <- workflow_data()
+    data$sp1 <- factor(data$sp1, levels=sort(unique(data$sp1)))
+    data$sp2 <- ordered(data$sp2, levels=sort(unique(data$sp2)))
+    prepared <- miso_prepare_resemblance(
+        data=data, vars=c("sp1", "sp2", "sp3"), factor="group",
+        transform="none", distance="euclidean")
+    expect_false(prepared$error)
+    expect_true(is.numeric(prepared$comm[, "sp1"]))
+    expect_true(is.numeric(prepared$comm[, "sp2"]))
+    expect_equal(prepared$comm[, "sp1"], as.numeric(as.character(data$sp1)))
+    expect_equal(prepared$comm[, "sp2"], as.numeric(as.character(data$sp2)))
+})
+
+test_that("unsupported text features reject at the analysis top while shells remain visible", {
+    expect_error(
+        miso_prepare_resemblance(
+            data=data.frame(
+                sp1=c(1, 2, 3),
+                sp2=c("low", "high", "low"),
+                group=factor(c("A", "B", "A"))),
+            vars=c("sp1", "sp2"), factor="group",
+            transform="none", distance="euclidean"),
+        "Feature variables must be numeric",
+        fixed=FALSE)
+
+    data <- workflow_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=9, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    analysis$results$.update()
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_gt(nrow(analysis$results$table$asDF), 0L)
+    analysis$.__enclos_env__$private$.data$sp2 <- c("low", "high", "low", "high", "low", "high")
+    analysis$.__enclos_env__$private$.lastStructuralKey <- NULL
+    expect_error(
+        analysis$.__enclos_env__$private$.run(),
+        "Feature variables must be numeric",
+        fixed=FALSE)
+    expect_true(analysis$results$summary$visible)
+    expect_true(analysis$results$table$visible)
+    expect_true(all(vapply(analysis$results$summary$asDF,
+        function(column) all(is.na(column) | column == ""), logical(1))))
+    expect_equal(nrow(analysis$results$table$asDF), 0L)
+})
+
+test_that("non-numeric feature variables are rejected by analysis validation", {
     expect_error(
         permanova(
             data = data.frame(
@@ -57,8 +157,8 @@ test_that("non-numeric feature variables are rejected by option validation", {
             vars = c("sp1", "sp2"),
             factor = "group"
         ),
-        "Argument 'vars' requires a numeric variable ('sp2' is not valid)",
-        fixed = TRUE
+        "numeric",
+        fixed = FALSE
     )
 })
 

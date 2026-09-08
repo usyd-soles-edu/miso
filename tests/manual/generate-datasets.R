@@ -183,6 +183,10 @@ make_invalid_data <- function() {
         zero_case_01 = c(2.1, 3.2, 4.3, 5.4, 6.5, 7.6, 8.7, 0),
         zero_case_02 = c(3.2, 2.3, 5.4, 4.5, 7.6, 6.7, 9.8, 0),
         text_feature = c("low", "low", "medium", "medium", "high", "high", "high", "low"),
+        integer_nominal_feature = as.integer(factor(
+            c("low", "low", "medium", "medium", "high", "high", "high", "low"),
+            levels = c("low", "medium", "high"))),
+        integer_ordinal_feature = c(1L, 1L, 2L, 2L, 3L, 3L, 3L, 1L),
         check.names = FALSE,
         stringsAsFactors = FALSE
     )

@@ -19,8 +19,11 @@ options:
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
     description: Two or more numeric feature variables used to calculate dissimilarities among sites.
 
   - name: factor

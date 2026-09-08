@@ -71,7 +71,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance="bray",
                 seed=self$options$seed,
                 distBinary=FALSE)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(prep$message)
                 return()
             }

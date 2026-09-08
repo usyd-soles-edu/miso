@@ -36,6 +36,32 @@ miso_transform_community <- function(x, transform) {
         x)
 }
 
+miso_normalize_feature_columns <- function(comm) {
+    normalize <- function(column) {
+        if (is.numeric(column))
+            return(as.numeric(column))
+        if (! is.factor(column))
+            return(NULL)
+        levels <- levels(column)
+        codes <- suppressWarnings(as.numeric(levels))
+        if (anyNA(codes) || any(codes != round(codes)))
+            return(NULL)
+        codes[as.integer(column)]
+    }
+
+    normalized <- lapply(comm, normalize)
+    unsupported <- names(comm)[vapply(normalized, is.null, logical(1))]
+    if (length(unsupported) > 0L)
+        jmvcore::reject(
+            c("Feature variables must be numeric; unsupported feature type or measure assignment: {unsupported}."),
+            unsupported=paste(unsupported, collapse=", "))
+
+    out <- as.data.frame(normalized, check.names=FALSE,
+        stringsAsFactors=FALSE)
+    names(out) <- names(comm)
+    out
+}
+
 miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
     warnings <- character()
 
@@ -60,10 +86,7 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         return(list(error=TRUE, message=paste0("Selected variable(s) not found in the data: ", paste(missingCols, collapse=", "))))
 
     dat <- data[, selected, drop=FALSE]
-    comm <- data[, species, drop=FALSE]
-    nonNumeric <- names(comm)[! vapply(comm, is.numeric, logical(1))]
-    if (length(nonNumeric) > 0)
-        return(list(error=TRUE, message=paste0("Feature variables must be numeric. Non-numeric: ", paste(nonNumeric, collapse=", "))))
+    comm <- miso_normalize_feature_columns(data[, species, drop=FALSE])
     if (length(covs) > 0) {
         covRaw <- data[, covs, drop=FALSE]
         covNonNumeric <- names(covRaw)[! vapply(covRaw, is.numeric, logical(1))]

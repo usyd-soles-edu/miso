@@ -68,7 +68,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 strata=self$options$strata,
                 covariates=self$options$covariates,
                 distBinary=self$options$distBinary)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(
                     paste0("PERMANOVA could not run: ", prep$message),
                     title="Action needed")
