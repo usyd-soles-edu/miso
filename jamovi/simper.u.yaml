@@ -129,15 +129,20 @@ children:
     children:
       - type: CheckBox
         name: simperAssess
+        style: list
         events:
           change: update_control_states
-      - type: TextBox
-        name: simperN
-        format: number
-      - type: ComboBox
-        name: simperAdjust
-      - type: TextBox
-        name: seed
-        format: number
+        children:
+          - type: TextBox
+            name: simperN
+            format: number
+            enable: (simperAssess)
+          - type: ComboBox
+            name: simperAdjust
+            enable: (simperAssess)
+          - type: TextBox
+            name: seed
+            format: number
+            enable: (simperAssess)
 
 ...

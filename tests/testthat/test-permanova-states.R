@@ -516,7 +516,7 @@ test_that("companion eligibility follows factors retained by the fitted model", 
         "collapsing", companion$table$asDF$source, fixed=TRUE)))
     warning <- miso_squish_result(companion$warnings)
     expect_match(warning,
-        "Additional factor 'collapsing' was not retained", fixed=TRUE)
+        "selected display factor 'collapsing' was not retained", fixed=TRUE)
     expect_match(warning,
         "automatically displays 'group'", fixed=TRUE)
 
@@ -527,6 +527,43 @@ test_that("companion eligibility follows factors retained by the fitted model", 
     expect_identical(
         retained$companionPcoaSites$asDF$group,
         as.character(permanova_state_data()$site))
+})
+
+test_that("PERMANOVA companion notices retain invalid display assignments", {
+    data <- permanova_state_data()
+    data$covariate <- seq_len(nrow(data))
+    common <- list(
+        data=data, vars=c("sp1", "sp2", "sp3"), factor="group",
+        permFactors="site", showCompanionPcoa=TRUE, permN=19, seed=123)
+
+    ineligible <- suppressWarnings(suppressMessages(do.call(
+        permanova, c(common, list(pcoaDisplayFactor="covariate")))))
+    expect_true(ineligible$table$visible)
+    expect_false(ineligible$companionPcoa$visible)
+    ineligible_notice <- miso_squish_result(ineligible$companionPcoaDescription)
+    expect_match(ineligible_notice, "covariate", fixed=TRUE)
+    expect_match(ineligible_notice, "not a categorical factor retained", fixed=TRUE)
+    expect_match(ineligible_notice, "group, site", fixed=TRUE)
+    expect_match(ineligible_notice, "PERMANOVA and pairwise results remain available", fixed=TRUE)
+
+    unavailable <- permanovaClass$new(
+        options=permanovaOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group",
+            permFactors="site", showCompanionPcoa=TRUE,
+            permN=19, seed=123), data=data)
+    suppressWarnings(suppressMessages(unavailable$run()))
+    unavailable_option <- unavailable$options$option("pcoaDisplayFactor")
+    unavailable_option$.__enclos_env__$private$.value <- "removed_factor"
+    private <- unavailable$.__enclos_env__$private
+    private$.runCompanionPcoa(
+        private$.state$companion$prep,
+        private$.state$companion$model)
+    expect_true(unavailable$results$table$visible)
+    unavailable_notice <- miso_squish_result(
+        unavailable$results$companionPcoaDescription)
+    expect_match(unavailable_notice, "removed_factor", fixed=TRUE)
+    expect_match(unavailable_notice, "unavailable in the data", fixed=TRUE)
+    expect_match(unavailable_notice, "group, site", fixed=TRUE)
 })
 
 test_that("companion coordinates exactly reuse every PERMANOVA distance correction", {
@@ -634,7 +671,7 @@ test_that("companion state clears when toggled off or its model factor is remove
     expect_equal(length(analysis$results$companionPcoaSites$rowKeys), 0L)
     expect_match(
         miso_squish_result(analysis$results$companionPcoaDescription),
-        "Choose one categorical model factor", fixed=TRUE)
+        "Choose one eligible retained model factor", fixed=TRUE)
 
     showOption <- options$option("showCompanionPcoa")
     showOption$.__enclos_env__$private$.value <- FALSE
@@ -756,19 +793,92 @@ test_that("PERMANOVA companion JavaScript manages eligibility and focus", {
         miso_fixture_path("jamovi", "js", "permanova.js"),
         warn=FALSE), collapse="\n")
     expect_match(js,
-        "pcoaDisplayFactor.setEnabled(requested && multifactor)",
+        "pcoaDisplayFactor.setEnabled(displayEnabled)",
         fixed=TRUE)
     expect_match(js,
-        "pcoaCentroids.setEnabled(requested && validGroup)",
+        "const displayed = selections(ui.pcoaDisplayFactor.value())",
+        fixed=TRUE)
+    expect_false(grepl("pcoaDisplayFactor.setValue(null)", js, fixed=TRUE))
+    expect_match(js,
+        "pcoaCentroids.setEnabled(centroidsEnabled)",
         fixed=TRUE)
     expect_match(js,
-        "pcoaSpiders.setEnabled(requested && validGroup)",
+        "pcoaSpiders.setEnabled(spidersEnabled)",
         fixed=TRUE)
-    expect_match(js, "displayWasRemoved", fixed=TRUE)
-    expect_match(js, "pcoaDisplayFactor.setValue(null)", fixed=TRUE)
+    expect_match(js, "The R-side guard", fixed=TRUE)
     expect_match(js, "dependentHadFocus", fixed=TRUE)
+    expect_match(js, "focusedDependentDisabled", fixed=TRUE)
     expect_match(js, "focusControl(destination)", fixed=TRUE)
     expect_match(js, "setTimeout(() => refreshView(ui), 100)", fixed=TRUE)
+})
+
+test_that("PERMANOVA companion display assignment survives plot and model changes", {
+    ui <- yaml::read_yaml(
+        miso_fixture_path("jamovi", "permanova.u.yaml"))
+    plots <- ui$children[[match(
+        "plots", vapply(ui$children, function(item)
+            if (is.null(item$name)) "" else item$name, character(1)))]]
+    pairwise <- yaml::read_yaml(
+        miso_fixture_path("jamovi", "permanova.u.yaml"))$children[[3L]]$children[[6L]]
+    expect_identical(pairwise$name, "permPairwise")
+    expect_identical(pairwise$children[[1L]]$name, "permAdjust")
+    expect_identical(pairwise$children[[1L]]$enable, "(permPairwise)")
+    display <- plots$children[[match(
+        "pcoaDisplayVariables",
+        vapply(plots$children, function(item)
+            if (is.null(item$name)) "" else item$name, character(1)))]]
+    expect_identical(display$children[[1L]]$children[[1L]]$name,
+        "pcoaDisplayFactor")
+
+    data <- permanova_state_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        permFactors="site", pcoaDisplayFactor="site",
+        showCompanionPcoa=FALSE, permN=19, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    show <- options$option("showCompanionPcoa")
+    show$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$companionPcoa$visible)
+    expect_identical(
+        analysis$results$companionPcoaSites$asDF$group,
+        as.character(data$site))
+})
+
+test_that("PERMANOVA publishes retained display notices after off-to-on toggle", {
+    data <- permanova_state_data()
+    data$collapsing <- factor(rep(c("retained", "filtered"), length.out=nrow(data)))
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        permFactors="collapsing", pcoaDisplayFactor="collapsing",
+        showCompanionPcoa=FALSE, permN=19, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$table$visible)
+    expect_false(analysis$results$companionPcoaDescription$visible)
+
+    # Filter/drop the second level while the companion plot remains off.
+    analysis$.__enclos_env__$private$.data$collapsing <-
+        factor(rep("retained", nrow(data)))
+    # A structural option change represents the recalculation triggered by
+    # the filtered data in jamovi while the plot remains off.
+    seed <- options$option("seed")
+    seed$.__enclos_env__$private$.value <- 124
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$table$visible)
+    expect_false(analysis$results$companionPcoaDescription$visible)
+
+    show <- options$option("showCompanionPcoa")
+    show$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$table$visible)
+    expect_true(analysis$results$warnings$visible)
+    expect_true(analysis$results$companionPcoaDescription$visible)
+    notice <- miso_squish_result(analysis$results$warnings)
+    expect_match(notice, "collapsing", fixed=TRUE)
+    expect_match(notice, "not retained", fixed=TRUE)
+    expect_match(notice, "automatically displays 'group'", fixed=TRUE)
 })
 
 test_that("PERMANOVA companion JavaScript executes control-state behavior", {

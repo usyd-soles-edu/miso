@@ -86,6 +86,14 @@ test_that("ANOSIM schema follows the approved required-first hierarchy", {
     expect_true(is.null(find_anosim_yaml_node(ui, "permScheme")))
 })
 
+test_that("ANOSIM UI nests adjustment under pairwise comparisons", {
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "anosim.u.yaml"))
+    pairwise <- find_anosim_yaml_node(ui, "anosimPairwise")
+    expect_identical(pairwise$style, "list")
+    expect_identical(pairwise$children[[1L]]$name, "anosimAdjust")
+    expect_identical(pairwise$children[[1L]]$enable, "(anosimPairwise)")
+})
+
 test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
     source <- paste(
         readLines(miso_fixture_path("jamovi", "js", "anosim.js")),

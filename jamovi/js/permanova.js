@@ -37,8 +37,6 @@ const focusControl = control => {
         element.focus();
 };
 
-const previousModelFactors = new WeakMap();
-
 const updateControlStates = ui => {
     const pairwise = ui.permPairwise.value();
     const interactions = ui.permInteractions.value();
@@ -53,15 +51,7 @@ const updateControlStates = ui => {
     const additional = selections(ui.permFactors.value());
     const modelFactors = primary.concat(additional);
     const multifactor = additional.length > 0;
-    let displayed = selections(ui.pcoaDisplayFactor.value());
-    const previousFactors = previousModelFactors.get(ui) || [];
-    const displayWasRemoved = displayed.length === 1 &&
-        previousFactors.includes(displayed[0]) &&
-        !modelFactors.includes(displayed[0]);
-    if ((!multifactor && displayed.length > 0) || displayWasRemoved) {
-        ui.pcoaDisplayFactor.setValue(null);
-        displayed = [];
-    }
+    const displayed = selections(ui.pcoaDisplayFactor.value());
 
     const requested = ui.showCompanionPcoa.value();
     const automaticGroup = !multifactor && primary.length === 1;
@@ -72,18 +62,27 @@ const updateControlStates = ui => {
         ui.pcoaDisplayFactor, ui.pcoaCentroids, ui.pcoaSpiders,
     ];
     const dependentHadFocus = dependentControls.some(containsFocus);
+    const displayEnabled = multifactor;
+    const centroidsEnabled = requested && validGroup;
+    const spidersEnabled = requested && validGroup;
 
-    ui.pcoaDisplayFactor.setEnabled(requested && multifactor);
-    ui.pcoaCentroids.setEnabled(requested && validGroup);
-    ui.pcoaSpiders.setEnabled(requested && validGroup);
+    // Keep this target available while the plot is off so users can assign a
+    // model factor before enabling the companion PCoA. The R-side guard
+    // explains retained, dropped, and unavailable assignments.
+    ui.pcoaDisplayFactor.setEnabled(displayEnabled);
+    ui.pcoaCentroids.setEnabled(centroidsEnabled);
+    ui.pcoaSpiders.setEnabled(spidersEnabled);
 
-    if ((!requested || !validGroup) && dependentHadFocus) {
-        const destination = requested && multifactor
+    const focusedDependentDisabled = dependentHadFocus && (
+        (containsFocus(ui.pcoaDisplayFactor) && !displayEnabled) ||
+        (containsFocus(ui.pcoaCentroids) && !centroidsEnabled) ||
+        (containsFocus(ui.pcoaSpiders) && !spidersEnabled));
+    if (focusedDependentDisabled) {
+        const destination = displayEnabled
             ? ui.pcoaDisplayFactor
             : ui.showCompanionPcoa;
         setTimeout(() => focusControl(destination), 0);
     }
-    previousModelFactors.set(ui, modelFactors);
 };
 
 const revealActiveSections = ui => {

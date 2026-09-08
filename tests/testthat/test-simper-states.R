@@ -145,6 +145,17 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
     expect_identical(choices[[transform_index + 3L]]$name, "simperDetails")
 })
 
+test_that("SIMPER UI nests assessment controls under its enabling checkbox", {
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "simper.u.yaml"))
+    assessment <- find_simper_yaml_node(ui, "simperAssess")
+    expect_identical(assessment$style, "list")
+    children <- setNames(assessment$children,
+        vapply(assessment$children, `[[`, character(1), "name"))
+    expect_identical(names(children), c("simperN", "simperAdjust", "seed"))
+    expect_true(all(vapply(children, function(child)
+        identical(child$enable, "(simperAssess)"), logical(1))))
+})
+
 test_that("SIMPER UI dependencies and progressive disclosure are explicit", {
     source <- paste(
         readLines(miso_fixture_path("jamovi", "js", "simper.js")),

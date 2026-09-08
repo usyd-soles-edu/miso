@@ -36,10 +36,13 @@ children:
         name: distBinary
       - type: CheckBox
         name: anosimPairwise
+        style: list
         events:
           change: update_control_states
-      - type: ComboBox
-        name: anosimAdjust
+        children:
+          - type: ComboBox
+            name: anosimAdjust
+            enable: (anosimPairwise)
   - type: CollapseBox
     name: plots
     label: Plots

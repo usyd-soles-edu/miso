@@ -85,6 +85,14 @@ test_that("PERMDISP schema follows the required-first option hierarchy", {
     expect_true(is.null(find_permdisp_yaml_node(ui, "permScheme")))
 })
 
+test_that("PERMDISP UI nests adjustment under pairwise comparisons", {
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "permdisp.u.yaml"))
+    pairwise <- find_permdisp_yaml_node(ui, "dispPairwise")
+    expect_identical(pairwise$style, "list")
+    expect_identical(pairwise$children[[1L]]$name, "dispAdjust")
+    expect_identical(pairwise$children[[1L]]$enable, "(dispPairwise)")
+})
+
 test_that("PERMDISP UI dependencies and progressive disclosure are explicit", {
     source <- paste(
         readLines(miso_fixture_path("jamovi", "js", "permdisp.js")),

@@ -143,6 +143,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 miso_clear_table(self$results$companionPcoaSites)
                 miso_clear_table(self$results$companionPcoaCentroids)
                 private$.runCompanionPcoa(companion$prep, companion$model)
+                # Display-only reruns bypass the normal .run() tail. Publish
+                # selection notices here rather than leaving them in state.
+                private$.setWarnings(private$.state$warnings)
                 return()
             }
             miso_clear_table(self$results$companionPcoaSites)
@@ -208,6 +211,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .runCompanionPcoa = function(prep, model) {
             private$.state$companion$prep <- prep
             private$.state$companion$model <- model
+            private$.state$companion$fit <- NULL
+            private$.state$companion$plotData <- NULL
+            private$.state$companion$displayFactor <- NULL
             if (!isTRUE(self$options$showCompanionPcoa))
                 return()
 
@@ -262,53 +268,59 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .companionDisplayFactor = function(prep, model) {
             eligible <- names(model$factorColumns)
+            eligibleText <- if (length(eligible) == 0L)
+                "none"
+            else
+                paste(eligible, collapse=", ")
             multifactor <- length(eligible) > 1L
             requested <- miso_clean_vars(self$options$pcoaDisplayFactor)
             notice <- character()
+
+            unavailableMessage <- function(name, reason) {
+                paste0(
+                    "The selected display factor '", name, "' ", reason,
+                    " Choose one eligible retained model factor: ",
+                    eligibleText, ". ",
+                    "The PERMANOVA and pairwise results remain available.")
+            }
+
             if (!multifactor) {
                 selected <- eligible[[1L]]
                 if (length(requested) == 1L &&
                         !identical(requested[[1L]], selected)) {
                     stale <- requested[[1L]]
-                    if (stale %in% model$droppedFactorNames) {
-                        notice <- sprintf(
-                            paste(
-                                "Additional factor '%s' was not retained in",
-                                "the fitted PERMANOVA model after data",
-                                "filtering; the companion PCoA automatically",
-                                "displays '%s'."),
-                            stale, selected)
-                    } else {
-                        notice <- sprintf(
-                            paste(
-                                "The selected variable '%s' is not a",
-                                "categorical factor retained in the fitted",
-                                "PERMANOVA model; the companion PCoA",
-                                "automatically displays '%s'."),
-                            stale, selected)
-                    }
+                    reason <- if (stale %in% model$droppedFactorNames)
+                        paste0(
+                            "was not retained in the fitted PERMANOVA model after data filtering; the companion PCoA automatically displays '",
+                            selected, "'.")
+                    else if (!stale %in% names(self$data))
+                        paste0(
+                            "is unavailable in the data; the companion PCoA automatically displays '",
+                            selected, "'.")
+                    else
+                        paste0(
+                            "is not a categorical factor retained in the fitted PERMANOVA model; the companion PCoA automatically displays '",
+                            selected, "'.")
+                    notice <- unavailableMessage(stale, reason)
                 }
             } else {
                 if (length(requested) != 1L ||
                         !requested[[1L]] %in% eligible) {
-                    dropped <- if (length(requested) == 1L &&
-                            requested[[1L]] %in% model$droppedFactorNames) {
-                        sprintf(
-                            paste(
-                                "Additional factor '%s' was not retained after",
-                                "data filtering."),
-                            requested[[1L]])
-                    } else {
-                        character()
-                    }
+                    name <- if (length(requested) == 1L)
+                        requested[[1L]]
+                    else
+                        "(none or multiple variables)"
+                    reason <- if (length(requested) != 1L)
+                        "is not a single retained model factor."
+                    else if (name %in% model$droppedFactorNames)
+                        "was not retained in the fitted PERMANOVA model after data filtering."
+                    else if (!name %in% names(self$data))
+                        "is unavailable in the data."
+                    else
+                        "is not a categorical factor retained in the fitted PERMANOVA model."
                     return(list(
                         valid=FALSE,
-                        message=paste(
-                            dropped,
-                            "Choose one categorical model factor to display:",
-                            paste(eligible, collapse=", "),
-                            "Covariates, blocking variables, interactions, and",
-                            "variables outside the fitted model cannot be used.")))
+                        message=unavailableMessage(name, reason)))
                 }
                 selected <- requested[[1L]]
             }
@@ -318,28 +330,33 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     !modelColumn %in% names(model$data)) {
                 return(list(
                     valid=FALSE,
-                    message="The model factor selected for the companion PCoA is unavailable."))
+                    message=unavailableMessage(
+                        selected,
+                        "is unavailable from the fitted model data.")))
             }
             groups <- droplevels(as.factor(model$data[[modelColumn]]))
             if (length(groups) != attr(prep$dist, "Size") || anyNA(groups)) {
                 return(list(
                     valid=FALSE,
-                    message=paste(
-                        "The selected display factor does not align with the",
-                        "sites retained for PERMANOVA.")))
+                    message=unavailableMessage(
+                        selected,
+                        "does not align with the sites retained for PERMANOVA.")))
             }
             if (nlevels(groups) < 2L) {
                 return(list(
                     valid=FALSE,
-                    message=paste0(
-                        "The selected display factor '", selected,
-                        "' has fewer than two groups after data filtering.")))
+                    message=unavailableMessage(
+                        selected,
+                        "has fewer than two groups after data filtering.")))
             }
             list(valid=TRUE, name=selected, groups=groups,
                 automatic=!multifactor, notice=notice)
         },
 
         .showCompanionInstruction = function(message) {
+            self$results$companionPcoa$setVisible(FALSE)
+            self$results$companionPcoaSites$setVisible(FALSE)
+            self$results$companionPcoaCentroids$setVisible(FALSE)
             self$results$companionPcoaDescription$setContent(
                 miso_html_block(c(
                     paste(

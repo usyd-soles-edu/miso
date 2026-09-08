@@ -64,6 +64,20 @@ assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
 assert.strictEqual(ui.pcoaCentroids.enabled, false);
 assert.strictEqual(ui.pcoaSpiders.enabled, false);
 
+// A retained eligible factor can be assigned before the companion plot is on.
+// Focus must remain on this enabled target while the plot is off.
+ui = makeUi({additional: ['site'], displayed: 'site', requested: false});
+global.document = {activeElement: ui.pcoaDisplayFactor.element};
+events.update_control_states(ui);
+assert.strictEqual(ui.pcoaDisplayFactor.current, 'site');
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
+assert.strictEqual(ui.pcoaDisplayFactor.focused, 0);
+ui.showCompanionPcoa.current = true;
+events.update_control_states(ui);
+assert.strictEqual(ui.pcoaDisplayFactor.current, 'site');
+assert.strictEqual(ui.pcoaCentroids.enabled, true);
+assert.strictEqual(ui.pcoaSpiders.enabled, true);
+
 for (const selected of ['group', 'site']) {
     ui = makeUi({additional: ['site'], displayed: selected});
     events.update_control_states(ui);
@@ -83,13 +97,13 @@ ui = makeUi({additional: ['site'], displayed: 'site'});
 events.update_control_states(ui);
 ui.permFactors.current = [];
 events.update_control_states(ui);
-assert.strictEqual(ui.pcoaDisplayFactor.current, null);
+assert.strictEqual(ui.pcoaDisplayFactor.current, 'site');
 assert.strictEqual(ui.pcoaDisplayFactor.enabled, false);
 assert.strictEqual(ui.pcoaCentroids.enabled, true);
 
 ui = makeUi({additional: ['site'], displayed: 'site', requested: false});
 events.update_control_states(ui);
-assert.strictEqual(ui.pcoaDisplayFactor.enabled, false);
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
 assert.strictEqual(ui.pcoaCentroids.enabled, false);
 assert.strictEqual(ui.pcoaSpiders.enabled, false);
 

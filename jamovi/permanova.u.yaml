@@ -86,10 +86,13 @@ children:
         name: distAdd
       - type: CheckBox
         name: permPairwise
+        style: list
         events:
           change: update_control_states
-      - type: ComboBox
-        name: permAdjust
+        children:
+          - type: ComboBox
+            name: permAdjust
+            enable: (permPairwise)
   - type: CollapseBox
     name: plots
     label: Plots

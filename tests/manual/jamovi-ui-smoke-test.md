@@ -33,8 +33,9 @@ Run every analysis from both clean CSVs so cached workbook output cannot satisfy
 2. Confirm **Companion PCoA** is off and that **PERMANOVA Companion PCoA**, **PERMANOVA Companion PCoA**, coordinates, and centroids are absent.
 3. Select **Companion PCoA**. For the simple model, assert `group` is the effective display factor and that the 600 × 500 **PERMANOVA Companion PCoA**, **PERMANOVA Companion PCoA**, and **Companion PCoA Site Coordinates** appear.
 4. Select **Group Centroids** and **Connect Sites to Centroids** independently. Assert the image and description report the effective layers and the full-data coordinate and centroid tables remain available.
-5. Add `treatment` under **Study Design and Model → Additional Factors**. Assert **Model Factor** is enabled; select `group`, then `treatment`, and verify the styling/table grouping follows the choice. The PERMANOVA test remains the inferential result; the companion PCoA is descriptive.
-6. Clear **Companion PCoA**. Assert all companion results disappear and the recorded PERMANOVA table is byte-for-byte unchanged by every plot toggle.
+5. Add `treatment` under **Study Design and Model → Additional Factors**. Before enabling **Companion PCoA**, assign `treatment` under **Model Factor** and confirm the assignment remains. Enable the plot and verify the styling/table grouping follows the requested factor. The PERMANOVA test remains the inferential result; the companion PCoA is descriptive.
+6. With the plot enabled, try an ineligible covariate, a factor removed by filtering, and a deleted/unavailable factor. Confirm each assignment remains in the target and the companion description explicitly names the reason and the eligible retained factors; the PERMANOVA table and any calculable pairwise output remain visible.
+7. Clear **Companion PCoA**. Assert all companion results disappear and the recorded PERMANOVA table is byte-for-byte unchanged by every plot toggle.
 
 ### Pending ANOSIM plot procedure
 

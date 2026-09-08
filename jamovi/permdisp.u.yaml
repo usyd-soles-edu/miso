@@ -35,10 +35,13 @@ children:
         name: dispType
       - type: CheckBox
         name: dispPairwise
+        style: list
         events:
           change: update_control_states
-      - type: ComboBox
-        name: dispAdjust
+        children:
+          - type: ComboBox
+            name: dispAdjust
+            enable: (dispPairwise)
   - type: CollapseBox
     name: plots
     label: Plots
