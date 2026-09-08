@@ -988,7 +988,8 @@ test_that("companion plot callback uses cached reusable plot data only", {
         unlink(file)
     }, add=TRUE)
     expect_silent(
-        analysis$.__enclos_env__$private$.plotCompanionPcoa(NULL))
+        analysis$.__enclos_env__$private$.plotCompanionPcoa(
+            analysis$results$companionPcoa))
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
     expect_identical(
@@ -1061,4 +1062,33 @@ test_that("PERMANOVA companion JavaScript executes control-state behavior", {
     expect_true(is.null(status) || identical(status, 0L),
         info=paste(output, collapse="\n"))
     expect_identical(output, "ok")
+})
+
+test_that("companion PCoA renders from serialized Image state alone", {
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showCompanionPcoa=TRUE, pcoaCentroids=TRUE, pcoaSpiders=TRUE,
+        permN=19, seed=123)
+    analysis <- permanovaClass$new(
+        options=options, data=permanova_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$companionPcoa
+    state <- image$state
+    expect_false(is.null(state))
+    expect_true(state$available)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$companion$plotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    analysis$.__enclos_env__$private$.plotCompanionPcoa(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
 })

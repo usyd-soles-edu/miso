@@ -720,3 +720,59 @@ test_that("ANOSIM interpretation explains negative R and settings are effective"
     expect_identical(settings[["Pairwise comparisons"]], "Disabled")
     expect_identical(settings[["P-value adjustment"]], "Not applied")
 })
+
+test_that("rank plot renders from serialized Image state alone", {
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showRankPlot=TRUE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=anosim_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$rankPlot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$all, "data.frame")
+    expect_s3_class(state$raw, "data.frame")
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$rankPlotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=480)
+    analysis$.__enclos_env__$private$.plotRank(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("rank plot renders from Image state even when showRankPlot is false", {
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showRankPlot=FALSE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=anosim_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$rankPlot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$all, "data.frame")
+    expect_false(image$visible)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$rankPlotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=480)
+    analysis$.__enclos_env__$private$.plotRank(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})

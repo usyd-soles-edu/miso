@@ -330,6 +330,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     as.integer(self$options$anosimN)
 
             private$.state$rankPlotData <- private$.prepareRankPlotData(fit)
+            self$results$rankPlot$setState(private$.state$rankPlotData)
             private$.populateRankDiagnostic()
 
             self$results$global$addRow(
@@ -450,9 +451,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
         },
 
-        .buildRankPlot = function() {
-            diagnostic <- private$.state$rankPlotData
-            if (is.null(diagnostic) || !isTRUE(self$options$showRankPlot))
+        .buildRankPlot = function(diagnostic = private$.state$rankPlotData) {
+            if (is.null(diagnostic))
                 return(NULL)
             all <- diagnostic$all
             all <- all[is.finite(all$rank) & !is.na(all$category), , drop=FALSE]
@@ -510,7 +510,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotRank = function(image, ...) {
-            plot <- private$.buildRankPlot()
+            plot <- private$.buildRankPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

@@ -54,6 +54,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 fit,
                 showCentroids=self$options$showCentroids,
                 showSpiders=self$options$showSpiders)
+            self$results$ordination$setState(private$.state$plotData)
 
             private$.populateSummary()
             private$.populatePurposes()
@@ -353,7 +354,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotPcoa = function(image, ...) {
-            plot <- .misoBuildPcoaPlot(private$.state$plotData)
+            plot <- .misoBuildPcoaPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

@@ -100,6 +100,14 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         character(),
                     clusterState$warning)))
 
+            self$results$dendrogram$setState(list(
+                fit=private$.state$fit,
+                labels=private$.state$labels,
+                showLabels=private$.state$showLabels,
+                membership=private$.state$membership,
+                cutLine=private$.state$cutLine,
+                distanceLabel=private$.distanceLabel(self$options$distance)))
+
             private$.populateSummary(prep)
             private$.populatePurposes()
             private$.populateSettings(prep, labelState$source)
@@ -554,7 +562,8 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .buildDendrogram = function (fit = private$.state$fit, labels = private$.state$labels, showLabels = private$.state$showLabels,
-            membership = private$.state$membership, cutLine = private$.state$cutLine)
+            membership = private$.state$membership, cutLine = private$.state$cutLine,
+            distanceLabel = private$.distanceLabel(self$options$distance))
         {
             if (is.null(fit))
                 return(NULL)
@@ -590,7 +599,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 leaf$x
             else NULL, labels = axisLabels, expand = ggplot2::expansion(mult = c(0.015, 0.015)), guide = ggplot2::guide_axis(check.overlap = FALSE)) +
                 ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.02, 0.06))) + ggplot2::labs(x = "Samples",
-                y = paste(private$.distanceLabel(self$options$distance), "dissimilarity")) + .misoPlotTheme() +
+                y = paste(distanceLabel, "dissimilarity")) + .misoPlotTheme() +
                 ggplot2::theme(axis.text.x = if (isTRUE(showLabels))
                     ggplot2::element_text(angle = 55, hjust = 1, vjust = 1, size = 10)
                 else ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank(),
@@ -599,7 +608,16 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 ,
 
         .plotDendrogram = function(image, ...) {
-            plot <- private$.buildDendrogram()
+            plotData <- image$state
+            if (is.null(plotData))
+                return()
+            plot <- private$.buildDendrogram(
+                fit=plotData$fit,
+                labels=plotData$labels,
+                showLabels=plotData$showLabels,
+                membership=plotData$membership,
+                cutLine=plotData$cutLine,
+                distanceLabel=plotData$distanceLabel)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

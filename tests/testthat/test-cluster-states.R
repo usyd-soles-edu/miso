@@ -772,7 +772,7 @@ test_that("ggplot builder and callback render bounded read-only output", {
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
     grDevices::png(path, width=600, height=500)
-    expect_true(private$.plotDendrogram(NULL))
+    expect_true(private$.plotDendrogram(analysis$results$dendrogram))
     grDevices::dev.off()
 
     expect_gt(file.info(path)$size, 1000)
@@ -874,4 +874,50 @@ test_that("cluster source contracts and fixtures stay byte identical", {
     expect_match(header, "numberClusters = 3", fixed=TRUE)
     expect_match(header, "dendrogramDescription", fixed=TRUE)
     expect_match(header, "membership", fixed=TRUE)
+})
+
+test_that("dendrogram renders from serialized Image state alone", {
+    analysis <- run_cluster_private(
+        cluster_state_data(24L),
+        vars=paste0("feature_0", 1:4),
+        labels="sample",
+        sampleLabels="show",
+        defineClusters=TRUE,
+        numberClusters=4)
+    private <- cluster_private(analysis)
+    image <- analysis$results$dendrogram
+    state <- image$state
+    expect_false(is.null(state))
+    expect_identical(state$membership, private$.state$membership)
+    expect_identical(state$labels, private$.state$labels)
+    expect_identical(state$distanceLabel, "Bray-Curtis")
+
+    restored <- unserialize(serialize(state, NULL))
+    # Change the option after capturing state: the axis label must come from
+    # serialized state, not from the mutated option.
+    distance_option <- analysis$options$option("distance")
+    distance_option$.__enclos_env__$private$.value <- "jaccard"
+    for (name in c("fit", "labels", "membership", "cutLine"))
+        private$.state[[name]] <- NULL
+    image$setState(restored)
+
+    plotFromState <- private$.buildDendrogram(
+        fit=restored$fit,
+        labels=restored$labels,
+        showLabels=restored$showLabels,
+        membership=restored$membership,
+        cutLine=restored$cutLine,
+        distanceLabel=restored$distanceLabel)
+    expect_identical(plotFromState$labels$y, "Bray-Curtis dissimilarity")
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    private$.plotDendrogram(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
 })

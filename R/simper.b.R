@@ -396,6 +396,10 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     title="SIMPER contribution values"))
                 rows <- private$.state$plotData[
                     private$.state$plotData$contrast == contrast, , drop=FALSE]
+                item$plot$setState(list(
+                    rows=rows,
+                    simperTop=self$options$simperTop,
+                    simperCum=self$options$simperCum))
                 for (row in seq_len(nrow(rows))) {
                     direction <- if (!is.finite(rows$meanFirst[[row]]) ||
                             !is.finite(rows$meanSecond[[row]])) {
@@ -425,6 +429,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$heatmapDescription$setContent(
                 private$.heatmapDescription())
             heatmapData <- private$.heatmapData()
+            self$results$heatmap$setState(heatmapData)
             if (!is.null(heatmapData))
                 for (row in seq_len(nrow(heatmapData)))
                     self$results$heatmapValues$addRow(
@@ -629,7 +634,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
         },
 
-        .buildContributionPlot = function (rows, contrast)
+        .buildContributionPlot = function (rows, contrast, top = self$options$simperTop,
+            cumulative = self$options$simperCum)
         {
             if (is.null(rows) || nrow(rows) == 0L)
                 return(NULL)
@@ -658,16 +664,19 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 breaks = directions, labels = directions, drop = FALSE, name = "Transformed group mean") + ggplot2::scale_x_continuous(labels = function(x) paste0(x,
                 "%"), expand = ggplot2::expansion(mult = c(0, 0.42))) + ggplot2::scale_y_discrete(labels = featureLabels) +
                 ggplot2::labs(x = "Contribution to average dissimilarity (%)", y = NULL, subtitle = sprintf("Top %s or %s%% cumulative; threshold-crossing feature included",
-                    self$options$simperTop, self$options$simperCum)) + .misoPlotTheme() + ggplot2::theme(legend.position = "bottom",
+                    top, cumulative)) + .misoPlotTheme() + ggplot2::theme(legend.position = "bottom",
                 plot.subtitle = ggplot2::element_text(size = 10, colour = "#444444"))
         }
 ,
 
         .plotContribution = function(image, ...) {
             contrast <- as.character(image$key)
-            rows <- private$.state$plotData[
-                private$.state$plotData$contrast == contrast, , drop=FALSE]
-            plot <- private$.buildContributionPlot(rows, contrast)
+            plotData <- image$state
+            plot <- private$.buildContributionPlot(
+                plotData$rows,
+                contrast,
+                top=plotData$simperTop,
+                cumulative=plotData$simperCum)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))
@@ -692,9 +701,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             grid
         },
 
-        .buildHeatmapPlot = function ()
+        .buildHeatmapPlot = function (dat = private$.heatmapData())
         {
-            dat <- private$.heatmapData()
             if (is.null(dat))
                 return(NULL)
             dat$feature <- factor(dat$feature, levels = unique(dat$feature))
@@ -714,9 +722,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 ,
 
         .plotHeatmap = function(image, ...) {
-            if (! isTRUE(self$options$simperHeatmap))
-                return()
-            plot <- private$.buildHeatmapPlot()
+            plot <- private$.buildHeatmapPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

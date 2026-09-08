@@ -216,6 +216,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state$distanceDiagnostic <-
                 .preparePermdispDistanceDiagnostic(
                     fit, centre=self$options$dispType)
+            self$results$plot$setState(private$.state$distanceDiagnostic)
             if (is.null(private$.state$distanceDiagnostic)) {
                 private$.showGuidance(paste(
                     "PERMDISP could not produce finite distances to group centres.",
@@ -228,6 +229,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             private$.state$ordination <- .preparePermdispOrdination(
                 fit, rowIndex=prep$rowIndex)
+            self$results$ordinationPlot$setState(private$.state$ordination)
             private$.populateOrdination()
 
             restriction <- private$.state$restriction$effectiveCode
@@ -600,10 +602,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotDistances = function(image, ...) {
-            if (!isTRUE(self$options$showDistancePlot))
-                return()
-            plot <- .buildPermdispDistancePlot(
-                private$.state$distanceDiagnostic)
+            plot <- .buildPermdispDistancePlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))
@@ -611,9 +610,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotOrdination = function(image, ...) {
-            if (!isTRUE(self$options$showOrdinationPlot))
-                return()
-            plot <- .buildPermdispOrdinationPlot(private$.state$ordination)
+            plot <- .buildPermdispOrdinationPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

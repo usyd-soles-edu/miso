@@ -310,3 +310,27 @@ test_that("PCoA loading never steals keyboard focus", {
     expect_match(js, "view_loaded")
     expect_false(grepl("\\.focus\\(", js))
 })
+
+test_that("every plot renderer consumes only its serialized image state", {
+    renderers <- list(
+        permanova=list(companionPcoa=".plotCompanionPcoa"),
+        anosim=list(rankPlot=".plotRank"),
+        permdisp=list(plot=".plotDistances", ordinationPlot=".plotOrdination"),
+        nmds=list(ordination=".plotNmds", shepard=".plotShepard"),
+        simper=list(`contributionPlots/plot`=".plotContribution",
+            heatmap=".plotHeatmap"),
+        cluster=list(dendrogram=".plotDendrogram"),
+        pcoa=list(ordination=".plotPcoa"))
+
+    for (analysis in names(renderers)) {
+        class <- getFromNamespace(paste0(analysis, "Class"), "miso")
+        for (path in names(renderers[[analysis]])) {
+            name <- renderers[[analysis]][[path]]
+            source <- paste(
+                deparse(class$private_methods[[name]]),
+                collapse="\n")
+            expect_match(source, "image\\$state", info=name)
+            expect_false(grepl("private\\$\\.state", source), info=name)
+        }
+    }
+})

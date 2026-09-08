@@ -182,7 +182,7 @@ expect_nmds_plot_inside_frame <- function(data) {
     expect_true(all(displayed$y >= limits$y[[1L]] & displayed$y <= limits$y[[2L]]))
 
     grDevices::png(path, width=900, height=700)
-    rendered <- private$.plotNmds(NULL)
+    rendered <- private$.plotNmds(analysis$results$ordination)
     grDevices::dev.off()
     expect_true(isTRUE(rendered))
     expect_identical(private$.state, before)
@@ -1037,7 +1037,7 @@ test_that("nMDS plot is a non-empty read-only rendering of cached state", {
     on.exit(unlink(path), add=TRUE)
 
     grDevices::png(path, width=900, height=700)
-    private$.plotNmds(NULL)
+    private$.plotNmds(analysis$results$ordination)
     grDevices::dev.off()
 
     expect_gt(file.info(path)$size, 0)
@@ -1182,7 +1182,7 @@ test_that("legacy 3D environmental endpoints are authoritative in table and plot
         unname(as.matrix(actual[c("NMDS1", "NMDS2", "NMDS3")])),
         unname(endpoints),
         tolerance=0)
-    expect_match(plotBody, "\\.state\\$vectorEndpoints")
+    expect_match(plotBody, "plotData\\$vectorEndpoints")
     expect_false(grepl("vegan::envfit|vegan::scores", plotBody))
 })
 
@@ -1325,7 +1325,7 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
     grDevices::png(path, width=900, height=700)
-    rendered <- shownPrivate$.plotShepard(NULL)
+    rendered <- shownPrivate$.plotShepard(shown$results$shepard)
     grDevices::dev.off()
 
     expect_true(shownPrivate$.state$shepardValid)
@@ -1609,7 +1609,7 @@ test_that("deterministic label fallback retains all feature and vector table row
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
     grDevices::png(path, width=900, height=700)
-    firstPrivate$.plotNmds(NULL)
+    firstPrivate$.plotNmds(first$results$ordination)
     grDevices::dev.off()
     expect_gt(file.info(path)$size, 0)
     expect_identical(
@@ -1760,4 +1760,71 @@ test_that("nMDS migration scenarios use current result names", {
         "nmds-small-legacy-3d", "nmds-small-standardize-bray-recovery",
         "nmds-small-standardize-euclidean",
         "nmds-small-missing-optional-metadata") %in% scenarios$scenario_id))
+})
+
+test_that("nMDS ordination renders from serialized Image state alone", {
+    analysis <- run_nmds_private(
+        nmds_state_data(n=24L),
+        vars=paste0("feature_0", 1:4),
+        factor="group",
+        nmdsOverlay=TRUE,
+        nmdsHull=TRUE,
+        nmdsSpider=TRUE,
+        seed=123,
+        nmdsTrymax=5)
+    private <- analysis$.__enclos_env__$private
+    image <- analysis$results$ordination
+    state <- image$state
+    expect_false(is.null(state))
+    expect_identical(nrow(state$sites), 24L)
+    expect_false(is.null(state$overlays))
+
+    restored <- unserialize(serialize(state, NULL))
+    private$.state$sites <- NULL
+    private$.state$overlays <- NULL
+    private$.state$features <- NULL
+    private$.state$vectorEndpoints <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=580, height=450)
+    private$.plotNmds(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("Shepard diagram renders from serialized Image state alone", {
+    analysis <- run_nmds_private(
+        nmds_state_data(n=18L),
+        vars=paste0("feature_0", 1:4),
+        nmdsShepard=TRUE,
+        seed=123,
+        nmdsTrymax=5)
+    private <- analysis$.__enclos_env__$private
+    image <- analysis$results$shepard
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$display, "data.frame")
+    expect_s3_class(state$all, "data.frame")
+
+    restored <- unserialize(serialize(state, NULL))
+    private$.state$shepardData <- NULL
+    private$.state$shepardDisplayData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=580, height=450)
+    private$.plotShepard(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
 })

@@ -248,6 +248,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 showCentroids=self$options$pcoaCentroids,
                 showSpiders=self$options$pcoaSpiders)
             private$.state$companion$plotData <- plotData
+            self$results$companionPcoa$setState(plotData)
             private$.populateCompanionSites(prep, fit)
             if (isTRUE(self$options$pcoaCentroids) ||
                     isTRUE(self$options$pcoaSpiders))
@@ -445,8 +446,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotCompanionPcoa = function(image, ...) {
-            plot <- .buildPcoaPlot(
-                private$.state$companion$plotData)
+            plot <- .buildPcoaPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

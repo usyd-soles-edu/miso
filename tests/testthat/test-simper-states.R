@@ -1077,3 +1077,79 @@ test_that("saved small and large datasets independently confirm descriptive outp
         }
     }
 })
+
+test_that("contribution plots and heatmap render from serialized Image state", {
+    data <- simper_many_feature_data(groups=LETTERS[1:3])
+    vars <- names(data)[names(data) != "group"]
+    options <- simperOptions$new(
+        vars=vars, factor="group",
+        simperTop=3, simperCum=100, simperHeatmap=TRUE)
+    analysis <- simperClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    private <- analysis$.__enclos_env__$private
+    items <- analysis$results$contributionPlots$items
+    expect_length(items, 3L)
+
+    # Change the presentation options after capturing state: restored plots
+    # must render from serialized state, not from these option values.
+    top_option <- options$option("simperTop")
+    top_option$.__enclos_env__$private$.value <- 99
+    cum_option <- options$option("simperCum")
+    cum_option$.__enclos_env__$private$.value <- 1
+
+    expect_rendered_from_state <- function(image, fun, width, height) {
+        state <- image$state
+        expect_false(is.null(state), info=image$key)
+        restored <- unserialize(serialize(state, NULL))
+        private$.state$plotData <- NULL
+        private$.state$contrastLabels <- character()
+        image$setState(restored)
+
+        file <- tempfile(fileext=".png")
+        on.exit({
+            if (grDevices::dev.cur() > 1L)
+                grDevices::dev.off()
+            unlink(file)
+        }, add=TRUE)
+        grDevices::png(file, width=width, height=height)
+        fun(image)
+        grDevices::dev.off()
+        expect_gt(
+            file.info(file)$size,
+            1000,
+            label=paste("rendered PNG size for", image$key))
+    }
+
+    for (item in items) {
+        image <- item$plot
+        state <- image$state
+        expect_false(is.null(state), info=image$key)
+        expect_true(all(state$rows$contrast == image$key), info=image$key)
+        expect_true(all(state$rows$feature %in% vars), info=image$key)
+        expect_equal(state$simperTop, 3, info=image$key)
+        expect_equal(state$simperCum, 100, info=image$key)
+        expect_rendered_from_state(
+            image,
+            function(img) private$.plotContribution(img),
+            580, 430)
+
+        plotFromState <- private$.buildContributionPlot(
+            state$rows,
+            image$key,
+            top=state$simperTop,
+            cumulative=state$simperCum)
+        expect_identical(
+            plotFromState$labels$subtitle,
+            "Top 3 or 100% cumulative; threshold-crossing feature included",
+            info=image$key)
+    }
+
+    heatmapImage <- analysis$results$heatmap
+    heatmapState <- heatmapImage$state
+    expect_false(is.null(heatmapState))
+    expect_setequal(unique(heatmapState$contrast), items |> vapply(function(item) item$title, character(1)))
+    expect_rendered_from_state(
+        heatmapImage,
+        function(img) private$.plotHeatmap(img),
+        600, 500)
+})

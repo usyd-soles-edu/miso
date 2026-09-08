@@ -199,6 +199,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.populateSummary()
             private$.populatePurposes()
             private$.populateCoreResults()
+            self$results$ordination$setState(private$.nmdsPlotData())
+            self$results$shepard$setState(private$.shepardPlotData())
             showShepard <- isTRUE(self$options$nmdsShepard) &&
                 private$.state$shepardValid
             private$.showSuccessfulResults(
@@ -1401,19 +1403,38 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }))
         },
 
-        .buildNmdsPlot = function ()
+        .nmdsPlotData = function() {
+            list(
+                sites=private$.state$sites,
+                overlays=private$.state$overlays,
+                features=private$.state$features,
+                groupLabels=private$.state$groupLabels,
+                stress=private$.finiteNumber(private$.state$fit$stress),
+                featureNames=private$.featureNames(),
+                featureLabelSelection=private$.state$featureLabelSelection,
+                vectorEndpoints=private$.state$vectorEndpoints,
+                vectorLabelSelection=private$.state$vectorLabelSelection)
+        },
+
+        .shepardPlotData = function() {
+            list(
+                display=private$.state$shepardDisplayData,
+                all=private$.state$shepardData)
+        },
+
+        .buildNmdsPlot = function (plotData = private$.nmdsPlotData())
         {
-            sites <- private$.state$sites
+            sites <- plotData$sites
             if (is.null(sites) || ncol(sites) < 2L)
                 return(NULL)
-            overlays <- private$.state$overlays
-            features <- private$.state$features
+            overlays <- plotData$overlays
+            features <- plotData$features
             xValues <- c(0, sites[is.finite(sites[, 1L]), 1L])
             yValues <- c(0, sites[is.finite(sites[, 2L]), 2L])
             styles <- overlays$styles
             pointsStyled <- isTRUE(overlays$effective[["points"]])
             plot <- ggplot2::ggplot() + ggplot2::labs(x = "NMDS1", y = "NMDS2", caption = {
-                stress <- private$.finiteNumber(private$.state$fit$stress)
+                stress <- plotData$stress
                 if (is.na(stress))
                     "Stress unavailable"
                 else sprintf("Stress = %.3f", stress)
@@ -1453,7 +1474,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     ggplot2::aes(x = x, y = y, group = pathGroup)), show.legend = TRUE)
             siteData <- data.frame(x = sites[, 1L], y = sites[, 2L], stringsAsFactors = FALSE)
             if (pointsStyled) {
-                siteData$group <- factor(private$.state$groupLabels, levels = styles$group)
+                siteData$group <- factor(plotData$groupLabels, levels = styles$group)
                 plot <- plot + ggplot2::geom_point(data = siteData, ggplot2::aes(x = x, y = y, colour = group,
                     shape = group), size = 2.5, stroke = 0.8)
             }
@@ -1464,15 +1485,15 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (!is.null(features) && nrow(features) > 0L && ncol(features) >= 2L) {
                 finiteFeatures <- is.finite(features[, 1L]) & is.finite(features[, 2L])
                 featureData <- data.frame(x = 0, y = 0, xend = features[finiteFeatures, 1L], yend = features[finiteFeatures,
-                    2L], label = private$.featureNames()[finiteFeatures], group = "Feature scores", layer = "Feature score",
+                    2L], label = plotData$featureNames[finiteFeatures], group = "Feature scores", layer = "Feature score",
                     original = which(finiteFeatures), stringsAsFactors = FALSE)
                 xValues <- c(xValues, featureData$xend)
                 yValues <- c(yValues, featureData$yend)
                 plot <- plot + ggplot2::geom_segment(data = featureData, ggplot2::aes(x = x, y = y, xend = xend,
                     yend = yend), arrow = grid::arrow(length = grid::unit(0.12, "cm"), type = "closed"), colour = "#4D4D4D",
                     linewidth = 0.45, alpha = 0.72, show.legend = FALSE)
-                labels <- private$.featureNames()
-                shown <- private$.state$featureLabelSelection$shown
+                labels <- plotData$featureNames
+                shown <- plotData$featureLabelSelection$shown
                 shown <- shown[shown %in% featureData$original]
                 if (length(shown) > 0L) {
                     labelData <- data.frame(x = features[shown, 1L], y = features[shown, 2L], label = labels[shown],
@@ -1483,7 +1504,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         colour = "#3D3D3D", size = 3.5, vjust = -0.45, check_overlap = FALSE, show.legend = FALSE)
                 }
             }
-            vectors <- private$.state$vectorEndpoints
+            vectors <- plotData$vectorEndpoints
             if (!is.null(vectors)) {
                 vectors <- as.matrix(vectors)
                 if (nrow(vectors) > 0L && ncol(vectors) >= 2L) {
@@ -1508,7 +1529,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         plot <- plot + ggplot2::geom_segment(data = vectorData, ggplot2::aes(x = x, y = y, xend = xend,
                           yend = yend), arrow = grid::arrow(length = grid::unit(0.14, "cm"), type = "closed"),
                           colour = "#8B1A1A", linewidth = 0.7, show.legend = FALSE)
-                        shown <- intersect(private$.state$vectorLabelSelection$shown, which(finiteVectors))
+                        shown <- intersect(plotData$vectorLabelSelection$shown, which(finiteVectors))
                         if (length(shown) > 0L) {
                           labelData <- data.frame(x = displayVectors[shown, 1L] * labelExpansion, y = displayVectors[shown,
                             2L] * labelExpansion, label = labels[shown], stringsAsFactors = FALSE)
@@ -1558,21 +1579,20 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 ,
 
         .plotNmds = function(image, ...) {
-            plot <- private$.buildNmdsPlot()
+            plot <- private$.buildNmdsPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))
             invisible(TRUE)
         },
 
-        .buildShepardPlot = function() {
-            fit <- private$.state$fit
-            if (is.null(fit) || !isTRUE(self$options$nmdsShepard) ||
-                    !private$.state$shepardValid)
+        .buildShepardPlot = function(plotData = private$.shepardPlotData()) {
+            if (is.null(plotData) || is.null(plotData$display) ||
+                    is.null(plotData$all) || nrow(plotData$display) == 0L)
                 return(NULL)
-            data <- private$.state$shepardDisplayData
-            allData <- private$.state$shepardData
-            if (is.null(data) || nrow(data) == 0L || is.null(allData))
+            data <- plotData$display
+            allData <- plotData$all
+            if (nrow(data) == 0L)
                 return(NULL)
             fitData <- allData[order(
                 allData$dissimilarity, allData$monotonicFit,
@@ -1595,7 +1615,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotShepard = function(image, ...) {
-            plot <- private$.buildShepardPlot()
+            plot <- private$.buildShepardPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

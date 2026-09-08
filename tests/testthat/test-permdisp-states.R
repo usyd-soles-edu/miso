@@ -857,3 +857,57 @@ test_that("PERMDISP ggplots render to bounded PNG files", {
     expect_gt(file.info(distanceFile)$size, 1000)
     expect_gt(file.info(ordinationFile)$size, 1000)
 })
+
+test_that("distance plot renders from serialized Image state alone", {
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showDistancePlot=TRUE)
+    analysis <- permdispClass$new(options=options, data=permdisp_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$plot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$all, "data.frame")
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$distanceDiagnostic <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=460)
+    analysis$.__enclos_env__$private$.plotDistances(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("ordination plot renders from serialized Image state alone", {
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showOrdinationPlot=TRUE)
+    analysis <- permdispClass$new(options=options, data=permdisp_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$ordinationPlot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_true(state$available)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$ordination <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    analysis$.__enclos_env__$private$.plotOrdination(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})

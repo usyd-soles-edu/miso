@@ -613,3 +613,32 @@ test_that("PCoA exported API has durable user-facing documentation", {
     expect_match(paste(manual, collapse="\n"),
         "returns the jamovi analysis results object", ignore.case=TRUE)
 })
+
+test_that("PCoA ordination renders from serialized Image state alone", {
+    data <- pcoa_small_data()
+    vars <- pcoa_feature_names(data)
+    analysis <- run_pcoa_private(
+        data, vars,
+        factor="group",
+        showCentroids=TRUE,
+        showSpiders=TRUE)
+    image <- analysis$results$ordination
+    state <- image$state
+    expect_false(is.null(state))
+    expect_true(state$available)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$plotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    analysis$.__enclos_env__$private$.plotPcoa(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
