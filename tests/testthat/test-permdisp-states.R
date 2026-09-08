@@ -461,6 +461,10 @@ test_that("distance and ordination builders degrade safely beyond 64 groups", {
 
     expect_s3_class(distancePlot, "ggplot")
     expect_s3_class(ordinationPlot, "ggplot")
+    for (plot in list(distancePlot, ordinationPlot)) {
+        expect_identical(plot$theme$plot.background$fill, "transparent")
+        expect_identical(plot$theme$panel.background$fill, "transparent")
+    }
     expect_silent(ggplot2::ggplot_build(distancePlot))
     expect_silent(ggplot2::ggplot_build(ordinationPlot))
 })

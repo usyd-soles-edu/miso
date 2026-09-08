@@ -766,6 +766,8 @@ test_that("SIMPER ggplot builder bounds labels and preserves full table names", 
     expect_match(legacy$contrast[[1L]], second_group, fixed=TRUE)
     expect_identical(private$.state$plotData, before)
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(
         sort(as.character(plot$data$feature)),
         sort(c(first_feature, second_feature)))
@@ -810,6 +812,8 @@ test_that("SIMPER direction uses redundant fill and border patterns", {
     values <- analysis$results$contributionPlots$items[[1L]]$values$asDF
 
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(
         as.character(plot$data$feature),
         as.character(before$feature[expected_order]))
@@ -921,6 +925,8 @@ test_that("two groups default to one contrast plot and optional heatmap is bound
     suppressWarnings(suppressMessages(analysis$run()))
     heatmap <- analysis$.__enclos_env__$private$.buildHeatmapPlot()
     expect_s3_class(heatmap, "ggplot")
+    expect_identical(heatmap$theme$plot.background$fill, "transparent")
+    expect_identical(heatmap$theme$panel.background$fill, "transparent")
     expect_true(inherits(heatmap$scales$get_scales("fill"), "ScaleContinuous"))
     expect_type(heatmap$data$missing, "logical")
     expect_false("contribution" %in% names(heatmap$data))

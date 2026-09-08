@@ -734,6 +734,8 @@ test_that("companion plot callback uses cached reusable plot data only", {
     state <- analysis$.__enclos_env__$private$.state$companion
     plot <- .buildPcoaPlot(state$plotData)
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(plot$coordinates$ratio, 1)
     expect_false(any(grepl("ellipse", vapply(
         plot$layers,

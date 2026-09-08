@@ -334,6 +334,8 @@ test_that("ANOSIM rank plot supports exactly 64 within-group styles", {
     shapes <- plot$scales$get_scales("shape")$palette(65L)
 
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(nrow(analysis$results$rankSummary$asDF), 65L)
     expect_identical(unname(colours[[1L]]), "#222222")
     expect_identical(unname(shapes[[1L]]), 1L)
@@ -386,6 +388,8 @@ test_that("ANOSIM rank plot handles long colliding labels accessibly", {
     axis_labels <- built$layout$panel_params[[1L]]$x$get_labels()
 
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(length(unique(axis_labels)), length(axis_labels))
     expect_true(all(nchar(axis_labels) <= 28L))
     expect_true(any(grepl("~", axis_labels, fixed=TRUE)))

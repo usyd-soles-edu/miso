@@ -151,6 +151,10 @@ test_that("shared plot theme uses restrained publication settings", {
     expect_identical(theme$legend.box, "vertical")
     expect_s3_class(theme$panel.grid.minor, "element_blank")
     expect_s3_class(theme$plot.title, "element_blank")
+    expect_identical(theme$plot.background$fill, "transparent")
+    expect_true(is.na(theme$plot.background$colour))
+    expect_identical(theme$panel.background$fill, "transparent")
+    expect_true(is.na(theme$panel.background$colour))
 })
 
 test_that("plot disclosure reports shown and omitted observations exactly", {

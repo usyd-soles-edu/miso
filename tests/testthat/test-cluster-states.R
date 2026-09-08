@@ -743,6 +743,8 @@ test_that("ggplot builder and callback render bounded read-only output", {
     before <- serialize(private$.state, NULL)
     plot <- private$.buildDendrogram()
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_silent(ggplot2::ggplot_build(plot))
 
     path <- tempfile(fileext=".png")

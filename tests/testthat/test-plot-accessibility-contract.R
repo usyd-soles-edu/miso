@@ -159,7 +159,7 @@ test_that("Task 6 population attaches settings to result notes", {
     }
 })
 
-test_that("every plot has an adjacent semantic description and titled table", {
+test_that("every plot keeps description, image, and table order", {
     expected <- list(
         permanova=c("companionPcoa"="companionPcoaDescription|companionPcoaSites"),
         anosim=c("rankPlot"="rankPlotDescription|rankSummary"),
@@ -176,6 +176,9 @@ test_that("every plot has an adjacent semantic description and titled table", {
             contract <- contracts[[path]]
             expectedNames <- strsplit(expected[[analysis]][[path]], "|", fixed=TRUE)[[1L]]
             expect_identical(contract$description$type, "Html", info=paste(analysis, path))
+            expect_identical(contract$image$type, "Image", info=paste(analysis, path))
+            if (!is.null(contract$tablePurpose))
+                expect_identical(contract$tablePurpose$type, "Html", info=paste(analysis, path, "table purpose"))
             expect_identical(contract$table$type, "Table", info=paste(analysis, path))
             expect_identical(contract$table$name, expectedNames[[2L]], info=paste(analysis, path))
             expect_true(nzchar(contract$table$title), info=paste(analysis, path, "table title"))
@@ -285,11 +288,12 @@ contrast_against_white <- function(hex, alpha=1) {
 }
 
 test_that("shared palette and essential site marks meet contrast contracts", {
-    aesthetics <- .misoGroupAesthetics(as.character(seq_len(64L)))
+    groupAesthetics <- getFromNamespace(".misoGroupAesthetics", "miso")
+    aesthetics <- groupAesthetics(as.character(seq_len(64L)))
     palette <- unique(unname(aesthetics$colour))
     expect_true(all(contrast_against_white(palette) >= 4.5))
     expect_true(all(contrast_against_white(palette, alpha=.85) >= 4.5))
-    expect_error(.misoGroupAesthetics(as.character(seq_len(65L))),
+    expect_error(groupAesthetics(as.character(seq_len(65L))),
         "at most 64")
 
     pcoaSource <- paste(deparse(getFromNamespace(

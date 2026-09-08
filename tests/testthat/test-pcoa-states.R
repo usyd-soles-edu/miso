@@ -215,6 +215,8 @@ test_that("PCoA plot is equal-scaled, accessible, deterministic, and honest", {
     plot <- .misoBuildPcoaPlot(plotData)
     expect_identical(.Random.seed, before)
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(plot$coordinates$ratio, 1)
     expect_identical(plot$theme, .misoPlotTheme())
     expect_identical(plotData$displayed, 10L)

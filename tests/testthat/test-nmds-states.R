@@ -154,7 +154,13 @@ expect_nmds_plot_inside_frame <- function(data) {
     on.exit(unlink(path), add=TRUE)
 
     plot <- private$.buildNmdsPlot()
+    shepard <- private$.buildShepardPlot()
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
+    expect_s3_class(shepard, "ggplot")
+    expect_identical(shepard$theme$plot.background$fill, "transparent")
+    expect_identical(shepard$theme$panel.background$fill, "transparent")
     expect_true(
         inherits(plot$coordinates, "CoordFixed") ||
             identical(plot$coordinates$ratio, 1),

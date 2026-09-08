@@ -126,6 +126,10 @@
     ggplot2::theme_minimal(base_size = baseSize) +
         ggplot2::theme(
             panel.grid.minor = ggplot2::element_blank(),
+            plot.background = ggplot2::element_rect(
+                fill="transparent", colour=NA),
+            panel.background = ggplot2::element_rect(
+                fill="transparent", colour=NA),
             legend.position = "bottom",
             legend.box = "vertical",
             plot.title = ggplot2::element_blank()
