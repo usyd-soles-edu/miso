@@ -1,3 +1,3 @@
 library(testthat)
 
-test_check("tofu")
+test_check("miso")

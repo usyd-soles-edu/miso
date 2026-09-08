@@ -165,7 +165,7 @@ test_that("checked-in PCoA references use direct vegan checkpoints", {
     }
 })
 
-test_that("reference generator records PCoA without tofu implementation calls", {
+test_that("reference generator records PCoA without Multivariate Inference, Similarity and Ordination (MISO) implementation calls", {
     generator <- paste(readLines(manual_path("generate-reference-results.R"),
         warn=FALSE), collapse="\n")
 

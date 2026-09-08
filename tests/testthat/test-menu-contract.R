@@ -1,4 +1,4 @@
-test_that("tofu uses one flat task-labelled analysis menu", {
+test_that("Multivariate Inference, Similarity and Ordination (MISO) uses one flat task-labelled analysis menu", {
     module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
     analyses <- module$analyses
 
