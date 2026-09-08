@@ -54,6 +54,7 @@ items:
       - distAdd
       - permN
       - seed
+      - useParallel
 
   - name: companionPcoaDescription
     title: PERMANOVA Companion PCoA

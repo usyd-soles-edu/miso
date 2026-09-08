@@ -175,6 +175,8 @@ test_that("every plot keeps description, image, and table order", {
         for (path in names(expected[[analysis]])) {
             contract <- contracts[[path]]
             expectedNames <- strsplit(expected[[analysis]][[path]], "|", fixed=TRUE)[[1L]]
+            expect_identical(contract$description$name, expectedNames[[1L]],
+                info=paste(analysis, path, "description"))
             expect_identical(contract$description$type, "Html", info=paste(analysis, path))
             expect_identical(contract$image$type, "Image", info=paste(analysis, path))
             if (!is.null(contract$tablePurpose))

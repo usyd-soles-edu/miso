@@ -84,12 +84,6 @@ test_that("integer-coded nominal and ordinal feature variables match numeric out
             "pcoa", "cluster", "simper")) {
         numeric_result <- run_analysis(analysis_name, numeric_data)
         integer_result <- run_analysis(analysis_name, integer_data)
-        numeric_summary <- numeric_result$summary$asDF
-        integer_summary <- integer_result$summary$asDF
-        expect_identical(integer_summary$item, numeric_summary$item,
-            info=analysis_name)
-        expect_identical(integer_summary$value, numeric_summary$value,
-            info=analysis_name)
         expect_identical(
             lapply(numeric_result$items, function(output)
                 if (inherits(output, "Table")) output$asDF else NULL),
@@ -139,10 +133,8 @@ test_that("unsupported text features reject at the analysis top while shells rem
         analysis$.__enclos_env__$private$.run(),
         "Feature variables must be numeric",
         fixed=FALSE)
-    expect_true(analysis$results$summary$visible)
     expect_true(analysis$results$table$visible)
-    expect_true(all(vapply(analysis$results$summary$asDF,
-        function(column) all(is.na(column) | column == ""), logical(1))))
+    expect_false(analysis$results$guidance$visible)
     expect_equal(nrow(analysis$results$table$asDF), 0L)
 })
 
@@ -188,7 +180,8 @@ test_that("missing rows are excluded and warning text is added", {
     )
 
     expect_match(as.character(res$warnings$asString()), "1 rows excluded due to missing values in selected variables\\.")
-    expect_equal(res$summary$asDF$value[res$summary$asDF$item == "Samples used"], "3")
+    expect_true(res$table$visible)
+    expect_gt(nrow(res$table$asDF), 0L)
 })
 
 test_that("all-zero samples and features are filtered with note and retained feature count", {
@@ -207,7 +200,8 @@ test_that("all-zero samples and features are filtered with note and retained fea
     note <- as.character(res$warnings$asString())
     expect_match(note, "2 all-zero samples excluded\\.")
     expect_match(note, "1 all-zero feature variables excluded\\.")
-    expect_equal(as.character(res$summary$asDF$value[res$summary$asDF$item == "Feature variables used"]), "2")
+    expect_true(res$table$visible)
+    expect_match(paste(res$table$asDF$source, collapse=" "), "group", fixed=TRUE)
 })
 
 test_that("entirely empty datasets return a clear note instead of crashing", {
@@ -276,10 +270,8 @@ test_that("non-syntactic variable names are handled", {
     )
 
     expect_false(res$warnings$visible)
-    expect_equal(
-        as.character(res$summary$asDF$value[res$summary$asDF$item == "Grouping variable"]),
-        "site group"
-    )
+    expect_true(res$table$visible)
+    expect_identical(res$table$asDF$source[[1L]], "site group")
 })
 
 test_that("count-data distance warns when values are non-integer", {
@@ -332,6 +324,8 @@ test_that("PERMANOVA returns stable numeric results", {
 
     tab <- res$table$asDF
     expect_false(res$warnings$visible)
+    expect_equal(tab$df[tab$source == "group"], 2, tolerance = 0)
+    expect_equal(tab$sumsqs[tab$source == "group"], 0.0593256, tolerance = 1e-7)
     expect_equal(tab$r2[tab$source == "group"], 0.1788435, tolerance = 1e-6)
     expect_equal(tab$f[tab$source == "group"], 0.3266921, tolerance = 1e-6)
     expect_equal(tab$p[tab$source == "group"], 0.7, tolerance = 1e-6)
@@ -349,7 +343,8 @@ test_that("PERMANOVA returns stable numeric results", {
             res$table$getCell(rowKey=rowKey, col="p")$footnotes,
             0L)
     }
-    expect_length(res$table$notes, 0L)
+    expect_match(miso_table_note(res$table, "method"),
+        "Permutation restrictions: Free", fixed=TRUE)
     expect_false(grepl("NaN", res$asString(), fixed=TRUE))
 })
 
@@ -365,8 +360,9 @@ test_that("PERMDISP returns test table and plot output", {
     ))
 
     expect_match(
-        as.character(res$note$asString()),
-        "PERMDISP tests multivariate spread")
+        miso_table_note(res$anova, "structuralCells"),
+        "Transformation: None. Dissimilarity index: Bray-Curtis",
+        fixed=TRUE)
     expect_true(nrow(res$anova$asDF) >= 2L)
     expect_true(nrow(res$distances$asDF) >= 3L)
     expect_false(is.null(res$plot))
@@ -395,8 +391,9 @@ test_that("ANOSIM returns stable numeric results", {
 
     tab <- res$global$asDF
     expect_match(
-        as.character(res$note$asString()),
-        "R measures rank separation")
+        miso_table_note(res$global, "meaning"),
+        "R compares ranked between-group and within-group dissimilarities",
+        fixed=TRUE)
     expect_equal(nrow(tab), 1L)
     expect_equal(tab$value[tab$statistic == "Global R"], -0.4444444, tolerance = 1e-6)
     expect_equal(tab$p[tab$statistic == "Global R"], 1, tolerance = 1e-6)
@@ -415,8 +412,9 @@ test_that("SIMPER returns stable contribution results and plot output", {
 
     tab <- res$table$asDF
     expect_match(
-        as.character(res$note$asString()),
-        "SIMPER contributions are descriptive")
+        miso_table_note(res$contributions, "meaning"),
+        "Percentages use all usable features before display filtering",
+        fixed=TRUE)
     expect_true(nrow(tab) >= 1L)
     expect_equal(tab$contribution[1], 48.47328, tolerance = 1e-5)
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
@@ -434,8 +432,8 @@ test_that("SIMPER returns stable contribution results and plot output", {
     expect_false(res$means$visible)
     expect_equal(nrow(res$contrasts$asDF), 3L)
     expect_false(res$assessment$visible)
-    settings <- setNames(res$settings$asDF$value, res$settings$asDF$setting)
-    expect_identical(settings[["Permutation assessment"]], "Disabled")
+    expect_false(res$assessment$visible)
+    expect_true(res$contributions$visible)
     expect_length(res$contributionPlots$items, 3L)
     expect_true(all(vapply(
         res$contributionPlots$items,
@@ -455,8 +453,8 @@ test_that("nMDS returns stress results and plot outputs", {
     ))
 
     stress <- res$stress$asDF
-    summary <- setNames(res$summary$asDF$value, res$summary$asDF$item)
-    expect_identical(summary[["Seed"]], "Fixed (123)")
+    expect_match(miso_table_note(res$stress, "method"),
+        "Random starts", fixed=TRUE)
     expect_true(any(stress$item == "Stress"))
     expect_equal(as.numeric(stress$value[stress$item == "Stress"]), 0, tolerance = 1e-6)
     expect_false(is.null(res$ordination))
@@ -479,8 +477,9 @@ test_that("nMDS can run without an overlay grouping variable", {
         "grouping variable|grouping layer",
         as.character(res$warnings$asString()),
         ignore.case=TRUE))
-    summary <- setNames(res$summary$asDF$value, res$summary$asDF$item)
-    expect_identical(summary[["Grouping assignment"]], "None")
+    expect_true(res$ordination$visible)
+    expect_true(res$sites$visible)
+    expect_identical(names(res$sites$asDF), c("row", "NMDS1", "NMDS2"))
 }
 )
 
@@ -637,7 +636,7 @@ test_that("envfit populates the environmental fit table", {
     expect_identical(ef$samples, rep(6L, 2L))
     expect_identical(ef$permutations, rep(99L, 2L))
     expect_match(
-        res$envfit$notes$interpretation$note,
+        miso_table_note(res$envfit, "method"),
         "association|causation|unadjusted",
         ignore.case=TRUE)
 })

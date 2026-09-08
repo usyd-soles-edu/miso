@@ -125,10 +125,15 @@ reference_permanova <- function(data, dataset, scenario_id, permutations, transf
         by = "terms"
     )
     tab <- as.data.frame(fit)
+    required_columns <- c("Df", "SumOfSqs", "R2", "F", "Pr(>F)")
+    stopifnot(all(required_columns %in% names(tab)))
+    group <- tab["group", , drop=FALSE]
     rows <- list(
-        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group pseudo-F", tab$F[[1L]], reference_function = "vegan::adonis2"),
-        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group R2", tab$R2[[1L]], reference_function = "vegan::adonis2"),
-        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group p", tab$`Pr(>F)`[[1L]], display = display_p(tab$`Pr(>F)`[[1L]]), abs_tolerance = 0, reference_function = "vegan::adonis2")
+        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group df", group[["Df"]][[1L]], reference_function = "vegan::adonis2"),
+        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group sum-of-squares", group[["SumOfSqs"]][[1L]], reference_function = "vegan::adonis2"),
+        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group pseudo-F", group[["F"]][[1L]], reference_function = "vegan::adonis2"),
+        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group R2", group[["R2"]][[1L]], reference_function = "vegan::adonis2"),
+        reference_row(dataset, scenario_id, "PERMANOVA", "PERMANOVA Table", "group p", group[["Pr(>F)"]][[1L]], display = display_p(group[["Pr(>F)"]][[1L]]), abs_tolerance = 0, reference_function = "vegan::adonis2")
     )
     do.call(rbind, rows)
 }

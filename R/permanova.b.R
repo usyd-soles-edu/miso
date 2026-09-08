@@ -47,16 +47,6 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            if (identical(self$options$permScheme, "stratified") &&
-                    miso_is_missing_var(self$options$strata)) {
-                private$.showGuidance(
-                    paste(
-                        "Within-block permutations require a Blocking variable.",
-                        "Add one, or select Free permutations."),
-                    title="Action needed")
-                return()
-            }
-
             prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
@@ -460,6 +450,29 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             invisible(TRUE)
         },
 
+        .permutationNotice = function(scheme, blockName) {
+            hasBlock <- !is.null(blockName) && nzchar(blockName)
+            if (identical(scheme, "stratified") && !hasBlock)
+                return(list(
+                    kind="error",
+                    text=paste(
+                        "Within-block permutations require a Blocking variable.",
+                        "Add one, or select Free permutations.")))
+            if (identical(scheme, "free") && hasBlock)
+                return(list(
+                    kind="warning",
+                    text=sprintf(
+                        "Blocking variable '%s' is assigned but not used with Free permutations.",
+                        blockName)))
+            if (identical(scheme, "stratified") && hasBlock)
+                return(list(
+                    kind="table",
+                    text=sprintf(
+                        "Block used: Yes (Blocking variable '%s' is used for Within blocks permutations).",
+                        blockName)))
+            list(kind="none", text="")
+        },
+
         .permutationState = function(prep) {
             scheme <- self$options$permScheme
             hasBlock <- length(prep$strata) > 0L
@@ -468,28 +481,24 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 free="Free",
                 stratified="Within blocks",
                 series="Series")
+            notice <- private$.permutationNotice(scheme, blockName)
             state <- list(
                 error=NULL,
                 warnings=character(),
+                notice=notice,
                 requested=unname(labels[[scheme]]),
                 effective=unname(labels[[scheme]]),
                 block=if (hasBlock) blockName else "None",
                 blockUsed=hasBlock && ! identical(scheme, "free"),
                 legalPermutations=NA_real_)
 
-            if (identical(scheme, "stratified") && ! hasBlock) {
-                state$error <- paste(
-                    "Within-block permutations require a Blocking variable.",
-                    "Add one, or select Free permutations.")
+            if (identical(notice$kind, "error")) {
+                state$error <- notice$text
                 return(state)
             }
 
-            if (identical(scheme, "free") && hasBlock) {
-                state$warnings <- c(
-                    state$warnings,
-                    sprintf(
-                        "Blocking variable '%s' is assigned but not used with Free permutations.",
-                        blockName))
+            if (identical(notice$kind, "warning")) {
+                state$warnings <- c(state$warnings, notice$text)
                 return(state)
             }
 
@@ -565,14 +574,48 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$table$addRow(rowKey=rowKey, values=values)
             }
 
+            permutation <- private$.state$permutation
+            blockDetail <- if (identical(permutation$notice$kind, "table"))
+                permutation$notice$text
+            else if (identical(permutation$notice$kind, "warning"))
+                sprintf(
+                    "Block used: No (Blocking variable '%s' is not used with Free permutations).",
+                    permutation$block)
+            else if (identical(permutation$block, "None"))
+                "Block used: No (no Blocking variable assigned)."
+            else
+                sprintf(
+                    "Block used: %s (Blocking variable: %s).",
+                    if (isTRUE(permutation$blockUsed)) "Yes" else "No",
+                    permutation$block)
+            seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
+            executionLabel <- if (is.null(private$.state$cl))
+                "Serial" else "Parallel"
+            sequenceDetail <- if (identical(self$options$permScheme, "series"))
+                " Sequence order: Current data-row order."
+            else
+                ""
             self$results$table$setNote(
                 key="method",
                 note=sprintf(
-                    "Transformation: %s. Dissimilarity index: %s. Test type: %s. Permutation restrictions: %s.",
+                    paste(
+                        "Transformation: %s. Dissimilarity index: %s.",
+                        "Binary dissimilarity: %s. Square-root distances: %s.",
+                        "Additive correction: %s. Test type: %s.",
+                        "Permutation restrictions: %s (%d requested). %s",
+                        "Random seed: %s. Execution: %s.%s"),
                     private$.transformLabel(self$options$transform),
                     private$.distanceLabel(self$options$distance),
+                    private$.enabledLabel(self$options$distBinary),
+                    private$.enabledLabel(self$options$distSqrt),
+                    private$.additiveLabel(self$options$distAdd),
                     private$.testTypeLabel(self$options$permBy),
-                    private$.state$permutation$effective),
+                    permutation$effective,
+                    as.integer(self$options$permN),
+                    blockDetail,
+                    seedLabel,
+                    executionLabel,
+                    sequenceDetail),
                 init=FALSE)
             list(
                 success=TRUE,

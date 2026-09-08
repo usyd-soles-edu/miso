@@ -314,8 +314,8 @@ Open `tests/manual/miso-small.csv`, create a new **Analyses → Multivariate Inf
 2. Assign `feature_01`–`feature_08` to **Feature Variables** using keyboard selection and the transfer arrow. Assert that **Action needed** asks for a categorical Grouping variable and that result tables remain absent.
 3. Assign `group` to **Grouping Variable**. Wait for `table PERMANOVA Table`, then assert that `table Pairwise PERMANOVA` and `Data handling warnings` are absent.
 4. Select **Pairwise comparisons**. Wait for a populated `table Pairwise PERMANOVA`. Clear Pairwise and assert that the table is removed from the accessibility tree.
-5. Expand **Study Design and Model**, assign `block` to **Blocking Variable**, and leave **Permutation restrictions** at **Free**. Assert that **Data handling warnings** says the block is not used and the relevant table notes reports `Block used` followed by `No`.
-6. Remove `block`, select **Within blocks — requires a Blocking variable**, and assert that only the correction appears; the inferential tables must be absent. Reassign `block` and assert that the table returns and relevant table notes disclose `Block used` followed by `Yes`.
+5. Expand **Study Design and Model**, assign `block` to **Blocking Variable**, and leave **Permutation restrictions** at **Free**. Assert that **Data handling warnings** says `Blocking variable 'block'` is assigned but not used, and the PERMANOVA table note reports `Block used: No`.
+6. Remove `block`, select **Within blocks — requires a Blocking variable**, and assert that the actionable correction appears with no inferential rows. Reassign `block` and assert that the table returns, the warning disappears, and the PERMANOVA table note reports `Block used: Yes` and names `block`.
 7. Restore **Free**, remove `group`, and assert that all previous rows and headings disappear. Restore `group` and assert that a fresh standard result appears.
 
 Do not save the CSV as a workbook.

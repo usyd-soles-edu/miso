@@ -150,6 +150,131 @@ test_that("standard success hides empty guidance warnings and pairwise output", 
     )
 })
 
+test_that("PERMANOVA table fields match adonis2 columns by name", {
+    data <- permanova_state_data()
+    result <- suppressWarnings(suppressMessages(permanova(
+        data=data,
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        permN=19,
+        seed=123)))
+    prep <- miso_prepare_resemblance(
+        data=data,
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        transform="none",
+        distance="bray",
+        seed=123)
+    set.seed(123)
+    reference <- as.data.frame(vegan::adonis2(
+        prep$dist ~ group,
+        data=data.frame(group=prep$group),
+        permutations=miso_permutation(19, "free"),
+        by="terms"))
+    table <- result$table$asDF
+    referenceSource <- rownames(reference)
+    for (column in c("Df", "SumOfSqs", "R2")) {
+        outputColumn <- c(Df="df", SumOfSqs="sumsqs", R2="r2")[[column]]
+        expect_equal(
+            table[[outputColumn]][match(referenceSource, table$source)],
+            reference[[column]],
+            tolerance=0,
+            info=column)
+    }
+    expect_equal(table$f[match("group", table$source)], reference$F[[1L]],
+        tolerance=0)
+    expect_equal(table$p[match("group", table$source)], reference$`Pr(>F)`[[1L]],
+        tolerance=0)
+    for (source in c("Residual", "Total")) {
+        row <- match(source, table$source)
+        rowKey <- result$table$rowKeys[[row]]
+        expect_identical(result$table$getCell(rowKey=rowKey, col="f")$value, "")
+        expect_identical(result$table$getCell(rowKey=rowKey, col="p")$value, "")
+        expect_length(result$table$getCell(rowKey=rowKey, col="f")$footnotes, 0L)
+        expect_length(result$table$getCell(rowKey=rowKey, col="p")$footnotes, 0L)
+    }
+})
+
+test_that("PERMANOVA permutation notices follow the restriction truth table", {
+    data <- permanova_state_data()
+    cases <- list(
+        freeWithoutBlock=list(permScheme="free"),
+        freeWithBlock=list(permScheme="free", strata="block"),
+        withinWithoutBlock=list(permScheme="stratified"),
+        withinWithBlock=list(permScheme="stratified", strata="block"))
+    results <- lapply(cases, function(options) {
+        suppressWarnings(suppressMessages(do.call(
+            permanova,
+            c(list(data=data, vars=c("sp1", "sp2", "sp3"),
+                factor="group", permN=19, seed=123), options))))
+    })
+
+    expect_false(results$freeWithoutBlock$warnings$visible)
+    expect_false(grepl("Blocking variable", miso_squish_result(
+        results$freeWithoutBlock$warnings), fixed=TRUE))
+
+    expect_true(results$freeWithBlock$warnings$visible)
+    expect_match(miso_squish_result(results$freeWithBlock$warnings),
+        "Blocking variable 'block' is assigned but not used with Free permutations.",
+        fixed=TRUE)
+    expect_match(miso_table_note(results$freeWithBlock$table, "method"),
+        "Block used: No", fixed=TRUE)
+
+    expect_true(results$withinWithoutBlock$guidance$visible)
+    expect_match(miso_squish_result(results$withinWithoutBlock$guidance),
+        "Within-block permutations require a Blocking variable.", fixed=TRUE)
+    expect_match(miso_squish_result(results$withinWithoutBlock$guidance),
+        "Add one, or select Free permutations.", fixed=TRUE)
+    expect_false(results$withinWithoutBlock$warnings$visible)
+    expect_equal(nrow(results$withinWithoutBlock$table$asDF), 0L)
+
+    expect_false(results$withinWithBlock$guidance$visible)
+    expect_false(results$withinWithBlock$warnings$visible)
+    expect_match(miso_table_note(results$withinWithBlock$table, "method"),
+        "Block used: Yes", fixed=TRUE)
+    expect_match(miso_table_note(results$withinWithBlock$table, "method"),
+        "Blocking variable 'block'", fixed=TRUE)
+})
+
+
+test_that("PERMANOVA table notes disclose non-default distance and series settings", {
+    result <- suppressWarnings(suppressMessages(permanova(
+        data=permanova_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        distBinary=TRUE,
+        distSqrt=TRUE,
+        distAdd="cailliez",
+        permScheme="series",
+        permN=19,
+        seed=123)))
+    note <- miso_table_note(result$table, "method")
+    expect_match(note, "Binary dissimilarity: Enabled", fixed=TRUE)
+    expect_match(note, "Square-root distances: Enabled", fixed=TRUE)
+    expect_match(note, "Additive correction: Cailliez", fixed=TRUE)
+    expect_match(note, "Permutation restrictions: Series", fixed=TRUE)
+    expect_match(note, "Sequence order: Current data-row order", fixed=TRUE)
+})
+
+test_that("PERMANOVA output names and suffixes remain stable", {
+    schema <- yaml::read_yaml(miso_fixture_path("jamovi", "permanova.r.yaml"))
+    names <- vapply(schema$items, `[[`, character(1), "name")
+    expect_identical(names, c(
+        "guidance", "warnings", "table", "companionPcoaDescription",
+        "companionPcoa", "companionPcoaSites", "companionPcoaCentroids",
+        "pairwise"))
+    table <- schema$items[[match("table", names)]]
+    expect_identical(vapply(table$columns, `[[`, character(1), "name"),
+        c("source", "df", "sumsqs", "r2", "f", "p"))
+    expect_identical(vapply(table$columns, `[[`, character(1), "title"),
+        c("Source", "df", "Sum Sq", "R²", "Pseudo-F", "Permutation p"))
+    expect_false(any(grepl("\\((required|optional)\\)$",
+        vapply(yaml::read_yaml(miso_fixture_path(
+            "jamovi", "permanova.a.yaml"))$options,
+            function(option) if (is.null(option$title)) "" else option$title,
+            character(1)), ignore.case=TRUE)))
+})
+
 
 test_that("pairwise on off transitions remove stale pairwise rows", {
     data <- permanova_state_data()
