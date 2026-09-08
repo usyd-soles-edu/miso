@@ -15,7 +15,7 @@ options:
     description: The data frame containing the feature and grouping variables.
 
   - name: vars
-    title: Feature variables (required)
+    title: Feature Variables
     type: Variables
     suggested:
       - continuous
@@ -27,7 +27,7 @@ options:
     description: Two or more numeric feature variables used to calculate dissimilarities among sites.
 
   - name: factor
-    title: Grouping variable (optional)
+    title: Grouping Variable
     type: Variable
     suggested:
       - nominal
@@ -141,7 +141,7 @@ options:
     description: The additive correction for negative eigenvalues; one of `none`, `lingoes`, or `cailliez`.
 
   - name: showCentroids
-    title: Show group centroids
+    title: Group Centroids
     type: Bool
     default: false
     description: Whether to draw group centroids when a grouping variable is selected.

@@ -12,13 +12,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required)
+        label: Feature Variables
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable (optional)
+        label: Grouping Variable
         children:
           - type: VariablesListBox
             name: factor
@@ -27,7 +27,7 @@ children:
             events:
               change: update_control_states
       - type: TargetLayoutBox
-        label: Environmental variables (optional)
+        label: Environmental Variables
         children:
           - type: VariablesListBox
             name: nmdsEnv
@@ -37,7 +37,7 @@ children:
 
   - type: CollapseBox
     name: analysisChoices
-    label: Analysis choices
+    label: Analysis Choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -59,7 +59,7 @@ children:
 
   - type: CollapseBox
     name: groupOptions
-    label: Group display
+    label: Group Display
     collapsed: true
     stretchFactor: 1
     children:
@@ -88,7 +88,7 @@ children:
 
   - type: CollapseBox
     name: environmentAssessment
-    label: Environmental fit
+    label: Environmental Fit
     collapsed: true
     stretchFactor: 1
     children:

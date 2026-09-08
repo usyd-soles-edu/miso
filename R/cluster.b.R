@@ -121,17 +121,26 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 cutLine=private$.state$cutLine,
                 distanceLabel=private$.distanceLabel(self$options$distance)))
 
-            private$.populateSummary(prep)
-            private$.populatePurposes()
-            private$.populateSettings(prep, labelState$source)
             private$.populateDendrogramStructure()
             private$.populateMembership()
+            self$results$dendrogramStructure$setNote(
+                key="method",
+                note=sprintf(
+                    "Linkage: Group average. Transformation: %s. Dissimilarity index: %s. Cut rule: %s. Cluster membership is descriptive; it is not a hypothesis test.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    private$.state$cutDescription),
+                init=FALSE)
+            self$results$membership$setNote(
+                key="method",
+                note=sprintf(
+                    "Transformation: %s. Dissimilarity index: %s. Cut rule: %s. Cluster labels follow the selected cut rule; merge heights are shown in Dendrogram Structure.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    private$.state$cutDescription),
+                init=FALSE)
             private$.setWarnings(private$.state$warnings)
             private$.populateDescription()
-            self$results$interpretation$setContent(miso_html_block(paste(
-                "Merge height shows dissimilarity.",
-                "Branches can rotate around a merge without changing the clustering."),
-                title="How to read this dendrogram"))
             private$.showSuccessfulResults()
         },
 
@@ -152,38 +161,24 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distanceLabel=private$.distanceLabel(self$options$distance)))
             self$results$dendrogram$setVisible(TRUE)
             self$results$dendrogramDescription$setVisible(TRUE)
-            miso_update_row_where(
-                self$results$settings, "setting", "Sample labels",
-                list(setting="Sample labels", value=sprintf(
-                    "%s (%s)",
-                    switch(labelChoice$mode, auto="Automatic", show="Show", hide="Hide"),
-                    if (private$.state$showLabels) "shown" else "hidden")))
         },
 
         .clearResults = function() {
             private$.summaryRowNo <- 0L
             private$.settingsRowNo <- 0L
             self$results$guidance$setContent("")
-            miso_clear_fixed_table(self$results$summary, 5L)
             self$results$warnings$setContent("")
             self$results$dendrogramDescription$setContent("")
             miso_clear_table(self$results$dendrogramStructure)
             miso_clear_table(self$results$membership)
-            self$results$interpretation$setContent("")
-            miso_clear_fixed_table(self$results$settings, 6L)
-            for (name in c(
-                    "summaryPurpose", "dendrogramStructurePurpose",
-                    "membershipPurpose", "settingsPurpose"))
-                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings", "dendrogram",
+                    "guidance", "warnings", "dendrogram",
                     "dendrogramDescription", "dendrogramStructure",
-                    "dendrogramStructurePurpose", "membership",
-                    "membershipPurpose", "interpretation", "settings",
-                    "settingsPurpose"))
+                    "membership"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("summaryPurpose", "summary", "dendrogramStructurePurpose", "dendrogramStructure", "settingsPurpose", "settings"))
+            for (name in c("dendrogramStructure"))
                 self$results[[name]]$setVisible(TRUE)
         },
 
@@ -196,32 +191,15 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showSuccessfulResults = function() {
             self$results$guidance$setVisible(FALSE)
             for (name in c(
-                    "summary", "summaryPurpose", "dendrogram",
-                    "dendrogramDescription", "dendrogramStructure",
-                    "dendrogramStructurePurpose", "interpretation", "settings",
-                    "settingsPurpose"))
+                    "dendrogram",
+                    "dendrogramDescription", "dendrogramStructure"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             if (!is.null(private$.state$membership)) {
                 self$results$membership$setVisible(TRUE)
-                self$results$membershipPurpose$setVisible(TRUE)
             }
         },
 
-        .populatePurposes = function() {
-            miso_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                dendrogramStructurePurpose=c(
-                    "Dendrogram structure",
-                    "Lists dendrogram merges and their heights."),
-                membershipPurpose=c(
-                    "Cluster membership",
-                    "Lists each sample's cluster at the selected cut."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
@@ -390,28 +368,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 title="Group-average cluster dendrogram"))
         },
 
-        .addSummary = function(item, value) {
-            private$.summaryRowNo <- private$.summaryRowNo + 1L
-            key <- as.character(private$.summaryRowNo)
-            miso_set_fixed_row(
-                self$results$summary,
-                rowNo=private$.summaryRowNo,
-                values=list(item=item, value=as.character(value)))
-        },
 
-        .populateSummary = function(prep) {
-            private$.addSummary("Samples used", prep$rowsUsed)
-            private$.addSummary("Feature variables used", prep$varsUsed)
-            private$.addSummary(
-                "Rows excluded: missing feature values",
-                prep$rowsMissingExcluded)
-            private$.addSummary(
-                "Rows excluded: all-zero feature values",
-                prep$rowsZeroExcluded)
-            private$.addSummary(
-                "All-zero feature variables excluded",
-                prep$featuresZeroExcluded)
-        },
 
         .populateMembership = function() {
             membership <- private$.state$membership
@@ -468,46 +425,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
         },
 
-        .addSetting = function(setting, value) {
-            private$.settingsRowNo <- private$.settingsRowNo + 1L
-            key <- as.character(private$.settingsRowNo)
-            miso_set_fixed_row(
-                self$results$settings,
-                rowNo=private$.settingsRowNo,
-                values=list(setting=setting, value=as.character(value)))
-        },
 
-        .populateSettings = function(prep, labelSource) {
-            private$.addSetting(
-                "Transformation",
-                private$.transformLabel(self$options$transform))
-            private$.addSetting(
-                "Dissimilarity",
-                private$.distanceLabel(self$options$distance))
-            private$.addSetting("Linkage", "Group average (UPGMA)")
-            private$.addSetting("Sample label source", labelSource)
-            private$.addSetting(
-                "Sample labels",
-                sprintf(
-                    "%s%s (%s)",
-                    switch(private$.state$labelMode,
-                        auto="Automatic",
-                        show="Show",
-                        hide="Hide"),
-                    if (identical(
-                            private$.state$labelModeSource,
-                            "legacy"))
-                        " \u2014 inherited from an earlier version"
-                    else
-                        "",
-                    if (private$.state$showLabels) "shown" else "hidden"))
-            private$.addSetting(
-                "Clusters defined",
-                if (is.null(private$.state$membership))
-                    "No"
-                else
-                    private$.state$cutDescription)
-        },
 
         .transformLabel = function(value) {
             switch(value,

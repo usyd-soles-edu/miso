@@ -5,40 +5,17 @@ jrs: '1.1'
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
-
-  - name: summaryPurpose
-    title: Data Summary
-    type: Html
-    visible: false
-
-  - name: summary
-    title: ''
-    type: Table
-    visible: false
-    rows: 6
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
 
   - name: warnings
     title: ''
     type: Html
     visible: false
 
-  - name: anovaPurpose
-    title: Dispersion Test
-    type: Html
-    visible: false
-
   - name: anova
-    title: ''
+    title: Dispersion Test
     type: Table
     visible: false
     rows: 0
@@ -63,13 +40,8 @@ items:
         type: number
         format: zto,pvalue
 
-  - name: pairwisePurpose
-    title: Pairwise Dispersion Comparisons
-    type: Html
-    visible: false
-
   - name: pairwise
-    title: ''
+    title: Pairwise Dispersion Comparisons
     type: Table
     visible: false
     rows: 0
@@ -90,29 +62,22 @@ items:
         format: zto,pvalue
 
   - name: plotDescription
-    title: Distance to group centre
+    title: Distance to Group Centre
     type: Html
     visible: false
     clearWith:
-      - showDistancePlot
 
   - name: plot
-    title: ''
+    title: Distance to Group Centre Plot
     type: Image
     visible: false
     clearWith:
-      - showDistancePlot
     width: 600
     height: 460
     renderFun: .plotDistances
 
-  - name: distancesPurpose
-    title: Distance-to-centre summary
-    type: Html
-    visible: false
-
   - name: distances
-    title: ''
+    title: Distances to Group Centre
     type: Table
     visible: false
     rows: 0
@@ -149,33 +114,25 @@ items:
         type: number
 
   - name: ordinationDescription
-    title: Ordination with group centres
+    title: Ordination with Group Centres
     type: Html
     visible: false
     clearWith:
-      - showOrdinationPlot
 
   - name: ordinationPlot
-    title: ''
+    title: Ordination with Group Centres
     type: Image
     visible: false
     clearWith:
-      - showOrdinationPlot
     width: 600
     height: 500
     renderFun: .plotOrdination
 
-  - name: ordinationScoresPurpose
-    title: Ordination coordinates
-    type: Html
-    visible: false
-
   - name: ordinationScores
-    title: ''
+    title: Ordination Coordinates
     type: Table
     visible: false
     clearWith:
-      - showOrdinationPlot
     rows: 0
     columns:
       - name: point
@@ -197,27 +154,3 @@ items:
         title: Axis 2
         type: number
 
-  - name: note
-    title: How to read these results
-    type: Html
-    visible: false
-
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-
-  - name: settings
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-
-...

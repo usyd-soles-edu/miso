@@ -5,7 +5,7 @@ jrs: '1.1'
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
     clearWith: &clearWith
@@ -18,49 +18,7 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
-      - nmdsEnvPerm
-
-  - name: summaryPurpose
-    title: Data summary
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: summary
-    title: ''
-    type: Table
-    rows: 11
-    visible: false
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsOverlay
-      - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
   - name: warnings
@@ -77,13 +35,7 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
   - name: ordinationDescription
@@ -100,17 +52,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
   - name: ordination
-    title: ''
+    title: nMDS Ordination
     type: Image
     width: 580
     height: 450
@@ -126,23 +72,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
-  - name: sitesPurpose
-    title: Site scores
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: sites
-    title: ''
+    title: Site Scores
     type: Table
     rows: 0
     visible: false
@@ -175,23 +109,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
-  - name: stressPurpose
-    title: Stress and convergence diagnostics
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: stress
-    title: ''
+    title: Stress and Convergence Diagnostics
     type: Table
     rows: 8
     visible: false
@@ -212,17 +134,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
   - name: shepardDescription
-    title: Shepard diagram
+    title: Shepard Diagram
     type: Html
     visible: false
     clearWith:
@@ -235,17 +151,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
   - name: shepard
-    title: ''
+    title: Shepard Diagram
     type: Image
     width: 580
     height: 450
@@ -261,23 +171,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
-  - name: shepardPairsPurpose
-    title: Shepard diagram values
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: shepardPairs
-    title: ''
+    title: Shepard Diagram Values
     type: Table
     rows: 0
     visible: false
@@ -304,23 +202,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
-  - name: envfitPurpose
-    title: Environmental fit
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: envfit
-    title: ''
+    title: Environmental Fit
     type: Table
     rows: 0
     visible: false
@@ -364,46 +250,11 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
-
-  - name: note
-    title: How to read this ordination
-    type: Html
-    visible: false
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
-      - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
-      - nmdsEnvPerm
-
-  - name: featuresPurpose
-    title: Feature scores
-    type: Html
-    visible: false
-    clearWith: *clearWith
 
   - name: features
-    title: ''
+    title: Feature Scores
     type: Table
     rows: 0
     visible: false
@@ -433,49 +284,6 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
       - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
       - nmdsEnvPerm
 
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-    clearWith: *clearWith
-  - name: settings
-    title: ''
-    type: Table
-    rows: 0
-    visible: false
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsShepard
-      - nmdsOverlay
-      - nmdsEnv
-      - nmdsSpecies
-      - nmdsHull
-      - nmdsEllipse
-      - nmdsSpider
-      - nmdsEnvPerm
-
-...

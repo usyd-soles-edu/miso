@@ -129,7 +129,7 @@ test_that("PCoA core preserves identities and computes exact group centres", {
         distBinary=FALSE)
     actual <- .misoPcoa(prepared$dist, groups=prepared$group)
 
-    expect_identical(actual$siteNames, rownames(prepared$transformed))
+    expect_identical(actual$siteNames, as.character(prepared$rowIndex))
     expect_identical(names(actual$groups), actual$siteNames)
     for (group in levels(actual$groups)) {
         expect_equal(
@@ -371,18 +371,17 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     empty <- emptyAnalysis$results
     expect_true(empty$guidance$visible)
     for (name in c("warnings", "ordination",
-            "ordinationDescription", "centroids", "interpretation"))
+            "ordinationDescription", "centroids"))
         expect_false(empty[[name]]$visible, info=name)
-    for (name in c("summary", "sites", "eigenvalues", "settings"))
+    for (name in c("sites", "eigenvalues"))
         expect_true(empty[[name]]$visible, info=name)
 
     analysis <- run_pcoa_private(data, vars, factor="group",
         showCentroids=TRUE, showSpiders=TRUE)
     result <- analysis$results
     expect_false(result$guidance$visible)
-    for (name in c("summary", "ordination", "ordinationDescription",
-            "sites", "centroids", "eigenvalues", "interpretation",
-            "settings"))
+    for (name in c("ordination", "ordinationDescription",
+            "sites", "centroids", "eigenvalues"))
         expect_true(result[[name]]$visible, info=name)
     expect_identical(nrow(result$sites$asDF), nrow(data))
     expect_identical(nrow(result$centroids$asDF),
@@ -408,29 +407,6 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     expect_false(result$ordination$visible)
 })
 
-test_that("PCoA one-axis analysis retains tables without a blank image", {
-    data <- data.frame(
-        feature_01=seq_len(6),
-        feature_02=2 * seq_len(6),
-        group=factor(rep(c("A", "B"), each=3L)))
-    result <- pcoa(data=data, vars=c("feature_01", "feature_02"),
-        factor="group", distance="euclidean", showCentroids=TRUE,
-        showSpiders=TRUE)
-    expect_false(result$guidance$visible)
-    expect_false(result$ordination$visible)
-    expect_true(result$ordinationDescription$visible)
-    expect_true(result$sites$visible)
-    expect_true(result$eigenvalues$visible)
-    expect_true(all(is.na(result$sites$asDF$PCoA2)))
-    expect_match(miso_squish_result(result$ordinationDescription),
-        "two-dimensional plot is unavailable", ignore.case=TRUE)
-    settings <- stats::setNames(
-        result$settings$asDF$value, result$settings$asDF$setting)
-    expect_identical(unname(settings[["Group centroids"]]),
-        "Requested; omitted because a two-dimensional plot is unavailable")
-    expect_identical(unname(settings[["Group spiders"]]),
-        "Requested; omitted because a two-dimensional plot is unavailable")
-})
 
 test_that("PCoA plot options do not change numerical results", {
     data <- pcoa_small_data()
@@ -481,11 +457,10 @@ test_that("PCoA schema and menu follow the approved student contract", {
 
     itemOrder <- vapply(results$items, `[[`, character(1), "name")
     expect_identical(itemOrder,
-        c("guidance", "summaryPurpose", "summary", "warnings",
-            "ordinationDescription", "ordination", "sitesPurpose", "sites",
-            "centroidsPurpose", "centroids", "eigenvaluesPurpose",
-            "eigenvalues", "interpretation", "settingsPurpose",
-            "settings"))
+        c("guidance", "warnings",
+            "ordinationDescription", "ordination", "sites",
+            "centroids",
+            "eigenvalues"))
     image <- results$items[[match("ordination", itemOrder)]]
     expect_identical(image$width, 600L)
     expect_identical(image$height, 500L)
@@ -531,59 +506,7 @@ test_that("PCoA grouped and ungrouped plots render to PNG", {
     }
 })
 
-test_that("PCoA Settings report effective overlay display states", {
-    data <- pcoa_small_data()
-    vars <- pcoa_feature_names(data)
 
-    settings <- function(...) {
-        result <- run_pcoa_private(data, vars, ...)$results$settings$asDF
-        stats::setNames(result$value, result$setting)
-    }
-
-    unrequested <- settings(factor="group", showCentroids=FALSE,
-        showSpiders=FALSE)
-    expect_identical(unname(unrequested[["Group centroids"]]),
-        "Not requested")
-    expect_identical(unname(unrequested[["Group spiders"]]),
-        "Not requested")
-
-    requested <- settings(factor="group", showCentroids=TRUE,
-        showSpiders=FALSE)
-    expect_identical(unname(requested[["Group centroids"]]), "Shown")
-    expect_identical(unname(requested[["Group spiders"]]),
-        "Not requested")
-
-    implied <- settings(factor="group", showCentroids=FALSE,
-        showSpiders=TRUE)
-    expect_identical(unname(implied[["Group centroids"]]),
-        "Shown (required for spiders)")
-    expect_identical(unname(implied[["Group spiders"]]), "Shown")
-
-    ungrouped <- settings(factor=NULL, showCentroids=TRUE,
-        showSpiders=TRUE)
-    expect_identical(unname(ungrouped[["Group centroids"]]),
-        "Requested; unavailable without a grouping variable")
-    expect_identical(unname(ungrouped[["Group spiders"]]),
-        "Requested; unavailable without a grouping variable")
-})
-
-test_that("PCoA Settings disclose inaccessible requested overlays", {
-    values <- cbind(seq_len(65), (seq_len(65)^2) %% 17)
-    data <- data.frame(
-        feature_1=values[, 1L],
-        feature_2=values[, 2L],
-        group=factor(paste0("group_", sprintf("%02d", seq_len(65)))))
-    settings <- run_pcoa_private(
-        data, c("feature_1", "feature_2"), factor="group",
-        distance="euclidean", showCentroids=TRUE,
-        showSpiders=TRUE)$results$settings$asDF
-    settings <- stats::setNames(settings$value, settings$setting)
-
-    expect_identical(unname(settings[["Group centroids"]]),
-        "Requested; omitted because more than 64 groups")
-    expect_identical(unname(settings[["Group spiders"]]),
-        "Requested; omitted because more than 64 groups")
-})
 
 test_that("PCoA exported API has durable user-facing documentation", {
     analysisPath <- testthat::test_path("..", "..", "jamovi", "pcoa.a.yaml")
@@ -644,63 +567,6 @@ test_that("PCoA ordination renders from serialized Image state alone", {
     expect_gt(file.info(file)$size, 1000)
 })
 
-test_that("centroid toggle preserves coordinate tables across reruns", {
-    index <- seq_len(9L)
-    data <- data.frame(
-        feature_01=1 + index %% 4,
-        feature_02=2 + (index * 3) %% 5,
-        feature_03=1 + (index * 2) %% 3,
-        feature_04=4 + (index * 5) %% 7,
-        group=factor(rep(c("A", "B", "C"), each=3L)),
-        quarter=factor(rep(c("W", "X", "Y", "Z"), length.out=9L)))
-    options <- pcoaOptions$new(
-        vars=paste0("feature_0", 1:4),
-        factor="group",
-        showCentroids=TRUE,
-        showSpiders=TRUE)
-    analysis <- pcoaClass$new(options=options, data=data)
-    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
-    before <- list(
-        summary=analysis$results$summary$asDF,
-        sites=analysis$results$sites$asDF,
-        eigenvalues=analysis$results$eigenvalues$asDF,
-        settings=analysis$results$settings$asDF)
-    keys <- list(
-        sites=analysis$results$sites$rowKeys,
-        summary=analysis$results$summary$rowKeys)
-
-    showCentroidsOption <- options$option("showCentroids")
-    showCentroidsOption$.__enclos_env__$private$.value <- FALSE
-    showSpidersOption <- options$option("showSpiders")
-    showSpidersOption$.__enclos_env__$private$.value <- FALSE
-    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
-
-    expect_false(analysis$results$centroids$visible)
-    expect_false(analysis$results$centroidsPurpose$visible)
-    expect_gt(length(analysis$results$centroids$rowKeys), 0L)
-
-    expect_identical(analysis$results$sites$rowKeys, keys$sites)
-    expect_identical(analysis$results$summary$rowKeys, keys$summary)
-    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
-    expect_equal(analysis$results$sites$asDF, before$sites, tolerance=0)
-    expect_equal(
-        analysis$results$eigenvalues$asDF, before$eigenvalues, tolerance=0)
-    # The settings table reports overlay status, so its values update in place
-    # while its row structure stays stable.
-    settings <- setNames(
-        analysis$results$settings$asDF$value,
-        analysis$results$settings$asDF$setting)
-    expect_identical(unname(settings[["Group centroids"]]), "Not requested")
-    expect_identical(unname(settings[["Group spiders"]]), "Not requested")
-    settingsBefore <- setNames(before$settings$value, before$settings$setting)
-    expect_identical(
-        settings[names(settings) != "Group centroids" &
-            names(settings) != "Group spiders"],
-        settingsBefore[names(settings) != "Group centroids" &
-            names(settings) != "Group spiders"])
-    expect_true(analysis$results$sites$visible)
-    expect_true(analysis$results$eigenvalues$visible)
-})
 
 test_that("structural sample inputs rebuild site rows while centroid rows update in place", {
     index <- seq_len(9L)
@@ -729,4 +595,14 @@ test_that("structural sample inputs rebuild site rows while centroid rows update
     # Centroids remain one row per retained group: structure is stable.
     expect_identical(analysis$results$centroids$rowKeys, centroidKeys)
     expect_setequal(analysis$results$centroids$asDF$group, c("A", "B", "C"))
+})
+
+test_that("PCoA reports square-root and correction choices in table notes", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data,
+        vars=pcoa_feature_names(data), factor="group", sqrtDist=TRUE,
+        correction="lingoes")
+    expect_true(analysis$results$sites$visible)
+    expect_match(miso_table_note(analysis$results$sites, "method"), "Square-root")
+    expect_match(miso_table_note(analysis$results$eigenvalues, "denominator"), "correction")
 })

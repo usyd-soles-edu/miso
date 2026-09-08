@@ -31,9 +31,12 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "vars",
                 vars,
                 suggested=list(
-                    "continuous"),
+                    "continuous",
+                    "nominal",
+                    "ordinal"),
                 permitted=list(
-                    "numeric"))
+                    "numeric",
+                    "factor"))
             private$..factor <- jmvcore::OptionVariable$new(
                 "factor",
                 factor,
@@ -199,66 +202,36 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     inherit = jmvcore::Group,
     active = list(
         guidance = function() private$.items[["guidance"]],
-        summaryPurpose = function() private$.items[["summaryPurpose"]],
-        summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
-        globalPurpose = function() private$.items[["globalPurpose"]],
         global = function() private$.items[["global"]],
-        pairwisePurpose = function() private$.items[["pairwisePurpose"]],
         pairwise = function() private$.items[["pairwise"]],
         rankPlotDescription = function() private$.items[["rankPlotDescription"]],
         rankPlot = function() private$.items[["rankPlot"]],
-        rankSummaryPurpose = function() private$.items[["rankSummaryPurpose"]],
-        rankSummary = function() private$.items[["rankSummary"]],
-        note = function() private$.items[["note"]],
-        settingsPurpose = function() private$.items[["settingsPurpose"]],
-        settings = function() private$.items[["settings"]]),
+        rankSummary = function() private$.items[["rankSummary"]]),
     private = list(),
     public=list(
         initialize=function(options) {
             super$initialize(
                 options=options,
                 name="",
-                title="ANOSIM")
+                title="ANOSIM",
+                refs=list(
+                    "vegan",
+                    "clarke1993"))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
-                title="Getting started",
+                title="Getting Started",
                 visible=FALSE))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="summaryPurpose",
-                title="Data Summary",
-                visible=FALSE))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="summary",
-                title="",
-                visible=FALSE,
-                rows=6,
-                columns=list(
-                    list(
-                        `name`="item", 
-                        `title`="Item", 
-                        `type`="text"),
-                    list(
-                        `name`="value", 
-                        `title`="Value", 
-                        `type`="text"))))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="warnings",
                 title="",
                 visible=FALSE))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="globalPurpose",
-                title="Global ANOSIM",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="global",
-                title="",
+                title="Global ANOSIM",
                 visible=FALSE,
                 rows=1,
                 columns=list(
@@ -279,15 +252,10 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="permutations", 
                         `title`="Effective permutations", 
                         `type`="integer"))))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="pairwisePurpose",
-                title="Pairwise ANOSIM",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
-                title="",
+                title="Pairwise ANOSIM",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -313,24 +281,39 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="rankPlotDescription",
                 title="Ranked dissimilarities by pair category",
-                visible=FALSE))
+                visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "strata",
+                    "permRestriction",
+                    "permScheme",
+                    "anosimN",
+                    "seed")))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="rankPlot",
-                title="",
+                title="Ranked Dissimilarities Plot",
                 visible=FALSE,
+                clearWith=list(
+                    "vars",
+                    "factor",
+                    "transform",
+                    "distance",
+                    "strata",
+                    "permRestriction",
+                    "permScheme",
+                    "anosimN",
+                    "seed"),
                 width=600,
                 height=480,
                 renderFun=".plotRank"))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="rankSummaryPurpose",
-                title="Ranked-dissimilarity summary",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="rankSummary",
-                title="",
+                title="Ranked Dissimilarities",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -353,32 +336,7 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     list(
                         `name`="q3", 
                         `title`="Q3 rank", 
-                        `type`="number"))))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="note",
-                title="How to read these results",
-                visible=FALSE))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="settingsPurpose",
-                title="Analysis settings",
-                visible=FALSE))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="settings",
-                title="",
-                visible=FALSE,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="setting", 
-                        `title`="Setting", 
-                        `type`="text"),
-                    list(
-                        `name`="value", 
-                        `title`="Value", 
-                        `type`="text"))))}))
+                        `type`="number"))))}))
 
 anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "anosimBase",
@@ -406,6 +364,11 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' Tests whether within-group samples are more similar than between-group 
 #' samples using rank-based ANOSIM through vegan::anosim. Includes optional 
 #' pairwise comparisons and rank diagnostics.
+#' @section References:
+#' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+#'
+#' Clarke, K. R. (1993). Non-parametric multivariate analyses of changes in community structure. Australian Journal of Ecology, 18(1), 117-143. https://doi.org/10.1111/j.1442-9993.1993.tb00438.x
+#'
 #' @param data .
 #' @param vars .
 #' @param factor .
@@ -424,27 +387,19 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$globalPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$global} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$rankSummaryPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 #'
-#' \code{results$summary$asDF}
+#' \code{results$global$asDF}
 #'
-#' \code{as.data.frame(results$summary)}
+#' \code{as.data.frame(results$global)}
 #'
 #' @export
 anosim <- function(

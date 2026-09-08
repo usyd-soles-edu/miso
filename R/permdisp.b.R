@@ -74,13 +74,6 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance(prep$message)
                 return()
             }
-
-            miso_populate_summary(
-                self$results,
-                prep,
-                self$options$transform,
-                self$options$distance)
-            private$.populatePurposes()
             private$.state$warnings <- c(
                 private$.state$warnings,
                 prep$warnings)
@@ -92,9 +85,6 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             outcome <- private$.runDispersion(prep)
             if (! isTRUE(outcome$success))
                 return()
-
-            private$.setInterpretation(prep, outcome$pairwiseShown)
-            private$.populateSettings(prep, outcome$pairwiseShown)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(outcome$pairwiseShown)
         },
@@ -133,13 +123,11 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 isTRUE(ordination$available))
             self$results$ordinationDescription$setVisible(requestedOrdination)
             self$results$ordinationScores$setVisible(tableAvailable)
-            self$results$ordinationScoresPurpose$setVisible(tableAvailable)
         },
 
         .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_fixed_table(self$results$summary, 6L)
             miso_clear_table(self$results$distances)
             miso_clear_table(self$results$anova)
             miso_clear_table(self$results$pairwise)
@@ -148,29 +136,24 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             ordinationScores$.__enclos_env__$private$.rowNames <- character()
             self$results$anova$setNote(
                 key="structuralCells",
-                note="")
+                note="",
+                init=FALSE)
             self$results$pairwise$setNote(
                 key="scope",
-                note="")
-            self$results$note$setContent("")
+                note="",
+                init=FALSE)
             self$results$plotDescription$setContent("")
             self$results$ordinationDescription$setContent("")
-            miso_clear_table(self$results$settings)
-            for (name in c(
-                    "summaryPurpose", "anovaPurpose", "pairwisePurpose",
-                    "distancesPurpose", "ordinationScoresPurpose",
-                    "settingsPurpose"))
-                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
-                    "distances", "distancesPurpose", "anova", "anovaPurpose",
-                    "pairwise", "pairwisePurpose", "plot", "plotDescription",
+                    "guidance", "warnings",
+                    "distances", "anova",
+                    "pairwise", "plot", "plotDescription",
                     "ordinationPlot", "ordinationDescription",
-                    "ordinationScores", "ordinationScoresPurpose", "note",
-                    "settings", "settingsPurpose"))
+                    "ordinationScores"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("summaryPurpose", "summary", "anovaPurpose", "anova", "distancesPurpose", "distances", "settingsPurpose", "settings"))
+            for (name in c("anova", "distances"))
                 self$results[[name]]$setVisible(TRUE)
         },
 
@@ -183,14 +166,12 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
             self$results$guidance$setVisible(FALSE)
             for (name in c(
-                    "summary", "summaryPurpose", "distances",
-                    "distancesPurpose", "anova", "anovaPurpose", "note",
-                    "settings", "settingsPurpose"))
+                    "distances",
+                    "anova"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
-            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
-            showDistance <- isTRUE(self$options$showDistancePlot) &&
-                !is.null(private$.state$distanceDiagnostic)
+            showDistance <- isTRUE(self$options$showDistancePlot)
             for (name in c("plot", "plotDescription"))
                 self$results[[name]]$setVisible(showDistance)
 
@@ -202,33 +183,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 !is.null(private$.state$ordination) &&
                 isTRUE(private$.state$ordination$tableAvailable)
             self$results$ordinationPlot$setVisible(ordinationAvailable)
-            self$results$ordinationScores$setVisible(ordinationTableAvailable)
-            self$results$ordinationScoresPurpose$setVisible(
-                ordinationTableAvailable)
             self$results$ordinationDescription$setVisible(requestedOrdination)
+            self$results$ordinationScores$setVisible(ordinationTableAvailable)
         },
 
-        .populatePurposes = function() {
-            miso_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                anovaPurpose=c(
-                    "Dispersion test",
-                    "Tests whether groups differ in mean distance to their centres."),
-                pairwisePurpose=c(
-                    "Pairwise dispersion comparisons",
-                    "Compares mean dispersion between each pair of groups."),
-                distancesPurpose=c(
-                    "Distance-to-centre summary",
-                    "Summarises the centre, spread and range of each group's distances."),
-                ordinationScoresPurpose=c(
-                    "Ordination coordinates",
-                    "Lists plotted ordination coordinates for identification or reuse."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[! is.na(warnings) & nzchar(warnings)])
@@ -323,9 +281,11 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$anova$setNote(
                 key="structuralCells",
-                note=paste(
-                    "Blank F and Permutation p cells are not applicable",
-                    "to the Residual row."))
+                note=sprintf(
+                    "Transformation: %s. Dissimilarity index: %s. Blank F and Permutation p cells are not applicable to the Residual row.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance)),
+                init=FALSE)
 
             pairwiseShown <- FALSE
             if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) >= 3L)
@@ -402,7 +362,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 key="scope",
                 note=paste(
                     "These comparisons test differences in dispersion,",
-                    "not differences in group location."))
+                    "not differences in group location."),
+                init=FALSE)
             TRUE
         },
 
@@ -423,6 +384,14 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         min=miso_num_or_na(values$min),
                         max=miso_num_or_na(values$max)))
             }
+            self$results$distances$setNote(
+                key="method",
+                note=sprintf(
+                    "Transformation: %s. Dissimilarity index: %s. Centre: %s.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    private$.centreLabel(self$options$dispType)),
+                init=FALSE)
         },
 
         .populateDistanceDescription = function() {
@@ -535,49 +504,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 warning=warning)
         },
 
-        .setInterpretation = function(prep, pairwiseShown) {
-            self$results$note$setContent(miso_html_block(paste(
-                "PERMDISP tests multivariate spread, not group location.",
-                "Compare the test with the distance plot."),
-                title="How to read these results"))
-        },
 
-        .populateSettings = function(prep, pairwiseShown) {
-            add <- function(setting, value) {
-                key <- as.character(length(self$results$settings$rowKeys) + 1L)
-                self$results$settings$addRow(
-                    rowKey=key,
-                    values=list(setting=setting, value=as.character(value)))
-            }
-
-            restriction <- private$.state$restriction
-            add("Transformation", private$.transformLabel(self$options$transform))
-            add("Dissimilarity", private$.distanceLabel(self$options$distance))
-            add("Group centre", private$.centreLabel(self$options$dispType))
-            add("Bias adjustment", private$.enabledLabel(self$options$dispBias))
-            add("Binary dissimilarity", private$.enabledLabel(self$options$distBinary))
-            add("Square-root distances", private$.enabledLabel(self$options$distSqrt))
-            add("Additive constant", private$.additiveLabel(self$options$distAdd))
-            add("Number of permutations", self$options$permN)
-            add("Requested permutation restriction", restriction$requested)
-            add("Effective permutation restriction", restriction$effective)
-            if (identical(restriction$effectiveCode, "series"))
-                add("Sequence order", "Current data-row order")
-            add("Pairwise comparisons", private$.enabledLabel(self$options$dispPairwise))
-            add(
-                "P-value adjustment",
-                if (pairwiseShown)
-                    private$.adjustmentLabel(self$options$dispAdjust)
-                else
-                    "Not applied")
-            add("Random seed", if (is.na(prep$seed)) "Random" else prep$seed)
-            add(
-                "Parallel processing requested",
-                if (isTRUE(self$options$useParallel)) "Yes" else "No")
-            add(
-                "Effective execution",
-                if (is.null(private$.state$cl)) "Serial" else "Parallel")
-        },
 
         .hasValue = function(value) {
             ! is.null(value) && length(value) > 0L &&

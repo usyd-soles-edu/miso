@@ -11,13 +11,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required)
+        label: Feature Variables
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable (required)
+        label: Grouping Variable
         children:
           - type: VariablesListBox
             name: factor
@@ -27,18 +27,18 @@ children:
               change: update_control_states
   - type: CollapseBox
     name: studyDesign
-    label: Study design and model
+    label: Study Design and Model
     collapsed: true
     stretchFactor: 1
     children:
       - type: VariableSupplier
         name: studyVariables
-        label: Optional model variables
+        label: Optional Model Variables
         persistentItems: false
         stretchFactor: 1
         children:
           - type: TargetLayoutBox
-            label: Additional factors (optional)
+            label: Additional Factors
             children:
               - type: VariablesListBox
                 name: permFactors
@@ -46,14 +46,14 @@ children:
                 events:
                   change: update_control_states
           - type: TargetLayoutBox
-            label: Blocking variable (optional)
+            label: Blocking Variable
             children:
               - type: VariablesListBox
                 name: strata
                 maxItemCount: 1
                 isTarget: true
           - type: TargetLayoutBox
-            label: Continuous covariates (optional)
+            label: Continuous Covariates
             children:
               - type: VariablesListBox
                 name: covariates
@@ -70,7 +70,7 @@ children:
           change: update_control_states
   - type: CollapseBox
     name: analysisChoices
-    label: Analysis choices
+    label: Analysis Choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -102,12 +102,12 @@ children:
           change: update_control_states
       - type: VariableSupplier
         name: pcoaDisplayVariables
-        label: Display groups by
+        label: Display Groups By
         persistentItems: false
         stretchFactor: 1
         children:
           - type: TargetLayoutBox
-            label: Model factor
+            label: Model Factor
             children:
               - type: VariablesListBox
                 name: pcoaDisplayFactor
@@ -124,7 +124,7 @@ children:
         name: pcoaSpiders
   - type: CollapseBox
     name: reproducibility
-    label: Reproducibility and technical settings
+    label: Reproducibility and Technical Settings
     collapsed: true
     stretchFactor: 1
     children:

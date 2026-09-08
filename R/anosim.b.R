@@ -86,22 +86,12 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Parallel processing was requested but unavailable;",
                         "the analysis ran serially."))
 
-            miso_populate_summary(
-                self$results,
-                prep,
-                self$options$transform,
-                self$options$distance)
-            private$.populatePurposes()
-
             if (! private$.runGlobal(prep))
                 return()
 
             pairwiseShown <- FALSE
             if (isTRUE(self$options$anosimPairwise) && nlevels(prep$group) >= 3L)
                 pairwiseShown <- private$.runPairwise(prep)
-
-            private$.setInterpretation(prep, pairwiseShown)
-            private$.populateSettings(prep, pairwiseShown)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(pairwiseShown)
         },
@@ -113,14 +103,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$rankPlotDescription$setVisible(showRank)
             self$results$rankSummary$setVisible(
                 !is.null(private$.state$rankPlotData))
-            self$results$rankSummaryPurpose$setVisible(
-                !is.null(private$.state$rankPlotData))
         },
 
         .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_fixed_table(self$results$summary, 6L)
             miso_clear_fixed_table(self$results$global, 1L)
             miso_clear_table(self$results$pairwise)
             miso_clear_table(self$results$rankSummary)
@@ -129,21 +116,15 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$global$setNote(key="meaning", note="")
             self$results$pairwise$setNote(key="scope", note="")
             self$results$rankPlotDescription$setContent("")
-            self$results$note$setContent("")
-            miso_clear_table(self$results$settings)
-            for (name in c(
-                    "summaryPurpose", "globalPurpose", "pairwisePurpose",
-                    "rankSummaryPurpose", "settingsPurpose"))
-                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
-                    "global", "globalPurpose", "pairwise",
-                    "pairwisePurpose", "rankPlot", "rankPlotDescription",
-                    "rankSummary", "rankSummaryPurpose", "note", "settings",
-                    "settingsPurpose"))
+                    "guidance", "warnings",
+                    "global", "pairwise",
+                    "rankPlot", "rankPlotDescription",
+                    "rankSummary"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("summaryPurpose", "summary", "globalPurpose", "global", "settingsPurpose", "settings"))
+            for (name in c("global"))
                 self$results[[name]]$setVisible(TRUE)
         },
 
@@ -155,38 +136,18 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
             self$results$guidance$setVisible(FALSE)
+            hasRank <- !is.null(private$.state$rankPlotData)
             for (name in c(
-                    "summary", "summaryPurpose", "global", "globalPurpose",
-                    "note", "settings", "settingsPurpose"))
+                    "global"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
-            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
-            hasRank <- !is.null(private$.state$rankPlotData)
             showRank <- isTRUE(self$options$showRankPlot) && hasRank
             for (name in c("rankPlot", "rankPlotDescription"))
                 self$results[[name]]$setVisible(showRank)
             self$results$rankSummary$setVisible(hasRank)
-            self$results$rankSummaryPurpose$setVisible(hasRank)
         },
 
-        .populatePurposes = function() {
-            miso_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                globalPurpose=c(
-                    "Global ANOSIM",
-                    "Tests whether within-group samples are more similar than between-group samples."),
-                pairwisePurpose=c(
-                    "Pairwise ANOSIM",
-                    "Compares ANOSIM separation between each pair of groups."),
-                rankSummaryPurpose=c(
-                    "Ranked-dissimilarity summary",
-                    "Summarises ranks within each pair category."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[! is.na(warnings) & nzchar(warnings)])
@@ -365,10 +326,16 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     permutations=private$.state$effectivePermutations))
             self$results$global$setNote(
                 key="meaning",
-                note=paste(
-                    "R compares ranked between-group and within-group",
-                    "dissimilarities. Permutation p uses the displayed",
-                    "restriction in Analysis settings."))
+                note=sprintf(
+                    "R compares ranked between-group and within-group dissimilarities. Transformation: %s. Dissimilarity index: %s. Requested permutation restriction: %s. Effective restriction: %s. Permutation p uses the effective design%s.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    private$.state$restriction$requested,
+                    private$.state$restriction$effective,
+                    if (identical(private$.state$restriction$blockUsed, TRUE))
+                        sprintf(" within blocks of %s", private$.state$restriction$block)
+                    else ""),
+                init=FALSE)
             TRUE
         },
 
@@ -620,10 +587,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$pairwise$setNote(
                 key="scope",
-                note=paste(
-                    "Contrasts compare ranked group separation under the same",
-                    "effective restriction as Global ANOSIM. Adjustment applies",
-                    "only to the populated contrasts."))
+                note=sprintf(
+                    "Contrasts compare ranked group separation under the same effective restriction as Global ANOSIM (%s). P-value adjustment: %s; it applies only to the populated contrasts.",
+                    private$.state$restriction$effective,
+                    private$.adjustmentLabel(self$options$anosimAdjust)),
+                init=FALSE)
             TRUE
         },
 
@@ -655,61 +623,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             control
         },
 
-        .setInterpretation = function(prep, pairwiseShown) {
-            self$results$note$setContent(miso_html_block(paste(
-                "R measures rank separation; larger positive values indicate stronger separation.",
-                "Permutation p compares this with random grouping."),
-                title="How to read these results"))
-        },
 
-        .populateSettings = function(prep, pairwiseShown) {
-            add <- function(setting, value) {
-                key <- as.character(length(self$results$settings$rowKeys) + 1L)
-                self$results$settings$addRow(
-                    rowKey=key,
-                    values=list(setting=setting, value=as.character(value)))
-            }
-
-            restriction <- private$.state$restriction
-            add("Transformation", private$.transformLabel(self$options$transform))
-            add("Dissimilarity", private$.distanceLabel(self$options$distance))
-            add("Binary dissimilarity", private$.enabledLabel(self$options$distBinary))
-            add("Grouping variable", prep$primary)
-            add("Observed groups", nlevels(prep$group))
-            add("Requested permutations", self$options$anosimN)
-            add("Effective global permutations", private$.state$effectivePermutations)
-            add("Requested permutation restriction", restriction$requested)
-            add("Effective permutation restriction", restriction$effective)
-            add("Blocking variable", restriction$block)
-            add("Block used", if (restriction$blockUsed) "Yes" else "No")
-            if (identical(restriction$effectiveCode, "series"))
-                add(
-                    "Sequence order",
-                    if (restriction$blockUsed)
-                        "Current data-row order within blocks"
-                    else
-                        "Current data-row order")
-            add("Pairwise comparisons", private$.enabledLabel(self$options$anosimPairwise))
-            add("Pairwise output", if (pairwiseShown) "Produced" else "Not produced")
-            if (pairwiseShown)
-                add(
-                    "Effective pairwise permutations",
-                    private$.pairwisePermutationLabel(
-                        private$.state$pairwisePermutations))
-            add(
-                "P-value adjustment",
-                if (pairwiseShown)
-                    private$.adjustmentLabel(self$options$anosimAdjust)
-                else
-                    "Not applied")
-            add("Random seed", if (is.na(prep$seed)) "Random" else prep$seed)
-            add(
-                "Parallel processing requested",
-                if (isTRUE(self$options$useParallel)) "Yes" else "No")
-            add(
-                "Effective execution",
-                if (is.null(private$.state$cl)) "Serial" else "Parallel")
-        },
 
         .hasValue = function(value) {
             ! is.null(value) && length(value) > 0L &&

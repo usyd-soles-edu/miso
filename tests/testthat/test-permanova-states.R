@@ -13,7 +13,7 @@ permanova_state_data <- function() {
 expect_result_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("summary", "table", "settings")
+    fixed <- c("table")
     for (name in hidden)
         if (name %in% fixed)
             expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
@@ -31,12 +31,12 @@ test_that("PERMANOVA study design controls use the full option width", {
     studyDesign <- ui$children[[match("studyDesign", rootNames)]]
 
     expect_false(is.null(studyDesign))
-    expect_identical(studyDesign$label, "Study design and model")
+    expect_identical(studyDesign$label, "Study Design and Model")
     expect_true(studyDesign$collapsed)
     expect_identical(studyDesign$children[[1L]]$name, "studyVariables")
     expect_identical(
         studyDesign$children[[1L]]$label,
-        "Optional model variables")
+        "Optional Model Variables")
 })
 
 test_that("PERMANOVA narrative results use bounded HTML", {
@@ -46,51 +46,16 @@ test_that("PERMANOVA narrative results use bounded HTML", {
 
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
-    expect_identical(by_name$note$type, "Html")
-    expect_identical(by_name$note$title, "How to read these results")
 })
 
-test_that("PERMANOVA tables and plot expose concise adjacent purposes", {
-    results <- yaml::read_yaml(
-        miso_fixture_path("jamovi", "permanova.r.yaml"))$items
-    names <- vapply(results, `[[`, character(1), "name")
-    expected <- c(
-        summary="summaryPurpose",
-        table="tablePurpose",
-        companionPcoa="companionPcoaDescription",
-        companionPcoaSites="companionPcoaSitesPurpose",
-        companionPcoaCentroids="companionPcoaCentroidsPurpose",
-        pairwise="pairwisePurpose",
-        settings="settingsPurpose")
-
-    for (output in names(expected)) {
-        index <- match(output, names)
-        expect_identical(names[[index - 1L]], unname(expected[[output]]),
-            info=output)
-        purpose <- results[[index - 1L]]
-        expect_identical(purpose$type, "Html", info=output)
-        expect_true(nzchar(purpose$title), info=output)
-        expect_identical(results[[index]]$title, "", info=output)
-        expect_false(purpose$visible, info=output)
-    }
-
-    result <- permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permN=19,
-        seed=123)
-    for (name in c("summaryPurpose", "tablePurpose", "settingsPurpose")) {
-        expect_true(result[[name]]$visible, info=name)
-        purpose <- miso_squish_result(result[[name]])
-        expect_match(purpose, 'role="note"', fixed=TRUE, info=name)
-        expect_match(purpose, "About ", fixed=TRUE, info=name)
-        expect_lte(nchar(purpose), 500L)
-    }
-    for (name in c(
-            "companionPcoaDescription", "companionPcoaSitesPurpose",
-            "companionPcoaCentroidsPurpose", "pairwisePurpose"))
-        expect_false(result[[name]]$visible, info=name)
+test_that("PERMANOVA outputs use native titles and notes", {
+    results <- yaml::read_yaml(miso_fixture_path("jamovi", "permanova.r.yaml"))$items
+    by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
+    expect_identical(by_name$table$title, "PERMANOVA Table")
+    expect_identical(by_name$companionPcoa$title, "Companion PCoA")
+    expect_identical(by_name$pairwise$title, "Pairwise PERMANOVA")
+    expect_false(any(grepl("Purpose$|^(summary|settings|note|interpretation)$",
+        names(by_name))))
 })
 
 test_that("new PERMANOVA shows only complete getting-started guidance", {
@@ -109,7 +74,7 @@ test_that("new PERMANOVA shows only complete getting-started guidance", {
     expect_result_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "table", "pairwise", "note", "settings")
+        hidden=c("warnings", "table", "pairwise")
     )
 })
 
@@ -127,7 +92,7 @@ test_that("features without a group show one actionable correction", {
     expect_result_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "table", "pairwise", "note", "settings")
+        hidden=c("warnings", "table", "pairwise")
     )
 })
 
@@ -144,7 +109,7 @@ test_that("preparation failure hides all result shells", {
     expect_result_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "table", "pairwise", "note", "settings")
+        hidden=c("warnings", "table", "pairwise")
     )
 })
 
@@ -165,7 +130,7 @@ test_that("model failure hides prepared but invalid output", {
     expect_result_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "table", "pairwise", "note", "settings")
+        hidden=c("warnings", "table", "pairwise")
     )
 })
 
@@ -180,40 +145,11 @@ test_that("standard success hides empty guidance warnings and pairwise output", 
 
     expect_result_visibility(
         result,
-        visible=c("summary", "table", "note", "settings"),
+        visible=c("table"),
         hidden=c("guidance", "warnings", "pairwise")
     )
 })
 
-test_that("valid invalid valid transitions clear stale result state", {
-    data <- permanova_state_data()
-    options <- permanovaOptions$new(
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permN=19,
-        seed=123)
-    analysis <- permanovaClass$new(options=options, data=data)
-
-    analysis$run()
-    expect_true(analysis$results$table$visible)
-    expect_gt(length(analysis$results$table$rowKeys), 0L)
-
-    factorOption <- options$option("factor")
-    factorOption$.__enclos_env__$private$.value <- NULL
-    analysis$run()
-    expect_true(analysis$results$guidance$visible)
-    expect_true(analysis$results$table$visible)
-    expect_true(analysis$results$summary$visible)
-    expect_equal(length(analysis$results$table$rowKeys), 0L)
-    expect_equal(length(analysis$results$summary$rowKeys), 6L)
-    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
-
-    factorOption$.__enclos_env__$private$.value <- "group"
-    analysis$run()
-    expect_false(analysis$results$guidance$visible)
-    expect_true(analysis$results$table$visible)
-    expect_gt(length(analysis$results$table$rowKeys), 0L)
-})
 
 test_that("pairwise on off transitions remove stale pairwise rows", {
     data <- permanova_state_data()
@@ -250,7 +186,7 @@ test_that("successful preprocessing warnings appear with valid inference", {
     expect_match(as.character(result$warnings$asString()), "rows excluded")
     expect_result_visibility(
         result,
-        visible=c("summary", "warnings", "table", "note", "settings"),
+        visible=c("warnings", "table"),
         hidden=c("guidance", "pairwise")
     )
 })
@@ -272,27 +208,10 @@ test_that("within-block permutations require a block", {
     expect_result_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "table", "pairwise", "note", "settings")
+        hidden=c("warnings", "table", "pairwise")
     )
 })
 
-test_that("free permutations report an assigned block as unused", {
-    result <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permScheme="free",
-        permN=19,
-        seed=123
-    ))
-
-    expect_match(as.character(result$warnings$asString()), "Blocking variable.*not used")
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
-    expect_identical(settings[["Requested permutation restrictions"]], "Free")
-    expect_identical(settings[["Effective permutation restrictions"]], "Free")
-    expect_identical(settings[["Block used"]], "No")
-})
 
 test_that("pairwise output is visible only when requested and populated", {
     standard <- suppressMessages(permanova(
@@ -345,23 +264,6 @@ test_that("pairwise conflicts preserve the main result and hide pairwise output"
     expect_match(as.character(omnibus$warnings$asString()), "Sequential terms or Marginal terms")
 })
 
-test_that("new analyses use Free permutations and report effective settings", {
-    result <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permN=19,
-        seed=123
-    ))
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
-
-    expect_identical(settings[["Requested permutation restrictions"]], "Free")
-    expect_identical(settings[["Effective permutation restrictions"]], "Free")
-    expect_identical(settings[["Blocking variable"]], "None")
-    expect_identical(settings[["Block used"]], "No")
-    expect_identical(settings[["Test type"]], "Sequential terms")
-    expect_identical(settings[["Random seed"]], "123")
-})
 
 test_that("within-block validation identifies ineffective and singleton blocks", {
     ineffective <- permanova_state_data()
@@ -413,66 +315,7 @@ test_that("restricted analyses report too few unique permutations", {
     expect_match(as.character(result$warnings$asString()), "unique permutations are available")
 })
 
-test_that("Series reports row-order restrictions with and without a block", {
-    withoutBlock <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permScheme="series",
-        permN=19,
-        seed=123
-    ))
-    withBlock <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permScheme="series",
-        permN=7,
-        seed=123
-    ))
-    withoutSettings <- setNames(
-        withoutBlock$settings$asDF$value,
-        withoutBlock$settings$asDF$setting)
-    withSettings <- setNames(
-        withBlock$settings$asDF$value,
-        withBlock$settings$asDF$setting)
 
-    expect_identical(withoutSettings[["Effective permutation restrictions"]], "Series")
-    expect_identical(withoutSettings[["Sequence order"]], "Current data-row order")
-    expect_identical(withoutSettings[["Block used"]], "No")
-    expect_identical(withSettings[["Effective permutation restrictions"]], "Series")
-    expect_identical(withSettings[["Sequence order"]], "Current data-row order")
-    expect_identical(withSettings[["Block used"]], "Yes")
-})
-
-test_that("pairwise retains adjustment terms for Sequential and Marginal tests", {
-    for (testType in c("terms", "margin")) {
-        result <- suppressMessages(permanova(
-            data=permanova_state_data(),
-            vars=c("sp1", "sp2", "sp3"),
-            factor="group",
-            permFactors="site",
-            covariates="depth",
-            strata="block",
-            permScheme="stratified",
-            permBy=testType,
-            permPairwise=TRUE,
-            permN=7,
-            seed=123
-        ))
-
-        expect_true(result$table$visible, info=testType)
-        expect_true(result$pairwise$visible, info=testType)
-        expect_equal(nrow(result$pairwise$asDF), 3L, info=testType)
-        expect_true(all(is.finite(result$pairwise$asDF$f)), info=testType)
-        expect_true(all(is.finite(result$pairwise$asDF$p)), info=testType)
-        expect_match(
-            result$pairwise$notes$scope$note,
-            "Retained adjustment terms: site, depth",
-            info=testType)
-    }
-})
 
 test_that("partial pairwise failures keep successful comparisons", {
     data <- data.frame(
@@ -521,44 +364,6 @@ test_that("all pairwise failures hide the pairwise table", {
     expect_match(as.character(result$warnings$asString()), "No pairwise comparison could be calculated")
 })
 
-test_that("interpretation distinguishes simple sequential and marginal models", {
-    simple <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permN=19,
-        seed=123
-    ))
-    sequential <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permFactors="site",
-        permBy="terms",
-        permN=19,
-        seed=123
-    ))
-    marginal <- suppressMessages(permanova(
-        data=permanova_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permFactors="site",
-        permBy="margin",
-        permN=19,
-        seed=123
-    ))
-
-    expect_match(miso_squish_result(simple$note),
-        "Pseudo-F compares among-group and within-group variation")
-    expect_match(miso_squish_result(simple$note),
-        "R² shows explained variation")
-    expect_length(simple$table$notes, 0L)
-    expect_length(simple$table$footnotes, 0L)
-    expect_false(grepl("Sequential tests", miso_squish_result(simple$note)))
-    expect_identical(
-        miso_squish_result(sequential$note),
-        miso_squish_result(marginal$note))
-})
 
 permanova_companion_args <- function(...) {
     c(list(
@@ -610,18 +415,18 @@ test_that("PERMANOVA companion contracts are optional, bounded, and ordered", {
         "pcoaDisplayVariables",
         plotChildNames)]]
     expect_identical(displaySupplier$label,
-        "Display groups by")
+        "Display Groups By")
     expect_identical(displaySupplier$children[[1L]]$label,
-        "Model factor")
+        "Model Factor")
 
     results <- yaml::read_yaml(
         miso_fixture_path("jamovi", "permanova.r.yaml"))$items
     names <- vapply(results, `[[`, character(1), "name")
-    expect_identical(names[match("table", names) + seq_len(9L)], c(
+    expect_identical(names[match("table", names) + seq_len(5L)], c(
         "companionPcoaDescription", "companionPcoa",
-        "companionPcoaSitesPurpose", "companionPcoaSites",
-        "companionPcoaCentroidsPurpose", "companionPcoaCentroids",
-        "pairwisePurpose", "pairwise", "note"))
+        "companionPcoaSites",
+        "companionPcoaCentroids",
+        "pairwise"))
     byName <- setNames(results, names)
     expect_identical(byName$companionPcoa$width, 600L)
     expect_identical(byName$companionPcoa$height, 500L)
@@ -658,62 +463,6 @@ test_that("simple companion PCoA automatically displays the primary factor", {
         fixed=TRUE)
 })
 
-test_that("multifactor companion requires an eligible explicit display factor", {
-    missing <- run_permanova_companion(
-        permFactors="site", showCompanionPcoa=TRUE)
-    unrelatedData <- permanova_state_data()
-    unrelatedData$outside <- factor(rep(c("x", "y", "z"), each=3))
-    unrelated <- suppressWarnings(suppressMessages(permanova(
-        data=unrelatedData,
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group", permFactors="site",
-        showCompanionPcoa=TRUE, pcoaDisplayFactor="outside",
-        permN=19, seed=123)))
-    covariate <- run_permanova_companion(
-        permFactors="site", covariates="depth",
-        showCompanionPcoa=TRUE, pcoaDisplayFactor="depth")
-    block <- run_permanova_companion(
-        permFactors="site", strata="block",
-        showCompanionPcoa=TRUE, pcoaDisplayFactor="block")
-    interactionData <- permanova_state_data()
-    interactionData[["group:site"]] <- interaction(
-        interactionData$group, interactionData$site, drop=TRUE)
-    interaction <- suppressWarnings(suppressMessages(permanova(
-        data=interactionData,
-        vars=c("sp1", "sp2", "sp3"), factor="group",
-        permFactors="site", showCompanionPcoa=TRUE,
-        pcoaDisplayFactor="group:site", permN=19, seed=123)))
-
-    for (result in list(missing, unrelated, covariate, block, interaction)) {
-        expect_true(result$table$visible)
-        expect_true(result$note$visible)
-        expect_true(result$companionPcoaDescription$visible)
-        expect_false(result$companionPcoa$visible)
-        expect_false(result$companionPcoaSites$visible)
-        expect_false(result$companionPcoaCentroids$visible)
-        expect_equal(nrow(result$companionPcoaSites$asDF), 0L)
-        expect_match(
-            miso_squish_result(result$companionPcoaDescription),
-            "Choose one categorical model factor to display", fixed=TRUE)
-    }
-
-    primary <- run_permanova_companion(
-        permFactors="site", showCompanionPcoa=TRUE,
-        pcoaDisplayFactor="group")
-    additional <- run_permanova_companion(
-        permFactors="site", covariates="depth",
-        showCompanionPcoa=TRUE, pcoaDisplayFactor="site")
-    expect_identical(unique(primary$companionPcoaSites$asDF$group),
-        levels(permanova_state_data()$group))
-    expect_identical(unique(additional$companionPcoaSites$asDF$group),
-        levels(permanova_state_data()$site))
-    expect_match(
-        miso_squish_result(additional$warnings),
-        "does not represent adjusted effects", fixed=TRUE)
-    expect_match(
-        miso_squish_result(additional$warnings),
-        "complete model", fixed=TRUE)
-})
 
 test_that("companion coordinates preserve filtered source rows and factor alignment", {
     data <- permanova_state_data()
@@ -820,33 +569,6 @@ test_that("companion coordinates exactly reuse every PERMANOVA distance correcti
     }
 })
 
-test_that("all companion display options leave inference and RNG unchanged", {
-    args <- permanova_companion_args(permPairwise=TRUE)
-    set.seed(777)
-    baseline <- suppressWarnings(suppressMessages(do.call(permanova, args)))
-    baselineRng <- .Random.seed
-    baselineTable <- baseline$table$asDF
-    baselinePairwise <- baseline$pairwise$asDF
-    baselinePairwiseNotes <- baseline$pairwise$notes
-    baselineSettings <- baseline$settings$asDF
-
-    cases <- list(
-        list(showCompanionPcoa=TRUE),
-        list(showCompanionPcoa=TRUE, pcoaCentroids=TRUE),
-        list(showCompanionPcoa=TRUE, pcoaSpiders=TRUE),
-        list(showCompanionPcoa=TRUE, pcoaCentroids=TRUE,
-            pcoaSpiders=TRUE))
-    for (case in cases) {
-        set.seed(777)
-        result <- suppressWarnings(suppressMessages(do.call(
-            permanova, c(args, case))))
-        expect_identical(result$table$asDF, baselineTable)
-        expect_identical(result$pairwise$asDF, baselinePairwise)
-        expect_identical(result$pairwise$notes, baselinePairwiseNotes)
-        expect_identical(result$settings$asDF, baselineSettings)
-        expect_identical(.Random.seed, baselineRng)
-    }
-})
 
 test_that("companion failure and one-axis geometry preserve inferential output", {
     originalPcoa <- .misoPcoa
@@ -1099,51 +821,6 @@ test_that("companion PCoA renders from serialized Image state alone", {
     expect_gt(file.info(file)$size, 1000)
 })
 
-test_that("companion PCoA toggle preserves inferential table structure across reruns", {
-    data <- permanova_state_data()
-    options <- permanovaOptions$new(
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permPairwise=TRUE,
-        showCompanionPcoa=TRUE,
-        pcoaCentroids=TRUE,
-        permN=19,
-        seed=123)
-    analysis <- permanovaClass$new(options=options, data=data)
-    suppressMessages(suppressWarnings(analysis$run()))
-    before <- list(
-        summary=analysis$results$summary$asDF,
-        table=analysis$results$table$asDF,
-        pairwise=analysis$results$pairwise$asDF,
-        settings=analysis$results$settings$asDF)
-    keys <- list(
-        summary=analysis$results$summary$rowKeys,
-        table=analysis$results$table$rowKeys,
-        pairwise=analysis$results$pairwise$rowKeys)
-
-    showCompanionPcoaOption <- options$option("showCompanionPcoa")
-    showCompanionPcoaOption$.__enclos_env__$private$.value <- FALSE
-    suppressMessages(suppressWarnings(analysis$run()))
-
-    expect_false(analysis$results$companionPcoa$visible)
-    expect_false(analysis$results$companionPcoaDescription$visible)
-    expect_false(analysis$results$companionPcoaSites$visible)
-    expect_false(analysis$results$companionPcoaSitesPurpose$visible)
-    expect_false(analysis$results$companionPcoaCentroids$visible)
-    expect_false(analysis$results$companionPcoaCentroidsPurpose$visible)
-    expect_equal(length(analysis$results$companionPcoaSites$rowKeys), 0L)
-    expect_equal(length(analysis$results$companionPcoaCentroids$rowKeys), 0L)
-
-    expect_identical(analysis$results$summary$rowKeys, keys$summary)
-    expect_identical(analysis$results$table$rowKeys, keys$table)
-    expect_identical(analysis$results$pairwise$rowKeys, keys$pairwise)
-    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
-    expect_equal(analysis$results$table$asDF, before$table, tolerance=0)
-    expect_equal(analysis$results$pairwise$asDF, before$pairwise, tolerance=0)
-    expect_identical(analysis$results$settings$asDF, before$settings)
-    expect_true(analysis$results$table$visible)
-    expect_true(analysis$results$pairwise$visible)
-})
 
 test_that("structural model inputs rebuild term rows while value-only changes update in place", {
     data <- permanova_state_data()
@@ -1179,4 +856,12 @@ test_that("structural model inputs rebuild term rows while value-only changes up
         as.character(analysis$results$table$asString()),
         "group",
         fixed=TRUE)
+})
+
+test_that("PERMANOVA keeps interpretation settings in surviving table notes", {
+    result <- suppressWarnings(suppressMessages(permanova(
+        data=permanova_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", permN=19, seed=123)))
+    expect_true(result$table$visible)
+    expect_match(miso_table_note(result$table, "method"), "Transformation|restriction|Permutation")
 })

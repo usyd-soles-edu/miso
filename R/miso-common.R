@@ -162,6 +162,11 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         error=function(e) e)
     if (inherits(distObj, "error"))
         return(list(error=TRUE, message=paste0("Could not compute dissimilarity matrix: ", distObj$message)))
+    # Preserve source-row identities through distance and ordination results.
+    rowLabels <- rownames(commMat)
+    if (is.null(rowLabels))
+        rowLabels <- as.character(rowIndex)
+    attr(distObj, "Labels") <- as.character(rowLabels)
 
     seed <- as.integer(seed)
     if (is.na(seed) || seed <= 0)
@@ -200,17 +205,6 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         varsUsed=ncol(commMat),
         varsNames=colnames(commMat),
         seed=seed)
-}
-
-miso_summary_rows <- function(prep, transform, distance) {
-    list(
-        c("Samples used", as.character(prep$rowsUsed)),
-        c("Feature variables used", as.character(prep$varsUsed)),
-        c("Transformation", transform),
-        c("Dissimilarity index", distance),
-        c("Grouping variable", if (is.null(prep$primary)) "not selected" else prep$primary),
-        c("Seed", ifelse(is.na(prep$seed), "random", as.character(prep$seed)))
-    )
 }
 
 miso_clear_table <- function(table) {
@@ -387,12 +381,6 @@ miso_populate_purposes <- function(results, purposes) {
             title=purpose[[1L]]))
     }
     invisible(NULL)
-}
-
-miso_populate_summary <- function(results, prep, transform, distance) {
-    rows <- miso_summary_rows(prep, transform, distance)
-    for (i in seq_along(rows))
-        results$summary$addRow(rowKey=as.character(i), values=list(item=rows[[i]][1], value=rows[[i]][2]))
 }
 
 miso_display_term <- function(term, prep) {

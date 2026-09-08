@@ -103,9 +103,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(descriptive))
                 return()
             private$.state$descriptive <- descriptive
-
-            private$.populateSummary(prep, length(descriptive$contrastRows))
-            private$.populatePurposes()
             private$.populateDescriptive(descriptive)
 
             assessmentShown <- FALSE
@@ -113,8 +110,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 assessmentShown <- private$.runAssessment(prep, descriptive$displayRows)
 
             private$.setTableNotes(prep)
-            private$.setInterpretation(prep, assessmentShown)
-            private$.populateSettings(prep, assessmentShown)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(assessmentShown)
         },
@@ -139,9 +134,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.populateOptionalDetailRows(descriptive)
             }
             self$results$variability$setVisible(details && !is.null(descriptive))
-            self$results$variabilityPurpose$setVisible(details && !is.null(descriptive))
-            self$results$means$setVisible(details && !is.null(descriptive))
-            self$results$meansPurpose$setVisible(details && !is.null(descriptive))
 
             if (heatmapChanged) {
                 miso_clear_table(self$results$heatmapValues)
@@ -151,7 +143,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$heatmap$setVisible(heatmap && !is.null(descriptive))
             self$results$heatmapDescription$setVisible(heatmap && !is.null(descriptive))
             self$results$heatmapValues$setVisible(heatmap && !is.null(descriptive))
-            self$results$heatmapValuesPurpose$setVisible(heatmap && !is.null(descriptive))
         },
 
         .populateOptionalDetailRows = function(descriptive) {
@@ -193,7 +184,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_fixed_table(self$results$summary, 5L)
             miso_clear_table(self$results$contrasts)
             miso_clear_table(self$results$contributions)
             miso_clear_table(self$results$variability)
@@ -202,34 +192,25 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_clear_table(self$results$assessment)
             miso_clear_table(self$results$heatmapValues)
             self$results$contributionPlots$clear()
-            self$results$contrasts$setNote(key="meaning", note="")
-            self$results$contributions$setNote(key="meaning", note="")
-            self$results$variability$setNote(key="meaning", note="")
-            self$results$means$setNote(key="meaning", note="")
-            self$results$table$setNote(key="meaning", note="")
-            self$results$assessment$setNote(key="scope", note="")
+            self$results$contrasts$setNote(key="meaning", note="", init=FALSE)
+            self$results$contributions$setNote(key="meaning", note="", init=FALSE)
+            self$results$variability$setNote(key="meaning", note="", init=FALSE)
+            self$results$means$setNote(key="meaning", note="", init=FALSE)
+            self$results$table$setNote(key="meaning", note="", init=FALSE)
+            self$results$assessment$setNote(key="scope", note="", init=FALSE)
             self$results$heatmapDescription$setContent("")
-            self$results$note$setContent("")
-            miso_clear_table(self$results$settings)
-            for (name in c(
-                    "summaryPurpose", "contrastsPurpose",
-                    "contributionsPurpose", "variabilityPurpose",
-                    "meansPurpose", "heatmapValuesPurpose",
-                    "assessmentPurpose", "settingsPurpose"))
-                self$results[[name]]$setContent("")
             self$results$heatmap$setSize(600, 500)
 
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
-                    "contrasts", "contrastsPurpose", "contributions",
-                    "contributionsPurpose", "variability",
-                    "variabilityPurpose", "means", "meansPurpose", "table",
+                    "guidance", "warnings",
+                    "contrasts", "contributions",
+                    "variability",
+                    "means", "table",
                     "contributionPlots", "heatmap", "heatmapDescription",
-                    "heatmapValues", "heatmapValuesPurpose", "assessment",
-                    "assessmentPurpose", "note", "settings",
-                    "settingsPurpose"))
+                    "heatmapValues", "assessment"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("summaryPurpose", "summary", "contrastsPurpose", "contrasts", "contributionsPurpose", "contributions", "settingsPurpose", "settings"))
+            for (name in c("contrasts", "contributions"))
                 self$results[[name]]$setVisible(TRUE)
         },
 
@@ -241,57 +222,23 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showSuccessfulResults = function(assessmentShown=FALSE) {
             self$results$guidance$setVisible(FALSE)
+            details <- isTRUE(self$options$simperDetails)
+            self$results$variability$setVisible(details)
+            self$results$means$setVisible(details)
             for (name in c(
-                    "summary", "summaryPurpose", "contrasts",
-                    "contrastsPurpose", "contributions",
-                    "contributionsPurpose", "contributionPlots", "note",
-                    "settings", "settingsPurpose"))
+                    "contrasts",
+                    "contributions",
+                    "contributionPlots"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap))
             self$results$heatmapDescription$setVisible(
                 isTRUE(self$options$simperHeatmap))
             self$results$heatmapValues$setVisible(
                 isTRUE(self$options$simperHeatmap))
-            self$results$heatmapValuesPurpose$setVisible(
-                isTRUE(self$options$simperHeatmap))
-            self$results$variability$setVisible(isTRUE(self$options$simperDetails))
-            self$results$variabilityPurpose$setVisible(
-                isTRUE(self$options$simperDetails))
-            self$results$means$setVisible(isTRUE(self$options$simperDetails))
-            self$results$meansPurpose$setVisible(
-                isTRUE(self$options$simperDetails))
-            self$results$table$setVisible(FALSE)
             self$results$assessment$setVisible(isTRUE(assessmentShown))
-            self$results$assessmentPurpose$setVisible(isTRUE(assessmentShown))
         },
 
-        .populatePurposes = function() {
-            miso_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                contrastsPurpose=c(
-                    "Contrast summary",
-                    "Summarises group sizes and mean Bray-Curtis dissimilarity for each contrast."),
-                contributionsPurpose=c(
-                    "Descriptive feature contributions",
-                    "Ranks features by their contribution to average dissimilarity."),
-                variabilityPurpose=c(
-                    "Contribution variability",
-                    "Shows how consistently each feature contributes across sample pairs."),
-                meansPurpose=c(
-                    "Group means",
-                    "Shows each feature's mean in both groups on the analysis scale."),
-                heatmapValuesPurpose=c(
-                    "SIMPER contrast heatmap values",
-                    "Lists the values represented in the contribution heatmap."),
-                assessmentPurpose=c(
-                    "Exploratory permutation assessment",
-                    "Compares observed feature contributions with contributions from permuted group labels."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[! is.na(warnings) & nzchar(warnings)])
@@ -422,18 +369,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 contrastTotals=contrastTotals)
         },
 
-        .populateSummary = function(prep, contrastCount) {
-            rows <- list(
-                c("Analysed samples", prep$rowsUsed),
-                c("Retained features", prep$varsUsed),
-                c("Grouping variable", prep$primary),
-                c("Observed groups", length(unique(as.character(prep$group)))),
-                c("Contrasts", contrastCount))
-            for (index in seq_along(rows))
-                miso_set_fixed_row(
-                    self$results$summary, index,
-                    values=list(item=rows[[index]][[1L]], value=as.character(rows[[index]][[2L]])))
-        },
 
         .populateDescriptive = function(descriptive) {
             for (index in seq_along(descriptive$contrastRows))
@@ -480,11 +415,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 item$plot$setSize(580, 430)
                 item$description$setContent(
                     private$.plotDescription(contrast))
-                item$valuesPurpose$setContent(miso_html_block(
-                    "Lists the values represented in this contribution plot.",
-                    ariaLabel=paste(
-                        "About SIMPER contribution values for", contrast),
-                    title="SIMPER contribution values"))
                 rows <- private$.state$plotData[
                     private$.state$plotData$contrast == contrast, , drop=FALSE]
                 item$plot$setState(list(
@@ -612,23 +542,29 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$contrasts$setNote(
                 key="meaning",
                 note=paste(
+                    sprintf("Transformation: %s. Effective dissimilarity index: Bray-Curtis.", private$.transformLabel(self$options$transform)),
                     "Mean dissimilarity is the full average Bray-Curtis quantity decomposed for each contrast.",
-                    "n (first) and n (second) follow the named contrast order."))
+                    "n (first) and n (second) follow the named contrast order."),
+                init=FALSE)
             self$results$contributions$setNote(
                 key="meaning",
                 note=paste(
-                    "Percentages use all usable features before display filtering; retained rows are not renormalised."))
+                    sprintf("Transformation: %s. Effective dissimilarity index: Bray-Curtis.", private$.transformLabel(self$options$transform)),
+                    "Percentages use all usable features before display filtering; retained rows are not renormalised."),
+                init=FALSE)
             self$results$variability$setNote(
                 key="meaning",
                 note=paste(
                     "Average is the mean feature contribution to Bray-Curtis dissimilarity.",
                     "SD describes variation in contributions across sample pairs.",
                     "Average/SD describes consistency and is not a significance test.",
-                    "Blank cells mean that a finite value was unavailable."))
+                    "Blank cells mean that a finite value was unavailable."),
+                init=FALSE)
             self$results$means$setNote(
                 key="meaning",
                 note=paste(
-                    "First and second means follow the named contrast order and use the transformed scale."))
+                    "First and second means follow the named contrast order and use the transformed scale."),
+                init=FALSE)
             self$results$table$setNote(
                 key="meaning",
                 note=paste(
@@ -636,7 +572,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "Contribution SD describes variation across sample pairs; Average divided by SD describes consistency and is not a significance test.",
                     "First- and second-group means follow the named contrast and use the transformed scale.",
                     "Percentages use all usable features before display filtering; retained rows are not renormalised.",
-                    "Blank SD or ratio cells mean that a finite value was unavailable."))
+                    "Blank SD or ratio cells mean that a finite value was unavailable."),
+                init=FALSE)
             if (isTRUE(self$options$simperAssess))
                 self$results$assessment$setNote(
                     key="scope",
@@ -644,7 +581,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "P-values compare observed average contributions with random group-label assignments.",
                         sprintf(
                             "%s adjustment was applied separately within each contrast across all finite feature p-values before display filtering.",
-                            private$.adjustLabel(self$options$simperAdjust))))
+                            private$.adjustLabel(self$options$simperAdjust))),
+                    init=FALSE)
         },
 
         .plotDescription = function(contrast) {
@@ -663,49 +601,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 title="Contrast overview heatmap")
         },
 
-        .setInterpretation = function(prep, assessmentShown) {
-            self$results$note$setContent(miso_html_block(paste(
-                "SIMPER contributions are descriptive.",
-                "Average/SD shows consistency; permutation p does not replace an overall test."),
-                title="How to read these results"))
-        },
 
-        .populateSettings = function(prep, assessmentShown) {
-            add <- function(setting, value) {
-                key <- as.character(length(self$results$settings$rowKeys) + 1L)
-                self$results$settings$addRow(
-                    rowKey=key,
-                    values=list(setting=setting, value=as.character(value)))
-            }
-
-            add("Transformation", private$.transformLabel(self$options$transform))
-            add("Effective dissimilarity", "Bray-Curtis (fixed for SIMPER)")
-            if (! identical(self$options$distance, "bray"))
-                add("Ignored legacy distance request", private$.distanceLabel(self$options$distance))
-            if (isTRUE(self$options$distBinary))
-                add("Ignored legacy Binary request", "Yes; Presence/absence transformation is separate")
-            add("Analysed samples", prep$rowsUsed)
-            add("Retained features", prep$varsUsed)
-            add("Grouping variable", prep$primary)
-            add("Observed groups", length(unique(as.character(prep$group))))
-            add("Contrasts", length(private$.state$contrastLabels))
-            add("Top features cap", self$options$simperTop)
-            add("Cumulative contribution threshold", paste0(self$options$simperCum, "%"))
-            add("Detailed statistics", if (isTRUE(self$options$simperDetails)) "Shown" else "Hidden")
-            add("Permutation assessment", if (isTRUE(self$options$simperAssess)) "Enabled" else "Disabled")
-            if (isTRUE(self$options$simperAssess)) {
-                add("Requested permutations", private$.state$requestedPermutations)
-                effective <- private$.state$effectivePermutations
-                add(
-                    "Effective permutations",
-                    if (is.finite(effective)) effective else "Unavailable")
-                add("P-value adjustment", private$.adjustLabel(self$options$simperAdjust))
-                add(
-                    "Random seed",
-                    if (is.na(prep$seed)) "Random on recalculation" else prep$seed)
-                add("Assessment results shown", if (isTRUE(assessmentShown)) "Yes" else "No")
-            }
-        },
 
         .buildContributionPlot = function (rows, contrast, top = self$options$simperTop,
             cumulative = self$options$simperCum)

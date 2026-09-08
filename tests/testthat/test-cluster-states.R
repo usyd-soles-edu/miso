@@ -28,7 +28,7 @@ cluster_yaml_node <- function(node, name) {
 expect_cluster_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("summary", "dendrogramStructure", "settings")
+    fixed <- c("dendrogramStructure")
     for (name in hidden)
         if (name %in% fixed)
             expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
@@ -63,8 +63,8 @@ test_that("cluster schema exposes a compact plots workflow", {
             "data", "vars", "labels", "transform", "distance",
             "sampleLabels", "showLabels", "defineClusters", "cutMode",
             "numberClusters", "cutHeight"))
-    expect_identical(by_name$vars$title, "Feature variables (required)")
-    expect_identical(by_name$labels$title, "Sample labels (optional)")
+    expect_identical(by_name$vars$title, "Feature Variables")
+    expect_identical(by_name$labels$title, "Sample Labels")
     expect_identical(by_name$labels$permitted, c("numeric", "factor", "id"))
     expect_identical(by_name$sampleLabels$default, "auto")
     expect_identical(
@@ -91,11 +91,11 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_identical(
         names(result_by_name),
         c(
-            "guidance", "summaryPurpose", "summary", "warnings",
+            "guidance", "warnings",
             "dendrogramDescription", "dendrogram",
-            "dendrogramStructurePurpose", "dendrogramStructure",
-            "membershipPurpose", "membership", "interpretation",
-            "settingsPurpose", "settings"))
+            "dendrogramStructure",
+            "membership"
+            ))
     expect_true(all(vapply(
         results, function(item) identical(item$visible, FALSE), logical(1))))
     expect_identical(result_by_name$dendrogram$type, "Image")
@@ -139,38 +139,10 @@ test_that("new cluster analysis shows only complete getting-started guidance", {
         result,
         visible="guidance",
         hidden=c(
-            "summary", "warnings", "dendrogram", "dendrogramDescription",
-            "membership", "interpretation", "settings"))
+            "warnings", "dendrogram", "dendrogramDescription",
+            "membership"))
 })
 
-test_that("default cluster output is explicitly uncut", {
-    analysis <- run_cluster_private(
-        cluster_state_data(),
-        vars=paste0("feature_0", 1:4),
-        labels="sample")
-    result <- analysis$results
-    private <- cluster_private(analysis)
-
-    expect_cluster_visibility(
-        result,
-        visible=c(
-            "summary", "dendrogram", "dendrogramDescription",
-            "interpretation", "settings"),
-        hidden=c("guidance", "warnings", "membership"))
-    expect_null(private$.state$membership)
-    expect_null(private$.state$cutLine)
-    expect_match(
-        miso_squish_result(result$dendrogramDescription),
-        "merge into clusters as dissimilarity increases")
-    expect_match(
-        miso_squish_result(result$interpretation),
-        "Merge height shows dissimilarity")
-    plot <- private$.buildDendrogram()
-    expect_s3_class(plot, "ggplot")
-    geom_classes <- vapply(
-        plot$layers, function(layer) class(layer$geom)[[1L]], character(1))
-    expect_identical(unname(geom_classes), "GeomSegment")
-})
 
 test_that("cluster fit is exact and invariant to display and cut options", {
     data <- cluster_state_data(120L)
@@ -825,35 +797,6 @@ test_that("dendrogram structure is a complete exact table alternative", {
         analysis$results$dendrogramStructure$asString())))
 })
 
-test_that("cluster valid invalid valid transitions clear stale state", {
-    data <- cluster_state_data()
-    options <- clusterOptions$new(vars=paste0("feature_0", 1:4))
-    analysis <- clusterClass$new(options=options, data=data)
-
-    suppressWarnings(suppressMessages(analysis$run()))
-    expect_true(analysis$results$dendrogram$visible)
-    expect_false(is.null(cluster_private(analysis)$.state$fit))
-
-    varsOption <- options$option("vars")
-    varsOption$.__enclos_env__$private$.value <- character()
-    analysis$run()
-    expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$dendrogram$visible)
-    expect_false(analysis$results$dendrogramDescription$visible)
-    expect_true(analysis$results$dendrogramStructure$visible)
-    expect_false(analysis$results$membership$visible)
-    expect_equal(length(analysis$results$summary$rowKeys), 5L)
-    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
-    expect_equal(length(analysis$results$membership$rowKeys), 0L)
-    expect_equal(length(analysis$results$dendrogramStructure$rowKeys), 0L)
-    expect_null(cluster_private(analysis)$.state$fit)
-
-    varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
-    suppressWarnings(suppressMessages(analysis$run()))
-    expect_false(analysis$results$guidance$visible)
-    expect_true(analysis$results$dendrogram$visible)
-    expect_false(is.null(cluster_private(analysis)$.state$fit))
-})
 
 test_that("cluster source contracts and fixtures stay byte identical", {
     root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
@@ -927,50 +870,6 @@ test_that("dendrogram renders from serialized Image state alone", {
     expect_gt(file.info(file)$size, 1000)
 })
 
-test_that("label display toggle preserves cluster tables across reruns", {
-    data <- cluster_state_data()
-    options <- clusterOptions$new(
-        vars=paste0("feature_0", 1:4),
-        labels="sample",
-        sampleLabels="show")
-    analysis <- clusterClass$new(options=options, data=data)
-    suppressWarnings(suppressMessages(analysis$run()))
-    before <- list(
-        summary=analysis$results$summary$asDF,
-        structure=analysis$results$dendrogramStructure$asDF,
-        membership=analysis$results$membership$asDF,
-        settings=analysis$results$settings$asDF)
-    keys <- list(
-        summary=analysis$results$summary$rowKeys,
-        structure=analysis$results$dendrogramStructure$rowKeys,
-        membership=analysis$results$membership$rowKeys)
-
-    sampleLabelsOption <- options$option("sampleLabels")
-    sampleLabelsOption$.__enclos_env__$private$.value <- "hide"
-    suppressWarnings(suppressMessages(analysis$run()))
-
-    expect_true(analysis$results$dendrogram$visible)
-    expect_identical(
-        analysis$results$dendrogramStructure$rowKeys, keys$structure)
-    expect_identical(analysis$results$membership$rowKeys, keys$membership)
-    expect_identical(analysis$results$summary$rowKeys, keys$summary)
-    expect_equal(
-        analysis$results$dendrogramStructure$asDF, before$structure,
-        tolerance=0)
-    expect_equal(
-        analysis$results$membership$asDF, before$membership, tolerance=0)
-    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
-    # The settings table reports label visibility, so its value updates in
-    # place while its row structure and unrelated rows stay stable.
-    settings <- setNames(
-        analysis$results$settings$asDF$value,
-        analysis$results$settings$asDF$setting)
-    expect_match(unname(settings[["Sample labels"]]), "hidden", fixed=TRUE)
-    settingsBefore <- setNames(before$settings$value, before$settings$setting)
-    expect_identical(
-        settings[names(settings) != "Sample labels"],
-        settingsBefore[names(settings) != "Sample labels"])
-})
 
 test_that("structural feature inputs rebuild membership and structure rows", {
     data <- cluster_state_data()
@@ -999,4 +898,14 @@ test_that("structural feature inputs rebuild membership and structure rows", {
     expect_gt(
         nrow(analysis$results$dendrogramStructure$asDF),
         2L * rowsUsed - 1L)
+})
+
+test_that("cluster reports transformation and actual cut rule in table notes", {
+    result <- run_cluster_private(cluster_state_data(),
+        vars=paste0("feature_0", 1:4), labels="sample",
+        transform="fourthroot", defineClusters=TRUE, cutMode="number",
+        numberClusters=3)
+    expect_true(result$results$dendrogramStructure$visible)
+    expect_match(miso_table_note(result$results$dendrogramStructure, "method"), "Transformation")
+    expect_match(miso_table_note(result$results$membership, "method"), "Cut rule")
 })

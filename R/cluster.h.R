@@ -27,9 +27,12 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "vars",
                 vars,
                 suggested=list(
-                    "continuous"),
+                    "continuous",
+                    "nominal",
+                    "ordinal"),
                 permitted=list(
-                    "numeric"))
+                    "numeric",
+                    "factor"))
             private$..labels <- jmvcore::OptionVariable$new(
                 "labels",
                 labels,
@@ -159,76 +162,30 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     inherit = jmvcore::Group,
     active = list(
         guidance = function() private$.items[["guidance"]],
-        summaryPurpose = function() private$.items[["summaryPurpose"]],
-        summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
         dendrogramDescription = function() private$.items[["dendrogramDescription"]],
         dendrogram = function() private$.items[["dendrogram"]],
-        dendrogramStructurePurpose = function() private$.items[["dendrogramStructurePurpose"]],
         dendrogramStructure = function() private$.items[["dendrogramStructure"]],
-        membershipPurpose = function() private$.items[["membershipPurpose"]],
-        membership = function() private$.items[["membership"]],
-        interpretation = function() private$.items[["interpretation"]],
-        settingsPurpose = function() private$.items[["settingsPurpose"]],
-        settings = function() private$.items[["settings"]]),
+        membership = function() private$.items[["membership"]]),
     private = list(),
     public=list(
         initialize=function(options) {
             super$initialize(
                 options=options,
                 name="",
-                title="Cluster analysis")
+                title="Cluster analysis",
+                refs=list(
+                    "vegan"))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
-                title="Getting started",
+                title="Getting Started",
                 visible=FALSE,
                 clearWith=list(
                     "vars",
                     "labels",
                     "transform",
                     "distance",
-                    "sampleLabels",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="summaryPurpose",
-                title="Data summary",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="summary",
-                title="",
-                visible=FALSE,
-                rows=5,
-                columns=list(
-                    list(
-                        `name`="item", 
-                        `title`="Item", 
-                        `type`="text"),
-                    list(
-                        `name`="value", 
-                        `title`="Value", 
-                        `type`="text")),
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
                     "defineClusters",
                     "cutMode",
                     "numberClusters",
@@ -243,7 +200,6 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "labels",
                     "transform",
                     "distance",
-                    "sampleLabels",
                     "defineClusters",
                     "cutMode",
                     "numberClusters",
@@ -251,14 +207,13 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="dendrogramDescription",
-                title="Group-average cluster dendrogram",
+                title="Group-average Cluster Dendrogram",
                 visible=FALSE,
                 clearWith=list(
                     "vars",
                     "labels",
                     "transform",
                     "distance",
-                    "sampleLabels",
                     "defineClusters",
                     "cutMode",
                     "numberClusters",
@@ -266,7 +221,7 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Image$new(
                 options=options,
                 name="dendrogram",
-                title="",
+                title="Cluster Dendrogram",
                 visible=FALSE,
                 width=600,
                 height=500,
@@ -276,22 +231,6 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "labels",
                     "transform",
                     "distance",
-                    "sampleLabels",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="dendrogramStructurePurpose",
-                title="Dendrogram structure",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
                     "defineClusters",
                     "cutMode",
                     "numberClusters",
@@ -299,7 +238,7 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Table$new(
                 options=options,
                 name="dendrogramStructure",
-                title="",
+                title="Dendrogram Structure",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -336,22 +275,6 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "labels",
                     "transform",
                     "distance",
-                    "sampleLabels",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="membershipPurpose",
-                title="Cluster membership",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
                     "defineClusters",
                     "cutMode",
                     "numberClusters",
@@ -359,7 +282,7 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Table$new(
                 options=options,
                 name="membership",
-                title="",
+                title="Cluster Membership",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -376,61 +299,6 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "labels",
                     "transform",
                     "distance",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="interpretation",
-                title="How to read this dendrogram",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="settingsPurpose",
-                title="Analysis settings",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="settings",
-                title="",
-                visible=FALSE,
-                rows=6,
-                columns=list(
-                    list(
-                        `name`="setting", 
-                        `title`="Setting", 
-                        `type`="text"),
-                    list(
-                        `name`="value", 
-                        `title`="Value", 
-                        `type`="text")),
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "sampleLabels",
                     "defineClusters",
                     "cutMode",
                     "numberClusters",
@@ -462,6 +330,9 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' Groups samples by hierarchical clustering of dissimilarities calculated 
 #' with vegan::vegdist and stats::hclust. The dendrogram and optional cluster 
 #' memberships are descriptive.
+#' @section References:
+#' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+#'
 #' @param data .
 #' @param vars .
 #' @param labels .
@@ -477,25 +348,18 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$dendrogramDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$dendrogramStructurePurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$dendrogramStructure} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$membershipPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$membership} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$interpretation} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 #'
-#' \code{results$summary$asDF}
+#' \code{results$dendrogramStructure$asDF}
 #'
-#' \code{as.data.frame(results$summary)}
+#' \code{as.data.frame(results$dendrogramStructure)}
 #'
 #' @export
 cluster <- function(

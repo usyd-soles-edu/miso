@@ -5,40 +5,17 @@ jrs: '1.1'
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
-
-  - name: summaryPurpose
-    title: Data Summary
-    type: Html
-    visible: false
-
-  - name: summary
-    title: ''
-    type: Table
-    visible: false
-    rows: 6
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
 
   - name: warnings
     title: ''
     type: Html
     visible: false
 
-  - name: globalPurpose
-    title: Global ANOSIM
-    type: Html
-    visible: false
-
   - name: global
-    title: ''
+    title: Global ANOSIM
     type: Table
     visible: false
     rows: 1
@@ -57,13 +34,8 @@ items:
         title: Effective permutations
         type: integer
 
-  - name: pairwisePurpose
-    title: Pairwise ANOSIM
-    type: Html
-    visible: false
-
   - name: pairwise
-    title: ''
+    title: Pairwise ANOSIM
     type: Table
     visible: false
     rows: 0
@@ -98,10 +70,9 @@ items:
       - permScheme
       - anosimN
       - seed
-      - showRankPlot
 
   - name: rankPlot
-    title: ''
+    title: Ranked Dissimilarities Plot
     type: Image
     visible: false
     clearWith:
@@ -114,18 +85,12 @@ items:
       - permScheme
       - anosimN
       - seed
-      - showRankPlot
     width: 600
     height: 480
     renderFun: .plotRank
 
-  - name: rankSummaryPurpose
-    title: Ranked-dissimilarity summary
-    type: Html
-    visible: false
-
   - name: rankSummary
-    title: ''
+    title: Ranked Dissimilarities
     type: Table
     visible: false
     rows: 0
@@ -146,27 +111,3 @@ items:
         title: Q3 rank
         type: number
 
-  - name: note
-    title: How to read these results
-    type: Html
-    visible: false
-
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-
-  - name: settings
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-
-...

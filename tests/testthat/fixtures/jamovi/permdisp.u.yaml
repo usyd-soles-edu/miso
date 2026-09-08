@@ -9,13 +9,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required)
+        label: Feature Variables
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable (required)
+        label: Grouping Variable
         children:
           - type: VariablesListBox
             name: factor
@@ -23,7 +23,7 @@ children:
             isTarget: true
   - type: CollapseBox
     name: analysisChoices
-    label: Analysis choices
+    label: Analysis Choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -51,7 +51,7 @@ children:
         name: showOrdinationPlot
   - type: CollapseBox
     name: advancedOptions
-    label: Advanced options
+    label: Advanced Options
     collapsed: true
     stretchFactor: 1
     children:
@@ -65,7 +65,7 @@ children:
         name: dispBias
   - type: CollapseBox
     name: reproducibility
-    label: Reproducibility and computation
+    label: Reproducibility and Computation
     collapsed: true
     stretchFactor: 1
     children:

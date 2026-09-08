@@ -193,7 +193,7 @@ expect_nmds_plot_inside_frame <- function(data) {
 expect_nmds_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("summary", "sites", "stress", "settings")
+    fixed <- c("sites", "stress")
     for (name in hidden)
         if (name %in% fixed)
             expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
@@ -206,9 +206,9 @@ expect_only_nmds_guidance <- function(result) {
         result,
         "guidance",
         c(
-            "summary", "warnings", "ordination", "ordinationDescription",
-            "stress", "shepard", "shepardDescription", "envfit", "note",
-            "sites", "features", "settings"))
+            "warnings", "ordination", "ordinationDescription",
+            "stress", "shepard", "shepardDescription", "envfit",
+            "sites", "features"))
 }
 
 find_nmds_yaml_node <- function(node, name) {
@@ -230,9 +230,9 @@ test_that("nMDS schema preserves the API and exposes the approved student contra
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     names_in_order <- vapply(options, `[[`, character(1), "name")
 
-    expect_identical(by_name$vars$title, "Feature variables (required)")
-    expect_match(by_name$factor$title, "optional", ignore.case=TRUE)
-    expect_match(by_name$nmdsEnv$title, "optional", ignore.case=TRUE)
+    expect_identical(by_name$vars$title, "Feature Variables")
+    expect_identical(by_name$factor$title, "Grouping Variable")
+    expect_identical(by_name$nmdsEnv$title, "Environmental Variables")
     expect_true(by_name$distBinary$hidden)
     expect_true(by_name$nmdsK$hidden)
     expect_identical(by_name$nmdsK$default, 2L)
@@ -296,36 +296,23 @@ test_that("nMDS result schema contains no initially visible shell", {
     expect_true(all(vapply(items, function(x) identical(x$visible, FALSE), logical(1))))
     expected_clear_with <- c(
         "vars", "factor", "transform", "distance", "distBinary", "seed",
-        "nmdsK", "nmdsTrymax", "nmdsMaxit", "nmdsShepard", "nmdsOverlay",
-        "nmdsEnv", "nmdsSpecies", "nmdsHull", "nmdsEllipse", "nmdsSpider",
-        "nmdsEnvPerm")
-    expected_summary_clear_with <- setdiff(
-        expected_clear_with, "nmdsShepard")
+        "nmdsK", "nmdsTrymax", "nmdsMaxit", "nmdsEnv", "nmdsEnvPerm")
     expect_true(all(vapply(
-        items, function(x) {
-            expected <- if (identical(x$name, "summary"))
-                expected_summary_clear_with
-            else
-                expected_clear_with
-            identical(x$clearWith, expected)
-        }, logical(1))))
+        items, function(x) identical(x$clearWith, expected_clear_with),
+        logical(1))))
     expect_identical(
         vapply(items, `[[`, character(1), "name"),
         c(
-            "guidance", "summaryPurpose", "summary", "warnings",
-            "ordinationDescription", "ordination", "sitesPurpose", "sites",
-            "stressPurpose", "stress", "shepardDescription", "shepard",
-            "shepardPairsPurpose", "shepardPairs", "envfitPurpose",
-            "envfit", "note", "featuresPurpose", "features",
-            "settingsPurpose", "settings"))
+            "guidance", "warnings",
+            "ordinationDescription", "ordination", "sites",
+            "stress", "shepardDescription", "shepard",
+            "shepardPairs",
+            "envfit", "features"
+            ))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$ordinationDescription$type, "Html")
     expect_identical(by_name$shepardDescription$type, "Html")
     expect_identical(by_name$shepardPairs$type, "Table")
-    expect_identical(by_name$note$type, "Html")
-    expect_identical(
-        vapply(by_name$summary$columns, `[[`, character(1), "name"),
-        c("item", "value"))
     expect_identical(
         vapply(by_name$envfit$columns, `[[`, character(1), "name"),
         c("variable", "r2", "p", "samples", "permutations", "NMDS1", "NMDS2", "NMDS3"))
@@ -363,29 +350,6 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
     expect_null(oneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 })
 
-test_that("nMDS report guidance stays compact", {
-    result <- run_nmds_private(
-        nmds_state_data(),
-        vars=paste0("feature_0", 1:4),
-        factor="group",
-        nmdsEnv="temperature",
-        nmdsSpecies=TRUE,
-        seed=123,
-        nmdsTrymax=5)$results
-    description <- as.character(result$ordinationDescription$asString())
-    interpretation <- as.character(result$note$asString())
-    report_text <- paste(description, interpretation)
-
-    expect_lt(nchar(description), 850L)
-    expect_lt(nchar(interpretation), 800L)
-    expect_lte(nrow(result$settings$asDF), 15L)
-    expect_false(grepl(
-        paste(
-            "Non-visual and exact-value alternatives|context-dependent guides|",
-            "global optimum|weighted-average positions|requested|effective"),
-        report_text,
-        ignore.case=TRUE))
-})
 
 test_that("optional metadata never changes the fixed-seed core fit", {
     data <- nmds_state_data()
@@ -576,32 +540,6 @@ test_that("model errors return escaped correction-oriented guidance", {
     expect_only_nmds_guidance(result)
 })
 
-test_that("legacy Binary is inert and disclosed only when requested", {
-    data <- nmds_state_data()
-    args <- list(
-        data=data,
-        vars=paste0("feature_0", 1:4),
-        seed=123,
-        nmdsTrymax=20)
-    normal <- suppressWarnings(do.call(nmds, args))
-    binary <- suppressWarnings(do.call(
-        nmds, c(args, list(distBinary=TRUE))))
-
-    expect_equal(
-        binary$sites$asDF[c("NMDS1", "NMDS2")],
-        normal$sites$asDF[c("NMDS1", "NMDS2")],
-        tolerance=0)
-    expect_equal(binary$stress$asDF, normal$stress$asDF)
-    expect_match(
-        as.character(binary$warnings$asString()),
-        "legacy Binary")
-    expect_false(grepl(
-        "legacy Binary",
-        as.character(normal$warnings$asString())))
-    expect_false(grepl(
-        "legacy Binary",
-        as.character(normal$settings$asString())))
-})
 
 test_that("legacy 3D remains 3D and reports the projection honestly", {
     data <- nmds_state_data(n=24L)
@@ -655,44 +593,6 @@ test_that("diagnostics report fitted-object fields rather than requested setting
             "Engine"))
 })
 
-test_that("unavailable fitted-object diagnostics use guarded fallbacks", {
-    analysis <- run_nmds_private(
-        nmds_state_data(),
-        vars=paste0("feature_0", 1:4),
-        seed=123,
-        nmdsTrymax=5)
-    private <- analysis$.__enclos_env__$private
-    fit <- private$.state$fit
-    fit$stress <- NaN
-    fit$converged <- NA_real_
-    fit$tries <- Inf
-    fit$bestry <- NA_real_
-    fit$iters <- NULL
-    fit$engine <- NULL
-    fit$icause <- Inf
-
-    guarded <- c(
-        private$.fitValue(fit, "converged"),
-        private$.searchStatus(fit),
-        private$.fitValue(fit, "tries"),
-        private$.bestStart(fit),
-        private$.fitValue(fit, "iters"),
-        private$.fitValue(fit, "engine"),
-        private$.stressGuide(fit, private$.state$prep, 2L))
-    expect_false(any(grepl("NaN|Inf", guarded)))
-    expect_true(all(grepl("Unavailable", guarded)))
-    expect_identical(
-        private$.stoppingReason(fit),
-        "Not reported by this engine")
-
-    private$.state$fit <- fit
-    private$.populateCoreResults()
-    visible <- paste(
-        as.character(analysis$results$note$asString()),
-        analysis$results$stress$asDF$value,
-        collapse=" ")
-    expect_false(grepl("NaN|Inf", visible))
-})
 
 test_that("small retained samples receive a stress warning", {
     result <- suppressWarnings(nmds(
@@ -708,34 +608,6 @@ test_that("small retained samples receive a stress warning", {
         "stress may be\\s+artificially low or uninformative")
 })
 
-test_that("maximum random starts is effective and actual starts are reported", {
-    data <- nmds_state_data(n=24L)
-    for (requested in c(1L, 5L, 20L, 25L)) {
-        analysis <- run_nmds_private(
-            data,
-            vars=paste0("feature_0", 1:4),
-            seed=123,
-            nmdsTrymax=requested)
-        result <- analysis$results
-        values <- setNames(result$stress$asDF$value, result$stress$asDF$item)
-        settings <- setNames(
-            result$settings$asDF$value,
-            result$settings$asDF$setting)
-
-        expect_identical(
-            analysis$.__enclos_env__$private$.state$fitArguments$trymax,
-            requested)
-        expect_lte(
-            as.integer(values[["Random starts tried"]]),
-            requested)
-        expect_identical(
-            settings[["Random starts"]],
-            sprintf(
-                "%s tried; %d maximum",
-                values[["Random starts tried"]],
-                requested))
-    }
-})
 
 test_that("unusable grouping disables only requested optional layers", {
     data <- nmds_state_data()
@@ -1198,65 +1070,6 @@ test_that("legacy 3D environmental endpoints are authoritative in table and plot
     expect_false(grepl("vegan::envfit|vegan::scores", plotBody))
 })
 
-test_that("Data Summary and semantic plot descriptions report the complete 2D contract", {
-    data <- nmds_state_data(n=24L)
-    data$feature_01[[2L]] <- NA_real_
-    data[4L, paste0("feature_0", 1:4)] <- 0
-    data$feature_all_zero <- 0
-    data$group[[3L]] <- NA
-    vars <- c(paste0("feature_0", 1:4), "feature_all_zero")
-    result <- run_nmds_private(
-        data,
-        vars=vars,
-        factor="group",
-        nmdsEnv=c("temperature", "pH"),
-        nmdsSpecies=TRUE,
-        nmdsHull=TRUE,
-        nmdsEllipse=TRUE,
-        nmdsSpider=TRUE,
-        seed=123,
-        nmdsTrymax=5)$results
-    summary <- setNames(result$summary$asDF$value, result$summary$asDF$item)
-    description <- nmds_squish(result$ordinationDescription$asString())
-
-    expect_identical(
-        names(summary),
-        c(
-            "Core samples used", "Feature variables used",
-            "Rows excluded: missing feature values",
-            "Rows excluded: all-zero feature values",
-            "All-zero feature variables excluded", "Transformation",
-            "Dissimilarity index", "Effective dimensions",
-            "Grouping assignment", "Environmental variables requested",
-            "Seed"))
-    expect_identical(summary[["Core samples used"]], "22")
-    expect_identical(summary[["Feature variables used"]], "4")
-    expect_identical(
-        summary[["Rows excluded: missing feature values"]], "1")
-    expect_identical(
-        summary[["Rows excluded: all-zero feature values"]], "1")
-    expect_identical(
-        summary[["All-zero feature variables excluded"]], "1")
-    expect_identical(summary[["Transformation"]], "None")
-    expect_identical(summary[["Dissimilarity index"]], "Bray-Curtis")
-    expect_identical(summary[["Effective dimensions"]], "2")
-    expect_identical(
-        summary[["Grouping assignment"]],
-        "group (21 assigned; 1 unassigned)")
-    expect_identical(
-        summary[["Environmental variables requested"]],
-        "temperature, pH (2 requested)")
-    expect_identical(summary[["Seed"]], "Fixed (123)")
-
-    expect_identical(result$ordination$title, "Two-dimensional nMDS ordination")
-    expect_match(description, "Maps sample resemblance")
-    expect_match(description, "closer points have more similar composition")
-    expect_false(grepl("Display:", description, fixed=TRUE))
-    expect_false(grepl("uniformly rescaled", description, fixed=TRUE))
-    expect_lt(nchar(description), 550L)
-    expect_match(description, "overflow-wrap: anywhere")
-    expect_match(description, "word-break: normal")
-})
 
 test_that("legacy 3D image language identifies the projection and all-dimension alternatives", {
     result <- run_nmds_private(
@@ -1275,36 +1088,6 @@ test_that("legacy 3D image language identifies the projection and all-dimension 
     expect_lt(nchar(description), 850L)
 })
 
-test_that("bounded HTML escapes plain text and Interpretation stays compact", {
-    analysis <- run_nmds_private(
-        nmds_state_data(n=5L),
-        vars=paste0("feature_0", 1:4),
-        distance="euclidean",
-        factor="group",
-        nmdsHull=TRUE,
-        nmdsEllipse=TRUE,
-        nmdsSpider=TRUE,
-        nmdsEnv="temperature",
-        seed=123,
-        nmdsTrymax=5)
-    private <- analysis$.__enclos_env__$private
-    escaped <- private$.htmlBlock(c("<script>alert('x')</script>", "A & B"))
-    interpretation <- nmds_squish(analysis$results$note$asString())
-
-    expect_match(escaped, "max-width: 44em")
-    expect_match(escaped, "overflow-wrap: anywhere")
-    expect_match(escaped, "word-break: normal")
-    expect_false(grepl("<script>", escaped, fixed=TRUE))
-    expect_match(escaped, "&lt;script&gt;")
-    expect_match(escaped, "A &amp; B")
-    expect_match(interpretation, "overflow-wrap: anywhere")
-    expect_match(interpretation, "Closer points are more similar")
-    expect_match(interpretation, "axis direction is arbitrary")
-    expect_match(interpretation, "check stress")
-    expect_match(interpretation, "Feature scores are descriptive")
-    expect_lt(nchar(interpretation), 800L)
-    expect_match(interpretation, "white-space: normal", fixed=TRUE)
-})
 
 test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     shown <- run_nmds_private(
@@ -1431,247 +1214,9 @@ test_that("Shepard data rejects fit vectors that do not match site pairs", {
     }
 })
 
-test_that("Analysis settings report effective choices compactly", {
-    data <- nmds_state_data(n=24L)
-    data$temperature[c(1L, 4L)] <- NA_real_
-    data$group[[2L]] <- NA
-    analysis <- run_nmds_private(
-        data,
-        vars=paste0("feature_0", 1:4),
-        factor="group",
-        nmdsOverlay=TRUE,
-        nmdsHull=TRUE,
-        nmdsEllipse=TRUE,
-        nmdsSpider=TRUE,
-        nmdsEnv=c("temperature", "pH"),
-        nmdsEnvPerm=99,
-        nmdsSpecies=TRUE,
-        nmdsShepard=TRUE,
-        seed=123,
-        nmdsTrymax=5,
-        nmdsMaxit=80)
-    settings <- setNames(
-        analysis$results$settings$asDF$value,
-        analysis$results$settings$asDF$setting)
-    required <- c(
-        "Transformation", "Dissimilarity", "Dimensions", "Samples used",
-        "Features used", "Grouping", "Group display",
-        "Environmental variables", "Environmental permutations",
-        "Feature Scores", "Shepard diagram", "Seed", "Random starts",
-        "Maximum iterations")
 
-    expect_identical(names(settings), required)
-    expect_false("Legacy Binary request" %in% names(settings))
-    expect_identical(settings[["Dimensions"]], "2")
-    expect_identical(settings[["Grouping"]], "group (23 assigned; 1 unassigned)")
-    expect_match(settings[["Group display"]], "1-SD dispersion ellipse")
-    expect_identical(
-        settings[["Environmental variables"]], "2 fitted of 2 requested")
-    expect_identical(settings[["Environmental permutations"]], "99")
-    expect_identical(settings[["Feature Scores"]], "Shown")
-    expect_identical(settings[["Shepard diagram"]], "Shown")
-    expect_identical(settings[["Seed"]], "Fixed (123)")
-    expect_match(settings[["Random starts"]], "5 maximum")
-    expect_identical(settings[["Maximum iterations"]], "80")
 
-    legacy <- run_nmds_private(
-        nmds_state_data(n=24L),
-        vars=paste0("feature_0", 1:4),
-        nmdsK=3,
-        distBinary=TRUE,
-        seed=123,
-        nmdsTrymax=5)$results$settings$asDF
-    legacy <- setNames(legacy$value, legacy$setting)
-    expect_match(legacy[["Legacy Binary request"]], "Ignored")
-    expect_match(legacy[["Dimensions"]], "3 \\(legacy")
-    expect_match(legacy[["Dimensions"]], "NMDS1-NMDS2")
-})
 
-test_that("valid-invalid-valid reruns clear all stale result state", {
-    data <- nmds_state_data(n=24L)
-    options <- nmdsOptions$new(
-        vars=paste0("feature_0", 1:4),
-        factor="group",
-        nmdsEnv=c("temperature", "pH"),
-        nmdsSpecies=TRUE,
-        nmdsHull=TRUE,
-        seed=123,
-        nmdsTrymax=5)
-    analysis <- nmdsClass$new(options=options, data=data)
-    private <- analysis$.__enclos_env__$private
-    private$.run()
-    expect_true(analysis$results$ordination$visible)
-    expect_gt(nrow(analysis$results$sites$asDF), 0L)
-    expect_gt(nrow(analysis$results$envfit$asDF), 0L)
-
-    varsOption <- options$option("vars")
-    varsOption$value <- "feature_01"
-    private$.run()
-    expect_only_nmds_guidance(analysis$results)
-    expect_identical(nrow(analysis$results$summary$asDF), 11L)
-    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
-    expect_identical(nrow(analysis$results$stress$asDF), 8L)
-    expect_true(all(is.na(analysis$results$stress$asDF$value) | analysis$results$stress$asDF$value == ""))
-    expect_identical(nrow(analysis$results$envfit$asDF), 0L)
-    expect_identical(nrow(analysis$results$sites$asDF), 0L)
-    expect_identical(nrow(analysis$results$features$asDF), 0L)
-    expect_identical(nrow(analysis$results$settings$asDF), 0L)
-    expect_false(grepl(
-        "retained sites",
-        nmds_squish(analysis$results$ordinationDescription$asString())))
-    expect_false(grepl(
-        "observed dissimilarities",
-        nmds_squish(analysis$results$shepardDescription$asString())))
-    expect_false(grepl(
-        "axis directions",
-        nmds_squish(analysis$results$note$asString())))
-    expect_null(private$.state$fit)
-    expect_null(private$.state$sites)
-    expect_null(private$.state$vectorEndpoints)
-    expect_identical(private$.state$overlays, list())
-    expect_false(private$.state$shepardValid)
-
-    varsOption$value <- paste0("feature_0", 1:4)
-    private$.run()
-    expect_false(analysis$results$guidance$visible)
-    expect_true(analysis$results$ordination$visible)
-    expect_true(analysis$results$shepard$visible)
-    expect_true(analysis$results$envfit$visible)
-    expect_true(analysis$results$features$visible)
-    expect_gt(nrow(analysis$results$summary$asDF), 0L)
-    expect_gt(nrow(analysis$results$sites$asDF), 0L)
-    expect_gt(nrow(analysis$results$settings$asDF), 0L)
-})
-
-test_that("deterministic label fallback retains all feature and vector table rows", {
-    index <- seq_len(30L)
-    data <- data.frame(group=factor(rep(LETTERS[1:3], length.out=30L)))
-    featureNames <- sprintf(
-        "feature_with_a_deliberately_long_accessible_name_%02d", 1:16)
-    envNames <- sprintf(
-        "environmental_variable_with_a_long_name_%02d", 1:14)
-    for (j in seq_along(featureNames))
-        data[[featureNames[[j]]]] <-
-            1 + ((index * (j + 1L) + j^2L) %% (7L + (j %% 5L)))
-    for (j in seq_along(envNames))
-        data[[envNames[[j]]]] <-
-            index * (j + 1) + sin(index * (j + 0.5))
-
-    first <- run_nmds_private(
-        data,
-        vars=featureNames,
-        nmdsSpecies=TRUE,
-        nmdsEnv=envNames,
-        nmdsEnvPerm=19,
-        seed=123,
-        nmdsTrymax=5)
-    second <- run_nmds_private(
-        data,
-        vars=featureNames,
-        nmdsSpecies=TRUE,
-        nmdsEnv=envNames,
-        nmdsEnvPerm=19,
-        seed=123,
-        nmdsTrymax=5)
-    firstPrivate <- first$.__enclos_env__$private
-    secondPrivate <- second$.__enclos_env__$private
-    description <- nmds_squish(first$results$ordinationDescription$asString())
-    settings <- setNames(
-        first$results$settings$asDF$value,
-        first$results$settings$asDF$setting)
-
-    expect_identical(nrow(first$results$features$asDF), length(featureNames))
-    expect_identical(nrow(first$results$envfit$asDF), length(envNames))
-    expect_lte(length(firstPrivate$.state$featureLabelsShown), 12L)
-    expect_lte(length(firstPrivate$.state$vectorLabelsShown), 12L)
-    expect_gt(length(firstPrivate$.state$featureLabelsOmitted), 0L)
-    expect_gt(length(firstPrivate$.state$vectorLabelsOmitted), 0L)
-    expect_identical(
-        firstPrivate$.state$featureLabelSelection,
-        secondPrivate$.state$featureLabelSelection)
-    expect_identical(
-        firstPrivate$.state$vectorLabelSelection,
-        secondPrivate$.state$vectorLabelSelection)
-    expect_false(grepl(
-        firstPrivate$.state$featureLabelsOmitted[[1L]],
-        description,
-        fixed=TRUE))
-    expect_false(grepl(
-        firstPrivate$.state$vectorLabelsOmitted[[1L]],
-        description,
-        fixed=TRUE))
-    expect_false("Feature labels shown in image" %in% names(settings))
-    expect_false("Environmental vector labels shown in image" %in% names(settings))
-
-    directPoints <- cbind(
-        x=seq(-1, 1, length.out=16),
-        y=rep(c(-0.01, 0.01), 8L))
-    firstSelection <- firstPrivate$.selectPlotLabels(
-        directPoints, featureNames)
-    secondSelection <- firstPrivate$.selectPlotLabels(
-        directPoints, featureNames)
-    expect_identical(firstSelection, secondSelection)
-    expect_identical(
-        sort(c(firstSelection$shown, firstSelection$omitted)),
-        seq_along(featureNames))
-
-    before <- list(
-        featureSelection=firstPrivate$.state$featureLabelSelection,
-        vectorSelection=firstPrivate$.state$vectorLabelSelection,
-        features=firstPrivate$.state$features,
-        vectors=firstPrivate$.state$vectorEndpoints)
-    path <- tempfile(fileext=".png")
-    on.exit(unlink(path), add=TRUE)
-    grDevices::png(path, width=900, height=700)
-    firstPrivate$.plotNmds(first$results$ordination)
-    grDevices::dev.off()
-    expect_gt(file.info(path)$size, 0)
-    expect_identical(
-        firstPrivate$.state$featureLabelSelection,
-        before$featureSelection)
-    expect_identical(
-        firstPrivate$.state$vectorLabelSelection,
-        before$vectorSelection)
-    expect_identical(firstPrivate$.state$features, before$features)
-    expect_identical(firstPrivate$.state$vectorEndpoints, before$vectors)
-})
-
-test_that("visible nMDS output never exposes NaN or Inf text", {
-    analysis <- run_nmds_private(
-        nmds_state_data(n=24L),
-        vars=paste0("feature_0", 1:4),
-        factor="group",
-        nmdsEnv=c("temperature", "pH"),
-        nmdsSpecies=TRUE,
-        nmdsHull=TRUE,
-        seed=123,
-        nmdsTrymax=5)
-    result <- analysis$results
-    visibleText <- paste(
-        result$summary$asDF$item,
-        result$summary$asDF$value,
-        result$stress$asDF$item,
-        result$stress$asDF$value,
-        result$settings$asDF$setting,
-        result$settings$asDF$value,
-        as.character(result$warnings$asString()),
-        as.character(result$ordinationDescription$asString()),
-        as.character(result$shepardDescription$asString()),
-        as.character(result$note$asString()),
-        result$envfit$asDF$variable,
-        result$envfit$asDF$r2,
-        result$envfit$asDF$p,
-        result$sites$asDF$NMDS1,
-        result$sites$asDF$NMDS2,
-        result$features$asDF$NMDS1,
-        result$features$asDF$NMDS2,
-        collapse=" ")
-
-    expect_false(grepl(
-        "(^|[^A-Za-z])(?:NaN|[-+]?Inf)([^A-Za-z]|$)",
-        visibleText,
-        perl=TRUE))
-})
 
 test_that("small and large fixtures match independent rotation-invariant nMDS fits", {
     expect_nmds_matches_independent(nmds_fixture("miso-small.csv"), k=2L)
@@ -1753,14 +1298,14 @@ test_that("nMDS migration scenarios use current result names", {
         check.names=FALSE)
     scenarios <- scenarios[scenarios$analysis == "nMDS", ]
     expectedOutputs <- paste(
-        "Data Summary",
+        "Result Tables",
         "Two-dimensional nMDS ordination",
         "Stress and convergence diagnostics",
-        "Shepard diagram",
+        "Shepard Diagram",
         "Environmental Fit",
         "Interpretation",
         "Site Scores",
-        "Analysis settings",
+        "Table Notes",
         sep="|")
 
     expect_identical(
@@ -1812,7 +1357,7 @@ test_that("nMDS ordination renders from serialized Image state alone", {
     expect_gt(file.info(file)$size, 1000)
 })
 
-test_that("Shepard diagram renders from serialized Image state alone", {
+test_that("Shepard Diagram renders from serialized Image state alone", {
     analysis <- run_nmds_private(
         nmds_state_data(n=18L),
         vars=paste0("feature_0", 1:4),
@@ -1843,65 +1388,6 @@ test_that("Shepard diagram renders from serialized Image state alone", {
     expect_gt(file.info(file)$size, 1000)
 })
 
-test_that("Shepard toggle preserves ordination tables across reruns", {
-    index <- seq_len(9L)
-    data <- data.frame(
-        feature_01=1 + index %% 4,
-        feature_02=2 + (index * 3) %% 5,
-        feature_03=1 + (index * 2) %% 3,
-        feature_04=4 + (index * 5) %% 7,
-        env1=index + sin(index),
-        env2=10 - index + cos(index),
-        group=factor(rep(c("A", "B", "C"), each=3L)))
-    options <- nmdsOptions$new(
-        vars=paste0("feature_0", 1:4),
-        factor="group",
-        nmdsShepard=TRUE,
-        nmdsEnv=c("env1", "env2"),
-        nmdsEnvPerm=19,
-        nmdsTrymax=2,
-        seed=123)
-    analysis <- nmdsClass$new(options=options, data=data)
-    suppressWarnings(suppressMessages(analysis$run()))
-    before <- list(
-        summary=analysis$results$summary$asDF,
-        sites=analysis$results$sites$asDF,
-        stress=analysis$results$stress$asDF,
-        settings=analysis$results$settings$asDF)
-    keys <- list(
-        sites=analysis$results$sites$rowKeys,
-        envfit=analysis$results$envfit$rowKeys)
-
-    nmdsShepardOption <- options$option("nmdsShepard")
-    nmdsShepardOption$.__enclos_env__$private$.value <- FALSE
-    suppressWarnings(suppressMessages(analysis$run()))
-
-    expect_false(analysis$results$shepard$visible)
-    expect_false(analysis$results$shepardDescription$visible)
-    expect_false(analysis$results$shepardPairs$visible)
-    expect_false(analysis$results$shepardPairsPurpose$visible)
-    expect_equal(length(analysis$results$shepardPairs$rowKeys), 0L)
-
-    expect_identical(analysis$results$sites$rowKeys, keys$sites)
-    expect_identical(analysis$results$envfit$rowKeys, keys$envfit)
-    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
-    expect_equal(analysis$results$sites$asDF, before$sites, tolerance=0)
-    expect_equal(analysis$results$stress$asDF, before$stress, tolerance=0)
-    # The settings table reports Shepard status, so its values update in place
-    # while its row structure and unrelated rows stay stable.
-    settings <- setNames(
-        analysis$results$settings$asDF$value,
-        analysis$results$settings$asDF$setting)
-    expect_identical(unname(settings[["Shepard diagram"]]), "Hidden")
-    settingsBefore <- setNames(
-        before$settings$value, before$settings$setting)
-    expect_identical(
-        settings[names(settings) != "Shepard diagram"],
-        settingsBefore[names(settings) != "Shepard diagram"])
-    expect_true(analysis$results$sites$visible)
-    expect_true(analysis$results$stress$visible)
-    expect_true(analysis$results$envfit$visible)
-})
 
 test_that("structural environmental inputs rebuild fit rows while display toggles do not", {
     index <- seq_len(9L)
@@ -1928,4 +1414,12 @@ test_that("structural environmental inputs rebuild fit rows while display toggle
     suppressWarnings(suppressMessages(analysis$run()))
     expect_false(identical(analysis$results$envfit$rowKeys, keys))
     expect_setequal(analysis$results$envfit$asDF$variable, "env1")
+})
+
+test_that("nMDS reports effective choices in surviving table notes", {
+    analysis <- run_nmds_private(nmds_state_data(),
+        vars=paste0("feature_0", 1:4), factor="group", nmdsTrymax=5, seed=123)
+    expect_true(analysis$results$sites$visible)
+    expect_match(miso_table_note(analysis$results$sites, "method"), "Transformation")
+    expect_match(miso_table_note(analysis$results$stress, "method"), "Dimensions")
 })

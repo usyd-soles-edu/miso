@@ -5,39 +5,10 @@ jrs: '1.1'
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
     clearWith: &clearWith
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - sqrtDist
-      - correction
-      - showCentroids
-      - showSpiders
-
-  - name: summaryPurpose
-    title: Data summary
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: summary
-    title: ''
-    type: Table
-    rows: 11
-    visible: false
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith:
       - vars
       - factor
       - transform
@@ -59,7 +30,7 @@ items:
     clearWith: *clearWith
 
   - name: ordination
-    title: ''
+    title: PCoA Ordination
     type: Image
     width: 600
     height: 500
@@ -67,14 +38,8 @@ items:
     visible: false
     clearWith: *clearWith
 
-  - name: sitesPurpose
-    title: Site coordinates
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: sites
-    title: ''
+    title: Site Coordinates
     type: Table
     rows: 0
     visible: false
@@ -105,14 +70,8 @@ items:
       - sqrtDist
       - correction
 
-  - name: centroidsPurpose
-    title: Group centroids
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: centroids
-    title: ''
+    title: Group Centroids
     type: Table
     rows: 0
     visible: false
@@ -133,14 +92,8 @@ items:
         format: zto
     clearWith: *clearWith
 
-  - name: eigenvaluesPurpose
-    title: Eigenvalues
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: eigenvalues
-    title: ''
+    title: Eigenvalues
     type: Table
     rows: 0
     visible: false
@@ -168,37 +121,3 @@ items:
       - sqrtDist
       - correction
 
-  - name: interpretation
-    title: How to read this ordination
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: settingsPurpose
-    title: Settings
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: settings
-    title: ''
-    type: Table
-    rows: 6
-    visible: false
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - sqrtDist
-      - correction
-
-...

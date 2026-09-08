@@ -210,8 +210,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "The Shepard diagram was requested but was not shown",
                         "because finite dissimilarity and ordination-distance",
                         "values were unavailable."))
-            private$.populateSummary()
-            private$.populatePurposes()
             private$.populateCoreResults()
             self$results$ordination$setState(private$.nmdsPlotData())
             self$results$shepard$setState(private$.shepardPlotData())
@@ -390,13 +388,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         table$.__enclos_env__$private$.rowNames <- character()
     },
 
-        .addSummary = function(label, value) {
-            private$.summaryRowNo <- private$.summaryRowNo + 1L
-            miso_set_fixed_row(
-                self$results$summary,
-                private$.summaryRowNo,
-                list(item=label, value=as.character(value)))
-        },
 
         .structuralKey = function() {
             serialize(list(
@@ -431,11 +422,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$shepard$setVisible(showShepard)
             self$results$shepardDescription$setVisible(showShepard)
             self$results$shepardPairs$setVisible(showShepard)
-            self$results$shepardPairsPurpose$setVisible(showShepard)
-            miso_update_row_where(
-                self$results$settings, "setting", "Shepard diagram",
-                list(setting="Shepard diagram",
-                    value=if (showShepard) "Shown" else "Hidden"))
         },
 
         .populateShepardPairs = function() {
@@ -460,50 +446,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$shepard$setVisible(FALSE)
             self$results$shepardDescription$setVisible(FALSE)
             self$results$shepardPairs$setVisible(FALSE)
-            self$results$shepardPairsPurpose$setVisible(FALSE)
-        },
-
-        .addSetting = function(label, value) {
-            current <- private$.rowCursors$settings
-            if (is.null(current)) current <- 0L
-            current <- current + 1L
-            private$.rowCursors$settings <- current
-            miso_add_or_set_row(
-                self$results$settings,
-                as.character(current),
-                list(setting=label, value=as.character(value)))
-        },
-
-        .populateSummary = function() {
-            private$.summaryRowNo <- 0L
-            prep <- private$.state$prep
-            private$.addSummary("Core samples used", prep$rowsUsed)
-            private$.addSummary("Feature variables used", prep$varsUsed)
-            private$.addSummary(
-                "Rows excluded: missing feature values",
-                prep$rowsMissingExcluded)
-            private$.addSummary(
-                "Rows excluded: all-zero feature values",
-                prep$rowsZeroExcluded)
-            private$.addSummary(
-                "All-zero feature variables excluded",
-                prep$featuresZeroExcluded)
-            private$.addSummary(
-                "Transformation",
-                private$.transformLabel(self$options$transform))
-            private$.addSummary(
-                "Dissimilarity index",
-                private$.distanceLabel(self$options$distance))
-            private$.addSummary(
-                "Effective dimensions",
-                private$.state$effectiveK)
-            private$.addSummary(
-                "Grouping assignment",
-                private$.groupAssignmentSummary())
-            private$.addSummary(
-                "Environmental variables requested",
-                private$.environmentRequestSummary())
-            private$.addSummary("Seed", private$.seedLabel(prep))
         },
 
         .selectPlotLabels = function(points, labels, maxLabels=12L) {
@@ -668,32 +610,25 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             self$results$ordinationDescription$setContent("")
             self$results$shepardDescription$setContent("")
-            self$results$note$setContent("")
-            for (name in c(
-                    "summaryPurpose", "sitesPurpose", "stressPurpose",
-                    "shepardPairsPurpose", "envfitPurpose", "featuresPurpose",
-                    "settingsPurpose"))
-                self$results[[name]]$setContent("")
-            miso_clear_fixed_table(self$results$summary, 11L)
             miso_clear_fixed_table(self$results$stress, 8L)
             private$.clearTable(self$results$shepardPairs)
             private$.clearTable(self$results$envfit)
             self$results$envfit$setNote(
-                key="interpretation",
-                note="")
+                key="method",
+                note="",
+                init=FALSE)
             private$.clearTable(self$results$sites)
             private$.clearTable(self$results$features)
-            private$.clearTable(self$results$settings)
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "guidance", "warnings",
                     "ordination", "ordinationDescription", "stress",
-                    "stressPurpose", "shepard", "shepardDescription",
-                    "shepardPairs", "shepardPairsPurpose", "envfit",
-                    "envfitPurpose", "note", "sites", "sitesPurpose",
-                    "features", "featuresPurpose", "settings",
-                    "settingsPurpose"))
+                    "shepard", "shepardDescription",
+                    "shepardPairs", "envfit",
+                    "sites",
+                    "features"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("summaryPurpose", "summary", "sitesPurpose", "sites", "stressPurpose", "stress", "settingsPurpose", "settings"))
+            for (name in c("sites", "stress"))
                 self$results[[name]]$setVisible(TRUE)
         },
 
@@ -711,45 +646,18 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setContent(miso_warning_block(
                     unique(private$.state$warnings)))
             for (name in c(
-                    "summary", "summaryPurpose", "ordination",
-                    "ordinationDescription", "stress", "stressPurpose", "note",
-                    "sites", "sitesPurpose", "settings", "settingsPurpose"))
+                    "ordination",
+                    "ordinationDescription", "stress",
+                    "sites"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$warnings$setVisible(hasWarnings)
             self$results$shepard$setVisible(showShepard)
             self$results$shepardDescription$setVisible(showShepard)
             self$results$shepardPairs$setVisible(showShepard)
-            self$results$shepardPairsPurpose$setVisible(showShepard)
             self$results$envfit$setVisible(showEnv)
-            self$results$envfitPurpose$setVisible(showEnv)
             self$results$features$setVisible(showFeatures)
-            self$results$featuresPurpose$setVisible(showFeatures)
         },
 
-        .populatePurposes = function() {
-            miso_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                sitesPurpose=c(
-                    "Site scores",
-                    "Lists plotted sample coordinates for identification or reuse."),
-                stressPurpose=c(
-                    "Stress and convergence diagnostics",
-                    "Reports ordination stress and convergence."),
-                shepardPairsPurpose=c(
-                    "Shepard diagram values",
-                    "Lists the values represented in the Shepard diagram."),
-                envfitPurpose=c(
-                    "Environmental fit",
-                    "Shows associations between environmental variables and the ordination."),
-                featuresPurpose=c(
-                    "Feature scores",
-                    "Shows each feature's weighted-average position in the ordination."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .prepareGroup = function(prep) {
             groupName <- miso_clean_vars(self$options$factor)
@@ -1160,10 +1068,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         }))
             }
             self$results$envfit$setNote(
-                key="interpretation",
+                key="method",
                 note=paste(
                     "Unadjusted p-values test association with the ordination,",
-                    "not causation or group differences. Axes may rotate or reflect."))
+                    "not causation or group differences. Axes may rotate or reflect."),
+                init=FALSE)
         },
 
         .featureNames = function() {
@@ -1250,106 +1159,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.htmlBlock(
                         "Shows how well ordination distances preserve ranked dissimilarities.",
                         ariaLabel="About the nMDS Shepard diagram",
-                        title="Shepard diagram"))
+                        title="Shepard Diagram"))
         },
 
-        .populateInterpretation = function() {
-            self$results$note$setContent(miso_html_block(paste(
-                "Closer points are more similar; axis direction is arbitrary, so check stress.",
-                "Feature scores are descriptive."),
-                title="How to read this ordination"))
-        },
 
-        .populateSettings = function() {
-            prep <- private$.state$prep
-            fit <- private$.state$fit
-            k <- private$.state$effectiveK
-            requestedEnv <- unique(miso_clean_vars(self$options$nmdsEnv))
-            envRows <- private$.state$envRows
-            if (is.null(private$.state$groupLabels)) {
-                grouping <- "None"
-            } else {
-                grouping <- sprintf(
-                    "%s (%d assigned; %d unassigned)",
-                    private$.state$groupVariable,
-                    sum(!private$.state$groupMissing),
-                    sum(private$.state$groupMissing))
-            }
-
-            private$.clearTable(self$results$settings)
-            private$.addSetting(
-                "Transformation",
-                private$.transformLabel(self$options$transform))
-            private$.addSetting(
-                "Dissimilarity",
-                private$.distanceLabel(self$options$distance))
-            if (isTRUE(self$options$distBinary))
-                private$.addSetting("Legacy Binary request", "Ignored")
-            private$.addSetting(
-                "Dimensions",
-                if (identical(k, 3L))
-                    "3 (legacy; plot shows NMDS1-NMDS2)"
-                else
-                    "2")
-            private$.addSetting("Samples used", prep$rowsUsed)
-            private$.addSetting("Features used", prep$varsUsed)
-            if (prep$rowsMissingExcluded > 0L)
-                private$.addSetting(
-                    "Missing rows excluded",
-                    prep$rowsMissingExcluded)
-            if (prep$rowsZeroExcluded > 0L)
-                private$.addSetting(
-                    "All-zero rows excluded",
-                    prep$rowsZeroExcluded)
-            if (prep$featuresZeroExcluded > 0L)
-                private$.addSetting(
-                    "All-zero features excluded",
-                    prep$featuresZeroExcluded)
-            private$.addSetting("Grouping", grouping)
-            private$.addSetting(
-                "Group display",
-                private$.effectiveOverlaySummary())
-            private$.addSetting(
-                "Environmental variables",
-                if (length(requestedEnv) == 0L)
-                    "None"
-                else
-                    sprintf(
-                        "%d fitted of %d requested",
-                        length(envRows),
-                        length(requestedEnv)))
-            if (length(requestedEnv) > 0L)
-                private$.addSetting(
-                    "Environmental permutations",
-                    as.character(self$options$nmdsEnvPerm))
-            private$.addSetting(
-                "Feature Scores",
-                if (!is.null(private$.state$features))
-                    "Shown"
-                else if (isTRUE(self$options$nmdsSpecies))
-                    "Unavailable"
-                else
-                    "Hidden")
-            private$.addSetting(
-                "Shepard diagram",
-                if (isTRUE(self$options$nmdsShepard) &&
-                        private$.state$shepardValid)
-                    "Shown"
-                else if (isTRUE(self$options$nmdsShepard))
-                    "Unavailable"
-                else
-                    "Hidden")
-            private$.addSetting("Seed", private$.seedLabel(prep))
-            private$.addSetting(
-                "Random starts",
-                sprintf(
-                    "%s tried; %d maximum",
-                    private$.fitValue(fit, "tries"),
-                    as.integer(self$options$nmdsTrymax)))
-            private$.addSetting(
-                "Maximum iterations",
-                as.character(self$options$nmdsMaxit))
-        },
 
         .populateCoreResults = function() {
             fit <- private$.state$fit
@@ -1358,7 +1171,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             k <- private$.state$effectiveK
 
             for (table in c(
-                    "stress", "shepardPairs", "sites", "features", "settings"))
+                    "stress", "shepardPairs", "sites", "features"))
                 private$.clearTable(self$results[[table]])
 
             stress <- private$.finiteNumber(fit$stress)
@@ -1437,10 +1250,22 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             else
                                 NA_real_))
             }
+            self$results$sites$setNote(
+                key="method",
+                init=FALSE,
+                note=sprintf(
+                    "Transformation: %s. Dissimilarity index: %s. Site coordinates may rotate or reflect without changing fitted distances.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance)))
+            self$results$stress$setNote(
+                key="method",
+                init=FALSE,
+                note=sprintf(
+                    "Dimensions: %d. Random starts: %s. Maximum iterations per start: %s.",
+                    k, private$.fitValue(fit, "tries"),
+                    self$options$nmdsMaxit))
             private$.prepareLabelState()
             private$.populateDescriptions()
-            private$.populateInterpretation()
-            private$.populateSettings()
         },
 
         .plotLimits = function(x, y, expansion=0.08) {

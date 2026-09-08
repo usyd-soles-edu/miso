@@ -5,7 +5,7 @@ jrs: '1.1'
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
     clearWith: &clearWith
@@ -13,36 +13,6 @@ items:
       - labels
       - transform
       - distance
-      - sampleLabels
-      - defineClusters
-      - cutMode
-      - numberClusters
-      - cutHeight
-
-  - name: summaryPurpose
-    title: Data summary
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: summary
-    title: ''
-    type: Table
-    visible: false
-    rows: 5
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith:
-      - vars
-      - labels
-      - transform
-      - distance
-      - sampleLabels
       - defineClusters
       - cutMode
       - numberClusters
@@ -57,14 +27,13 @@ items:
       - labels
       - transform
       - distance
-      - sampleLabels
       - defineClusters
       - cutMode
       - numberClusters
       - cutHeight
 
   - name: dendrogramDescription
-    title: Group-average cluster dendrogram
+    title: Group-average Cluster Dendrogram
     type: Html
     visible: false
     clearWith:
@@ -72,14 +41,13 @@ items:
       - labels
       - transform
       - distance
-      - sampleLabels
       - defineClusters
       - cutMode
       - numberClusters
       - cutHeight
 
   - name: dendrogram
-    title: ''
+    title: Cluster Dendrogram
     type: Image
     visible: false
     width: 600
@@ -90,20 +58,13 @@ items:
       - labels
       - transform
       - distance
-      - sampleLabels
       - defineClusters
       - cutMode
       - numberClusters
       - cutHeight
 
-  - name: dendrogramStructurePurpose
-    title: Dendrogram structure
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: dendrogramStructure
-    title: ''
+    title: Dendrogram Structure
     type: Table
     visible: false
     rows: 0
@@ -134,20 +95,13 @@ items:
       - labels
       - transform
       - distance
-      - sampleLabels
       - defineClusters
       - cutMode
       - numberClusters
       - cutHeight
 
-  - name: membershipPurpose
-    title: Cluster membership
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: membership
-    title: ''
+    title: Cluster Membership
     type: Table
     visible: false
     rows: 0
@@ -168,48 +122,3 @@ items:
       - numberClusters
       - cutHeight
 
-  - name: interpretation
-    title: How to read this dendrogram
-    type: Html
-    visible: false
-    clearWith:
-      - vars
-      - labels
-      - transform
-      - distance
-      - sampleLabels
-      - defineClusters
-      - cutMode
-      - numberClusters
-      - cutHeight
-
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: settings
-    title: ''
-    type: Table
-    visible: false
-    rows: 6
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith:
-      - vars
-      - labels
-      - transform
-      - distance
-      - sampleLabels
-      - defineClusters
-      - cutMode
-      - numberClusters
-      - cutHeight
-
-...

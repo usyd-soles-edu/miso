@@ -35,9 +35,12 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "vars",
                 vars,
                 suggested=list(
-                    "continuous"),
+                    "continuous",
+                    "nominal",
+                    "ordinal"),
                 permitted=list(
-                    "numeric"))
+                    "numeric",
+                    "factor"))
             private$..factor <- jmvcore::OptionVariable$new(
                 "factor",
                 factor,
@@ -232,70 +235,39 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     inherit = jmvcore::Group,
     active = list(
         guidance = function() private$.items[["guidance"]],
-        summaryPurpose = function() private$.items[["summaryPurpose"]],
-        summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
-        anovaPurpose = function() private$.items[["anovaPurpose"]],
         anova = function() private$.items[["anova"]],
-        pairwisePurpose = function() private$.items[["pairwisePurpose"]],
         pairwise = function() private$.items[["pairwise"]],
         plotDescription = function() private$.items[["plotDescription"]],
         plot = function() private$.items[["plot"]],
-        distancesPurpose = function() private$.items[["distancesPurpose"]],
         distances = function() private$.items[["distances"]],
         ordinationDescription = function() private$.items[["ordinationDescription"]],
         ordinationPlot = function() private$.items[["ordinationPlot"]],
-        ordinationScoresPurpose = function() private$.items[["ordinationScoresPurpose"]],
-        ordinationScores = function() private$.items[["ordinationScores"]],
-        note = function() private$.items[["note"]],
-        settingsPurpose = function() private$.items[["settingsPurpose"]],
-        settings = function() private$.items[["settings"]]),
+        ordinationScores = function() private$.items[["ordinationScores"]]),
     private = list(),
     public=list(
         initialize=function(options) {
             super$initialize(
                 options=options,
                 name="",
-                title="PERMDISP")
+                title="PERMDISP",
+                refs=list(
+                    "vegan",
+                    "anderson2006"))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
-                title="Getting started",
+                title="Getting Started",
                 visible=FALSE))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="summaryPurpose",
-                title="Data Summary",
-                visible=FALSE))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="summary",
-                title="",
-                visible=FALSE,
-                rows=6,
-                columns=list(
-                    list(
-                        `name`="item", 
-                        `title`="Item", 
-                        `type`="text"),
-                    list(
-                        `name`="value", 
-                        `title`="Value", 
-                        `type`="text"))))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="warnings",
                 title="",
                 visible=FALSE))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="anovaPurpose",
-                title="Dispersion Test",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="anova",
-                title="",
+                title="Dispersion Test",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -324,15 +296,10 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `title`="Permutation p", 
                         `type`="number", 
                         `format`="zto,pvalue"))))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="pairwisePurpose",
-                title="Pairwise Dispersion Comparisons",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="pairwise",
-                title="",
+                title="Pairwise Dispersion Comparisons",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -357,25 +324,22 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="plotDescription",
-                title="Distance to group centre",
-                visible=FALSE))
+                title="Distance to Group Centre",
+                visible=FALSE,
+                clearWith=NULL))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="plot",
-                title="",
+                title="Distance to Group Centre Plot",
                 visible=FALSE,
+                clearWith=NULL,
                 width=600,
                 height=460,
                 renderFun=".plotDistances"))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="distancesPurpose",
-                title="Distance-to-centre summary",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="distances",
-                title="",
+                title="Distances to Group Centre",
                 visible=FALSE,
                 rows=0,
                 columns=list(
@@ -422,26 +386,24 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Html$new(
                 options=options,
                 name="ordinationDescription",
-                title="Ordination with group centres",
-                visible=FALSE))
+                title="Ordination with Group Centres",
+                visible=FALSE,
+                clearWith=NULL))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="ordinationPlot",
-                title="",
+                title="Ordination with Group Centres",
                 visible=FALSE,
+                clearWith=NULL,
                 width=600,
                 height=500,
                 renderFun=".plotOrdination"))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="ordinationScoresPurpose",
-                title="Ordination coordinates",
-                visible=FALSE))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="ordinationScores",
-                title="",
+                title="Ordination Coordinates",
                 visible=FALSE,
+                clearWith=NULL,
                 rows=0,
                 columns=list(
                     list(
@@ -467,32 +429,7 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     list(
                         `name`="axis2", 
                         `title`="Axis 2", 
-                        `type`="number"))))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="note",
-                title="How to read these results",
-                visible=FALSE))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="settingsPurpose",
-                title="Analysis settings",
-                visible=FALSE))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="settings",
-                title="",
-                visible=FALSE,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="setting", 
-                        `title`="Setting", 
-                        `type`="text"),
-                    list(
-                        `name`="value", 
-                        `title`="Value", 
-                        `type`="text"))))}))
+                        `type`="number"))))}))
 
 permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permdispBase",
@@ -520,6 +457,11 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' Tests whether groups differ in multivariate dispersion using 
 #' vegan::betadisper and permutation tests. Includes distance-to-centre 
 #' summaries, diagnostics, and an optional ordination.
+#' @section References:
+#' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+#'
+#' Anderson, M. J. (2006). Distance-based tests for homogeneity of multivariate dispersions. Biometrics, 62(1), 245-253. https://doi.org/10.1111/j.1541-0420.2005.00440.x
+#'
 #' @param data .
 #' @param vars .
 #' @param factor .
@@ -542,31 +484,22 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$anovaPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$plot} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$distancesPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$ordinationScoresPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$ordinationScores} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$note} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 #'
-#' \code{results$summary$asDF}
+#' \code{results$anova$asDF}
 #'
-#' \code{as.data.frame(results$summary)}
+#' \code{as.data.frame(results$anova)}
 #'
 #' @export
 permdisp <- function(

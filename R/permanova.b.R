@@ -104,13 +104,6 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            miso_populate_summary(
-                self$results,
-                prep,
-                self$options$transform,
-                self$options$distance)
-            private$.populatePurposes()
-
             private$.runCompanionPcoa(prep, main$model)
 
             pairwiseShown <- FALSE
@@ -138,9 +131,6 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         pairwise$warnings)
                 }
             }
-
-            private$.setInterpretation(prep, main$model, pairwiseShown)
-            private$.populateSettings(prep, permutation, pairwiseShown)
             private$.showSuccessfulResults(pairwiseShown)
             private$.setWarnings(private$.state$warnings)
         },
@@ -160,43 +150,31 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$companionPcoa$setVisible(FALSE)
             self$results$companionPcoaDescription$setVisible(FALSE)
             self$results$companionPcoaSites$setVisible(FALSE)
-            self$results$companionPcoaSitesPurpose$setVisible(FALSE)
-            self$results$companionPcoaCentroids$setVisible(FALSE)
-            self$results$companionPcoaCentroidsPurpose$setVisible(FALSE)
         },
 
         .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$companionPcoaDescription$setContent("")
-            for (name in c(
-                    "summaryPurpose", "tablePurpose",
-                    "companionPcoaSitesPurpose",
-                    "companionPcoaCentroidsPurpose", "pairwisePurpose",
-                    "settingsPurpose"))
-                self$results[[name]]$setContent("")
-            miso_clear_fixed_table(self$results$summary, 6L)
             miso_clear_table(self$results$table)
             miso_clear_table(self$results$companionPcoaSites)
             miso_clear_table(self$results$companionPcoaCentroids)
             miso_clear_table(self$results$pairwise)
             self$results$pairwise$setNote(
                 key="scope",
-                note="")
-            self$results$note$setContent("")
-            miso_clear_table(self$results$settings)
+                note="",
+                init=FALSE)
 
             for (name in c(
-                    "guidance", "warnings", "summary", "summaryPurpose",
-                    "table", "tablePurpose",
+                    "guidance", "warnings",
+                    "table",
                     "companionPcoa", "companionPcoaDescription",
-                    "companionPcoaSites", "companionPcoaSitesPurpose",
+                    "companionPcoaSites",
                     "companionPcoaCentroids",
-                    "companionPcoaCentroidsPurpose",
-                    "pairwise", "pairwisePurpose", "note", "settings",
-                    "settingsPurpose"))
+                    "pairwise"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("summaryPurpose", "summary", "tablePurpose", "table", "settingsPurpose", "settings"))
+            for (name in c("table"))
                 self$results[[name]]$setVisible(TRUE)
         },
 
@@ -209,34 +187,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
             self$results$guidance$setVisible(FALSE)
             for (name in c(
-                    "summary", "summaryPurpose", "table", "tablePurpose",
-                    "note", "settings", "settingsPurpose"))
+                    "table"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
-            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
         },
 
-        .populatePurposes = function() {
-            miso_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                tablePurpose=c(
-                    "PERMANOVA table",
-                    "Tests compositional associations and reports each term's explained variation (R\u00B2)."),
-                companionPcoaSitesPurpose=c(
-                    "Companion PCoA site coordinates",
-                    "Lists plotted sample coordinates for identification or reuse."),
-                companionPcoaCentroidsPurpose=c(
-                    "Companion PCoA group centroids",
-                    "Lists the plotted mean position of each group."),
-                pairwisePurpose=c(
-                    "Pairwise PERMANOVA",
-                    "Compares pairs of groups and reports adjusted p-values when requested."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[nzchar(warnings)])
@@ -296,13 +252,10 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             self$results$companionPcoaDescription$setVisible(TRUE)
             self$results$companionPcoaSites$setVisible(TRUE)
-            self$results$companionPcoaSitesPurpose$setVisible(TRUE)
             self$results$companionPcoaCentroids$setVisible(
                 (isTRUE(self$options$pcoaCentroids) ||
                     isTRUE(self$options$pcoaSpiders)) &&
                 !is.null(fit$centroids))
-            self$results$companionPcoaCentroidsPurpose$setVisible(
-                self$results$companionPcoaCentroids$visible)
             self$results$companionPcoa$setVisible(
                 !is.null(plotData) && isTRUE(plotData$available))
         },
@@ -595,6 +548,15 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$table$addRow(rowKey=rowKey, values=values)
             }
 
+            self$results$table$setNote(
+                key="method",
+                note=sprintf(
+                    "Transformation: %s. Dissimilarity index: %s. Test type: %s. Permutation restrictions: %s.",
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    private$.testTypeLabel(self$options$permBy),
+                    private$.state$permutation$effective),
+                init=FALSE)
             list(
                 success=TRUE,
                 result=result,
@@ -770,57 +732,13 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.testTypeLabel(self$options$permBy),
                     retainedText,
                     private$.state$permutation$effective,
-                    private$.adjustmentLabel(self$options$permAdjust)))
+                    private$.adjustmentLabel(self$options$permAdjust)),
+                init=FALSE)
 
             list(rows=length(rows), warnings=warnings)
         },
 
-        .setInterpretation = function(prep, model, pairwiseShown) {
-            self$results$note$setContent(miso_html_block(paste(
-                "Pseudo-F compares among-group and within-group variation.",
-                    "R\u00B2 shows explained variation, and permutation p tests the null model."),
-                title="How to read these results"))
-        },
 
-        .populateSettings = function(prep, permutation, pairwiseShown) {
-            add <- function(setting, value) {
-                key <- as.character(length(self$results$settings$rowKeys) + 1L)
-                self$results$settings$addRow(
-                    rowKey=key,
-                    values=list(setting=setting, value=as.character(value)))
-            }
-
-            add("Transformation", private$.transformLabel(self$options$transform))
-            add("Dissimilarity", private$.distanceLabel(self$options$distance))
-            add("Binary dissimilarity", private$.enabledLabel(self$options$distBinary))
-            add("Square-root distances", private$.enabledLabel(self$options$distSqrt))
-            add("Additive constant", private$.additiveLabel(self$options$distAdd))
-            add("Number of permutations", self$options$permN)
-            add("Requested permutation restrictions", permutation$requested)
-            add("Effective permutation restrictions", permutation$effective)
-            if (identical(self$options$permScheme, "series"))
-                add("Sequence order", "Current data-row order")
-            add("Blocking variable", permutation$block)
-            add("Block used", if (permutation$blockUsed) "Yes" else "No")
-            add("Test type", private$.testTypeLabel(self$options$permBy))
-            add("Additional factors", private$.listLabel(prep$extra))
-            add("Continuous covariates", private$.listLabel(prep$covariateNames))
-            add("Interactions", private$.enabledLabel(self$options$permInteractions))
-            add("Pairwise comparisons", private$.enabledLabel(self$options$permPairwise))
-            add(
-                "P-value adjustment",
-                if (pairwiseShown)
-                    private$.adjustmentLabel(self$options$permAdjust)
-                else
-                    "Not applied")
-            add("Random seed", if (is.na(prep$seed)) "Random" else prep$seed)
-            add(
-                "Parallel processing requested",
-                if (isTRUE(self$options$useParallel)) "Yes" else "No")
-            add(
-                "Effective execution",
-                if (is.null(private$.state$cl)) "Serial" else "Parallel")
-        },
 
         .enabledLabel = function(value) {
             if (isTRUE(value)) "Enabled" else "Disabled"
