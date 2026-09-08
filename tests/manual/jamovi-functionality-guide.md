@@ -22,7 +22,7 @@ Do this before trusting any jamovi result:
    R -q -e 'jmvtools::install(pkg = ".")'
    ```
 
-5. Relaunch jamovi. Open **Analyses → Multivariate Inference, Similarity and Ordination (MISO)** and confirm that seven items are present: PERMANOVA, ANOSIM, PERMDISP, SIMPER, nMDS, Cluster analysis, and PCoA.
+5. Relaunch jamovi. Open **Analyses → MISO** and confirm that seven items are present: PERMANOVA, ANOSIM, PERMDISP, SIMPER, nMDS, Cluster analysis, and PCoA.
 6. Open PERMANOVA and confirm **Plots → Show companion PCoA** is available. Open PERMDISP and confirm **Distance-to-Centre Diagnostic** is selected by default. Open Cluster analysis and confirm **Define clusters** is optional. Open PCoA and confirm it includes **Feature Variables**, **Grouping Variable**, **Plots**, and **Advanced Corrections**.
 
 Record the operating system plus the jamovi and Multivariate Inference, Similarity and Ordination (MISO) versions with your test notes. The version alone is not proof that the new build loaded because two local builds may share a version number. If the menu or controls do not match this guide, remove the Multivariate Inference, Similarity and Ordination (MISO) module, fully quit jamovi, rebuild from the confirmed path, and relaunch before investigating the analysis.
@@ -87,9 +87,9 @@ Enabling **Parallel processing** can show that the option does not alter results
 **What this validates:** the student workflow, state-specific guidance, multivariate group comparison through `vegan::adonis2`, conditional pairwise tables, truthful permutation restrictions, shared preprocessing, and the optional descriptive PCoA.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PERMANOVA — Test group differences**.
-3. Before assigning anything, confirm that **Getting started** says to add numeric Feature variables and one categorical Grouping variable. No empty result table should appear.
-4. Move `feature_01`–`feature_08` to **Feature Variables**. Confirm that **Action needed** now asks for a Grouping variable and that no result table appears.
+2. Select **Analyses → MISO → PERMANOVA — Test group differences**.
+3. Before assigning anything, confirm that the titled **PERMANOVA Table** shell is retained with cleared rows and **Getting started** says to add numeric Feature variables and one categorical Grouping variable. No stale inferential values should appear.
+4. Move `feature_01`–`feature_08` to **Feature Variables**. Confirm that the retained **PERMANOVA Table** shell is still cleared, while **Action needed** asks for a Grouping variable.
 5. Move `group` to **Grouping Variable**.
 6. Under **Analysis choices**, select:
    - **Transformation:** None
@@ -112,23 +112,23 @@ Expected **PERMANOVA Table** values for `group`:
 
 The **Pseudo-F** and **Permutation p** cells for the `Residual` and `Total` rows should be plain blanks without superscripts or explanatory notes. `NaN` must not appear.
 
-Pass when the relevant result tables, **PERMANOVA Table**, the relevant table notes, and the relevant table notes appear; the values match above to the displayed precision; **Data handling warnings** and **Pairwise PERMANOVA** do not appear; and relevant table notes disclose **Free**, no block, **Sequential terms**, seed 123, and serial execution.
+Pass when **PERMANOVA Table** appears with its **PERMANOVA Table** note stating **Permutation restrictions: Free**, **Block used: No**, **Test type: Sequential terms**, **Random seed: 123**, and **Execution: Serial**; values match above to the displayed precision; **Data handling warnings** and **Pairwise PERMANOVA** do not appear.
 
 <details>
 <summary>PERMANOVA functionality regression checks</summary>
 
 - **Pairwise dependency:** confirm **P-value adjustment** is disabled while **Pairwise comparisons** is cleared. Select **Pairwise comparisons**, leave the adjustment at **Holm**, and confirm that a populated **Pairwise PERMANOVA** table appears. Clear Pairwise and confirm that the table disappears rather than leaving an empty heading.
 - **Additional factor and interactions:** expand **Study Design and Model**, move `treatment` to **Additional Factors**, and confirm both model terms appear. Clear Pairwise, select **Model Interactions**, and confirm the interaction row appears. Pairwise should be unavailable until interactions are cleared.
-- **Covariates:** move `temperature` and `pH` to **Continuous Covariates** and confirm both appear as model terms. Change **Test type** between **Sequential terms** and **Marginal terms** and confirm the relevant table notes explain the selected model-term test.
-- **Free with an assigned block:** move `block` to **Blocking Variable** while leaving **Permutation restrictions: Free**. The main result should remain, **Data handling warnings** should say the block is unused, and the relevant table notes should report **Block used: No**.
-- **Within blocks without a block:** remove `block`, select **Within blocks — requires a Blocking variable**, and confirm that only the actionable correction appears, with no inferential table.
-- **Blocked permutations:** assign `block` and keep **Within blocks — requires a Blocking variable**. The analysis should run and the relevant table notes should report that the block is used.
-- **State clearing:** from a valid result, remove `group`, confirm that all old result tables disappear and the Grouping-variable correction appears, then restore `group` and confirm a fresh valid result.
+- **Covariates:** move `temperature` and `pH` to **Continuous Covariates** and confirm both appear as model terms. Change **Test type** between **Sequential terms** and **Marginal terms** and confirm the **PERMANOVA Table** note states the selected **Test type**.
+- **Free with an assigned block:** move `block` to **Blocking Variable** while leaving **Permutation restrictions: Free**. The **PERMANOVA Table** remains populated, **Data handling warnings** says the block is unused, and the **PERMANOVA Table** note states **Block used: No (Blocking variable 'block' is not used with Free permutations).**
+- **Within blocks without a block:** remove `block`, select **Within blocks — requires a Blocking variable**, and confirm the retained **PERMANOVA Table** shell is cleared while **Action needed** names the missing Blocking variable.
+- **Blocked permutations:** assign `block` and keep **Within blocks — requires a Blocking variable**. The analysis should run and the **PERMANOVA Table** note states **Block used: Yes (Blocking variable 'block' is used for Within blocks permutations).**
+- **State clearing:** from a valid result, remove `group`, confirm the titled **PERMANOVA Table** and **Pairwise PERMANOVA** shells remain with cleared rows while the Grouping-variable correction appears, then restore `group` and confirm a fresh valid result.
 - **Active-section recovery:** close and reopen an analysis containing a block or non-default Test type, and confirm the study-design section opens so the active setting is not concealed.
 - **Hellinger + Euclidean:** select **Transformation: Hellinger** and **Dissimilarity: Euclidean**. The group pseudo-F should be approximately 7.4512.
 - **Presence/absence + Jaccard:** select **Transformation: Presence/absence**, **Dissimilarity: Jaccard**, and check **Binary**. The group pseudo-F should be approximately 1.0218 and p approximately .494.
 - **Parallel-toggle invariance:** return to the baseline, record the table, select **Parallel processing**, and confirm the displayed statistics and p-value do not change.
-- **Companion PCoA:** expand **Plots** and select **Companion PCoA**. With the simple baseline model, `group` should be selected automatically. Confirm **PERMANOVA Companion PCoA**, **PERMANOVA Companion PCoA**, and **Companion PCoA Site Coordinates** appear. Select **Group Centroids** and **Connect Sites to Centroids** and confirm the description names the effective layers. Add `treatment` to **Additional Factors**, choose each **Model Factor**, and confirm the display changes without changing the PERMANOVA table. Clear **Companion PCoA** and confirm every companion section disappears. This plot describes the fitted resemblance structure; it is not another test of significance.
+- **Companion PCoA:** expand **Plots** and select **Companion PCoA**. With the simple baseline model, `group` should be selected automatically. Confirm the **PERMANOVA Companion PCoA** description, **Companion PCoA** image, and **Companion PCoA Site Coordinates** table appear. Select **Group Centroids** and **Connect Sites to Centroids** and confirm the description names the effective layers. Add `treatment` to **Additional Factors**, choose each **Model Factor**, and confirm the display changes without changing the **PERMANOVA Table**. Clear **Companion PCoA** and confirm every companion section disappears. This plot describes the fitted resemblance structure; it is not another test of significance.
 
 </details>
 
@@ -141,9 +141,9 @@ If the analysis fails, first confirm the feature columns are numeric, `group` is
 **What this validates:** the student workflow, explicit incomplete states, global rank-based comparison, optional pairwise contrasts, and one truthful permutation design shared by both.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → ANOSIM — Rank-based alternative**.
-3. Before assigning anything, confirm that **Getting started** explains ANOSIM and names both required steps. No empty result table should appear.
-4. Move `feature_01`–`feature_08` to **Feature Variables**. Confirm that **Action needed** asks for a Grouping variable and that no result table appears.
+2. Select **Analyses → MISO → ANOSIM — Rank-based alternative**.
+3. Before assigning anything, confirm that the titled **Global ANOSIM** and **Pairwise ANOSIM** shells are retained with cleared rows while **Getting started** explains ANOSIM and names both required steps.
+4. Move `feature_01`–`feature_08` to **Feature Variables**. Confirm that the retained **Global ANOSIM** and **Pairwise ANOSIM** shells remain cleared while **Action needed** asks for a Grouping variable.
 5. Move `group` to **Grouping Variable**.
 6. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, clear **Binary (presence/absence)**, and leave **Pairwise ANOSIM comparisons** cleared. **P-value adjustment** should be disabled.
 7. Leave **Study Design and Permutation Restrictions** collapsed. The default is **Free**, with **Blocking Variable** empty.
@@ -156,19 +156,19 @@ Expected baseline result:
 | Global R | approximately 0.4950 |
 | Permutation p | .001 |
 
-Pass when the relevant result tables, **Global ANOSIM**, **Ranked dissimilarities by pair category**, **Plot details**, **Ranked-dissimilarity summary**, the relevant result notes, and the relevant table notes appear; the values match; **Data handling warnings** and **Pairwise ANOSIM** do not appear; and relevant table notes disclose Free permutations, no block, seed 123, Pairwise disabled, and serial execution. The plot and summary diagnose the rank distributions behind R; they do not add a second hypothesis test.
+Pass when **Global ANOSIM** appears with its note explaining ranked between/within-group dissimilarities and the requested/effective restriction, **Pairwise ANOSIM** is absent when disabled, and **Ranked Dissimilarities** is populated; the values match; **Data handling warnings** is absent; and the **Global ANOSIM** note discloses Free permutations, no block, seed 123, Pairwise disabled, and serial execution. The plot and summary diagnose the rank distributions behind R; they do not add a second hypothesis test.
 
 <details>
 <summary>ANOSIM functionality regression checks</summary>
 
 - **Pairwise dependency:** select **Pairwise ANOSIM comparisons**, leave **P-value adjustment: Holm**, and confirm a populated **Pairwise ANOSIM** table appears. Expected R / adjusted p values are A vs B approximately 0.6780 / .003, A vs C approximately 0.4314 / .003, and B vs C approximately 0.3970 / .003. Clear Pairwise and confirm the heading and rows disappear.
-- **Free with an assigned block:** expand **Study Design and Permutation Restrictions**, move `block` to **Blocking Variable**, and leave **Permutation restriction: Free**. The global result should remain, **Data handling warnings** should say the block is not used, and the relevant table notes should report **Block used: No**.
-- **Within blocks without a block:** remove `block`, select **Within blocks**, and confirm that only the Blocking-variable correction appears, with no inferential table.
-- **Blocked global and pairwise tests:** reassign `block`, keep **Within blocks**, and select Pairwise. Relevant table notes should disclose **Block used: Yes**. The R values stay as above for this fixture, but each Holm-adjusted pairwise p is .006 because the same within-block restriction now applies to every contrast.
-- **Series:** select **Series (rows in order)**. Relevant table notes should identify the current row order, and, when a block is assigned, the current row order within blocks. Do not sort the data between recording the design and running the test.
-- **Two groups:** filter or recode the data to retain two groups, request Pairwise, and confirm that no empty pairwise table appears. Interpretation should explain that Global ANOSIM is the only contrast.
-- **State clearing:** from a valid result, remove `group`, confirm that every old table disappears and the Grouping-variable correction appears, then restore `group` and confirm a fresh result.
-- **Negative R guidance:** use a dataset that produces a negative R and confirm Interpretation explains that within-group observations are ranked as more dissimilar on average; it should not present negative R as a software error.
+- **Free with an assigned block:** expand **Study Design and Permutation Restrictions**, move `block` to **Blocking Variable**, and leave **Permutation restriction: Free**. **Global ANOSIM** remains populated, **Data handling warnings** says the block is not used, and its note reports the requested/effective restriction without a within-block block.
+- **Within blocks without a block:** remove `block`, select **Within blocks**, and confirm the retained **Global ANOSIM** shell is cleared while the Blocking-variable correction appears.
+- **Blocked global and pairwise tests:** reassign `block`, keep **Within blocks**, and select Pairwise. The **Global ANOSIM** note identifies the effective within-block design and the **Pairwise ANOSIM** note states that contrasts use the same effective restriction. The R values stay as above for this fixture, but each Holm-adjusted pairwise p is .006.
+- **Series:** select **Series (rows in order)**. The **Global ANOSIM** note should identify the current row order, and, when a block is assigned, the current row order within blocks. Do not sort the data between recording the design and running the test.
+- **Two groups:** filter or recode the data to retain two groups, request Pairwise, and confirm the retained **Pairwise ANOSIM** shell has no rows while the **Global ANOSIM** note explains that Global ANOSIM is the only contrast.
+- **State clearing:** from a valid result, remove `group`, confirm the titled **Global ANOSIM** and **Pairwise ANOSIM** shells remain with cleared rows while the Grouping-variable correction appears, then restore `group` and confirm a fresh result.
+- **Negative R guidance:** use a dataset that produces a negative R and confirm the **Global ANOSIM** note and guidance explain that within-group observations are ranked as more dissimilar on average; negative R is not a software error.
 - **Parallel-toggle invariance:** compare the global and requested pairwise results with **Parallel processing** cleared and selected. Statistics and p values should not change; settings must disclose whether execution was effectively serial or parallel.
 - **Rank diagnostic toggle:** clear **Ranked-dissimilarity diagnostic**. The image and **Plot details** should disappear while **Ranked-dissimilarity summary** and every inferential result remain unchanged. Restore it and confirm the description reports how many pairwise ranks are shown.
 
@@ -181,7 +181,7 @@ For `miso-large.csv`, assign all 48 features and use **199 permutations**. Expec
 **What this validates:** the required-input guidance, distances to group centres, the dispersion permutation test, its accessible distribution summary and plot, and conditional pairwise output.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PERMDISP — Check group dispersion**. Before assigning variables, only **Getting started** should appear in the report.
+2. Select **Analyses → MISO → PERMDISP — Check group dispersion**. Before assigning variables, retain the titled **Dispersion Test** and **Distances to Group Centre** shells with cleared rows while **Getting started** is shown.
 3. Move `feature_01`–`feature_08` to **Feature Variables** and `group` to **Grouping Variable**.
 4. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, **Group centre: Median**, and clear **Pairwise dispersion comparisons**. **P-value adjustment** should be disabled.
 5. Leave **Advanced options** at its defaults: Binary off, Square-root distances off, Additive constant None, and Bias adjustment off.
@@ -199,14 +199,14 @@ Expected results:
 
 The **F** and **Permutation p** cells for the `Residuals` row should be blank because those statistics are not applicable to that row. Fail if `NaN` appears.
 
-Pass when the relevant result tables, **Distances to Group Centre**, **Dispersion Test**, **Distance Distributions**, the relevant result notes, and the relevant table notes appear. The distance table should contain n, mean, median, standard deviation, minimum, and maximum for all three groups. The plot should contain all three groups. **Data handling warnings** and **Pairwise Dispersion Comparisons** should be absent, not blank.
+Pass when **Dispersion Test** appears with its structural-cell note stating that blank Residuals F and Permutation p cells are not applicable, and **Distances to Group Centre** appears with its method note naming the transformation, dissimilarity index, and centre. The distance table should contain n, mean, median, standard deviation, minimum, and maximum for all three groups. The plot should contain all three groups. **Data handling warnings** and **Pairwise Dispersion Comparisons** should be absent.
 
 <details>
 <summary>PERMDISP functionality regression checks</summary>
 
 - Select **Pairwise dispersion comparisons** with **P-value adjustment: Holm**. **Pairwise Dispersion Comparisons** should appear with t, Permutation p, and Adjusted p.
 - Change the centre to **Centroid** and select **Bias adjustment**. The dispersion F should be approximately **2.1561**.
-- A copied legacy analysis containing **Stratified** should reproduce the Free baseline, show the compatibility conversion under **Data handling warnings**, and report requested/effective restrictions in the relevant table notes. Stratified must not appear as a choice in a new analysis.
+- A copied legacy analysis containing **Stratified** should reproduce the Free baseline, show the compatibility conversion under **Data handling warnings**, and report requested/effective restrictions in the **Dispersion Test** note. Stratified must not appear as a choice in a new analysis.
 - **Series (rows in order)** uses the current row order. Do not sort the fixture before an optional Series smoke check.
 - Under **Advanced options**, check **Square-root distances** and select **Cailliez** to confirm the distance-correction path completes.
 - Under **Plots**, confirm **Distance-to-Centre Diagnostic** is selected and **Ordination with group centres** is cleared. The first image must be followed by **Plot details** and the full-data **Distance-to-centre summary**. Select the optional ordination and confirm **Ordination with group centres**, **Ordination details**, **Ordination coordinates**, and **Plot key** appear. Lines connect sites to fitted centres; no ellipse should appear. Clear each plot independently and confirm its table alternative remains while F and p do not change.
@@ -222,7 +222,7 @@ For `miso-large.csv`, use all 48 features and **199 permutations**. Expect F app
 **What this validates:** ordination, stress reporting, environmental fitting, group overlays, and the Shepard Diagram.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → nMDS — Visualise sample patterns**.
+2. Select **Analyses → MISO → nMDS — Visualise sample patterns**.
 3. Move `feature_01`–`feature_08` to **Feature Variables**, `group` to **Grouping Variable**, and `temperature` plus `pH` to **Environmental Variables**.
 4. In **Analysis choices**, select **None** and **Bray-Curtis**. New analyses use two dimensions.
 5. In **Plots**, select **Shepard Diagram** and clear **Feature Scores**.
@@ -239,17 +239,17 @@ Expected results:
 | pH r² / unadjusted permutation p | approximately 0.238 / .100 |
 | Site Score rows | 24 |
 
-Pass when the relevant result tables, **nMDS Ordination**, **Stress and Convergence Diagnostics**, **Shepard Diagram**, **Environmental Fit**, **Site Scores**, the relevant result notes, and the relevant table notes appear. The ordination should contain 24 site points styled by group and two environmental vectors. Axes and vectors may rotate or reflect; coordinate signs are not pass criteria.
+Pass when **nMDS Ordination**, **Stress and Convergence Diagnostics**, **Shepard Diagram**, **Shepard Diagram Values**, **Environmental Fit**, and **Site Scores** appear. The **Stress and Convergence Diagnostics** note states the dimensions, starts, and iterations; the **Site Scores** note states the transformation and dissimilarity. The ordination should contain 24 site points styled by group and two environmental vectors. Axes and vectors may rotate or reflect; coordinate signs are not pass criteria.
 
 <details>
 <summary>nMDS functionality regression checks</summary>
 
-- Change seed **123 → 124 → 123**. Confirm the relevant table notes follows each value and stress returns to approximately **0.1636**.
+- Change seed **123 → 124 → 123**. Confirm the **Stress and Convergence Diagnostics** note follows each value and stress returns to approximately **0.1636**.
 - Remove `group`. The ordination, 24-row **Site Scores**, and **Environmental Fit** must remain; group styling controls must become unavailable. Restore `group` and confirm the base configuration and stress do not change.
 - Remove `pH`, then remove all environmental variables. **Environmental Fit** and the vectors should follow the requested variables while the base ordination remains. Restore `temperature` and `pH`.
 - Select **Feature Scores** and expect 8 rows. Clear and restore **Shepard Diagram**. Neither output-only change should alter **Site Scores**.
 - With **Shepard Diagram** selected, confirm **Shepard Diagram** and **Shepard Diagram Values** follow the image. The table must report the plotted dissimilarity, ordination distance, and monotone fitted distance for the displayed pairs; toggling the Shepard output must not alter stress or site coordinates.
-- Select the hull, 1-SD ellipse, and spider overlays. The ordination description must name every effective layer; the relevant result notes must state that group displays are descriptive and ellipses are not confidence regions.
+- Select the hull, 1-SD ellipse, and spider overlays. The **nMDS Ordination** description must name every effective layer; the **Site Scores** note and description must state that group displays are descriptive and ellipses are not confidence regions.
 - Change environmental-fit permutations to **19**. Temperature should display p **.050** and pH **.250**. Restore **99**.
 - Select **Standardize** while retaining **Bray-Curtis**. An actionable compatibility message must replace the stale ordination and inferential output. Select **Euclidean** to recover, then restore **None** and **Bray-Curtis**.
 - Remove every required feature. Only the getting-started guidance should remain in the nMDS report. Restore the eight features and confirm a fresh result returns.
@@ -266,41 +266,41 @@ For `miso-large.csv`, use all 48 features with the same settings. Expect stress 
 **What this validates:** Bray-Curtis calculation, group-average hierarchical clustering, sample labels, and bounded dendrogram output.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → Cluster analysis — Visualise sample similarity**.
-3. Before assigning anything, confirm that **Getting started** asks for numeric Feature variables and no empty plot or table appears.
+2. Select **Analyses → MISO → Cluster analysis — Visualise sample similarity**.
+3. Before assigning anything, confirm the titled **Cluster Dendrogram** and **Dendrogram Structure** shells are retained with cleared data while **Getting Started** asks for numeric Feature variables.
 4. Move `feature_01`–`feature_08` to **Feature Variables** and `sample_id` to **Sample Labels**.
 5. Under **Analysis choices**, select **Transformation: None** and **Dissimilarity index: Bray-Curtis**.
 6. Under **Plots**, select **Show sample labels**.
 
 Expected results:
 
-- the relevant result tables reports 24 samples and 8 feature variables.
-- the relevant table notes reports **Group average (UPGMA)** linkage and `sample_id` as the label source.
+- **Dendrogram Structure** reports 24 samples and 8 feature variables.
+- the **Dendrogram Structure** note reports **Linkage: Group average** and the selected `sample_id` label source.
 - The lowest join in the dendrogram connects `S002` and `S023` at Bray-Curtis dissimilarity approximately **0.108**.
 - the dendrogram description explains lower branch heights without presenting the clustering as a hypothesis test.
 
-Pass when the dendrogram is populated, all 24 sample labels are contained within the plot, **Data handling warnings** is absent, and no resemblance matrix or empty result section appears.
+Pass when the **Cluster Dendrogram** is populated, all 24 sample labels are contained within the plot, **Dendrogram Structure** is populated, and **Data handling warnings** is absent; no resemblance matrix is expected.
 
 <details>
 <summary>Cluster-analysis functionality regression checks</summary>
 
 - Change **Sample label display** between Automatic, Show, and Hide. Label display should not change branches or heights; restore Automatic.
 - Select **Define clusters** and leave **Define clusters by: Number of clusters**, then enter **3**. Confirm a visible cut, a populated **Cluster membership** table, and cluster identities in **Dendrogram structure**. Change to **Dissimilarity height**, enter **0.5**, and confirm the displayed cut and memberships agree with that height. If the height ties a merge, the plot description must disclose the effective boundary. Clear **Define clusters** and confirm the membership table and cut disappear while the uncut dendrogram and structure table remain.
-- Change the transformation to **Fourth root**. The dendrogram should recalculate and the relevant table notes should report Fourth root; restore None.
-- Remove every required feature after a valid run. Only the getting-started guidance should remain; restoring the features should create a fresh dendrogram without stale output.
+- Change the transformation to **Fourth root**. The **Dendrogram Structure** note should report **Transformation: Fourth root**; restore None.
+- Remove every required feature after a valid run. Retain the titled **Cluster Dendrogram** and **Dendrogram Structure** shells with cleared data, and show **Getting Started** guidance; restoring the features should create a fresh dendrogram without stale output.
 - If a label column contains blanks or duplicate values, confirm that **Data handling warnings** explains the row-number fallback or disambiguation.
 - Long labels should end with an ellipsis inside the plot, accompanied by a warning that the source data are unchanged.
 
 </details>
 
-For `miso-large.csv`, use all 48 features and clear **Show sample labels**. the relevant result tables should report 360 samples and 48 features, and the dendrogram should render without a report-width overflow. Selecting **Show sample labels** should give a crowding warning rather than failing.
+For `miso-large.csv`, use all 48 features and clear **Show sample labels**. **Dendrogram Structure** should report 360 samples and 48 features, and the **Cluster Dendrogram** should render without a report-width overflow. Selecting **Show sample labels** should give a crowding warning rather than failing.
 
 ### Test SIMPER
 
 **What this validates:** Bray-Curtis feature contributions, compact output, top-N and cumulative filtering, optional details, and the exploratory permutation assessment.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → SIMPER — Feature contributions**.
+2. Select **Analyses → MISO → SIMPER — Feature contributions**.
 3. Move `feature_01`–`feature_08` to **Feature Variables** and `group` to **Grouping Variable**.
 4. In **Analysis choices**, select transformation **None**. Read the adjacent **Tip**: transformations affect contributions and the displayed means use transformed values. SIMPER is fixed to Bray-Curtis.
 5. Under **Features shown**, enter **Top N features: 10** and **Cumulative contribution (%): 70**. Clear **Detailed Statistics**.
@@ -314,7 +314,7 @@ Expected first rows and displayed row counts:
 | A vs C | `feature_01` | approximately 26.32% | 5 |
 | B vs C | `feature_04` | approximately 24.43% | 5 |
 
-Pass when the relevant result tables, **Contrast summary**, the four-column **Descriptive feature contributions** table, **Contribution plots by contrast**, one separately titled **Contrast contribution** image per contrast, each image's **Plot details** and **Values shown in this plot**, the relevant result notes, and the relevant table notes appear. The main table columns are **Contrast**, **Feature**, **Contribution (%)**, and **Cumulative (%)**; detailed statistics, the heatmap, and the permutation assessment should not occupy blank report space when they are not selected.
+Pass when **Contrast Summary** and the four-column **Descriptive Feature Contributions** table appear with their meaning notes, **Contribution Plots by Contrast** contains one separately titled **Contrast contribution** group per contrast, and each group exposes **Contribution Plot** and **Contribution Values**. The main table columns are **Contrast**, **Feature**, **Contribution (%)**, and **Cumulative (%)**; detailed statistics, the heatmap, and **Permutation Assessment** should not occupy blank report space when they are not selected.
 
 <details>
 <summary>SIMPER functionality regression checks</summary>
@@ -324,21 +324,21 @@ Pass when the relevant result tables, **Contrast summary**, the four-column **De
 - Select **Contrast overview heatmap**. Confirm the bounded **Contrast overview heatmap**, **Heatmap details**, and **Values shown in the heatmap** appear, then clear it and confirm all three disappear. The separate contrast figures and heatmap are descriptive contribution summaries, not evidence that a feature caused the groups to differ.
 - Select **Square root**. Contributions and group means should change; for A vs B the first contribution becomes approximately **18.91%**. Restore **None**.
 - Select **Assess contributions with permutations**. The permutations, adjustment, and seed controls must become available. Enter **19**, retain **Holm**, and enter seed **123**; expect a populated four-column **Exploratory permutation assessment**. Clear the assessment and confirm both its table and controls return to the inactive state.
-- Remove `group`. All previous SIMPER tables, plot, and assessment must disappear and the guidance must ask for the required grouping variable. Restore `group` and confirm all three contrasts are recalculated without stale rows.
+- Remove `group`. Retain the titled **Contrast Summary**, **Descriptive Feature Contributions**, **Contribution Plots by Contrast**, and **Permutation Assessment** shells with cleared data; guidance must ask for the required grouping variable. Restore `group` and confirm all three contrasts are recalculated without stale rows.
 - At 200% jamovi zoom, confirm the options, four-column main table, and optional detail tables remain readable and reachable. Restore 100%.
 - Fail if `NaN` or `Inf` appears in any visible result.
 
 </details>
 
-For `miso-large.csv`, use all 48 features, **Top N features: 9**, and the 70% cumulative threshold. the relevant result tables should report 360 samples, 48 features, three groups, and three contrasts. Exactly nine contribution rows should appear per contrast. The first features for A vs B, A vs C, and B vs C should be `feature_47`, `feature_45`, and `feature_45`, with first contributions approximately **6.54%**, **6.85%**, and **7.10%**.
+For `miso-large.csv`, use all 48 features, **Top N features: 9**, and the 70% cumulative threshold. **Contrast Summary** should report 360 samples, 48 features, three groups, and three contrasts. Exactly nine contribution rows should appear per contrast. The first features for A vs B, A vs C, and B vs C should be `feature_47`, `feature_45`, and `feature_45`, with first contributions approximately **6.54%**, **6.85%**, and **7.10%**.
 
 ### Test PCoA
 
 **What this validates:** descriptive principal coordinates analysis through `vegan::wcmdscale`, the exact resemblance preprocessing, eigenvalue accounting, accessible plot alternatives, corrections, and optional grouping overlays. PCoA has no significance test: pass or fail is determined by the stated coordinates, eigenvalues, sections, and interface states—not by separation between groups.
 
 1. Open `miso-small.csv`.
-2. Select **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PCoA — Visualise distance structure**.
-3. Before assigning variables, confirm **Getting started** asks for two or more numeric Feature variables and no empty image or table appears.
+2. Select **Analyses → MISO → PCoA — Visualise distance structure**.
+3. Before assigning variables, confirm the titled **PCoA Ordination**, **Site Coordinates**, and **Eigenvalues** shells are retained with cleared data while **Getting started** asks for two or more numeric Feature variables.
 4. Move `feature_01`–`feature_08` to **Feature Variables**. Leave **Grouping Variable** empty initially.
 5. Under **Analysis choices**, select **Transformation: None**, **Dissimilarity index: Bray-Curtis**, and clear **Binary (presence/absence)**.
 6. Under **Plots**, leave **Group Centroids** and **Connect Sites to Centroids** cleared. Both controls should be unavailable until a grouping variable is assigned.
@@ -356,16 +356,16 @@ Expected direct-`vegan` checkpoints:
 | Absolute first-site PCoA1 / PCoA2 | approximately 0.04467 / 0.09797 |
 | Negative eigenvalues: count / sum | 10 / approximately −0.20060 |
 
-Pass when the relevant result tables, **Principal coordinates ordination**, **Ordination description**, **Site Coordinates**, **Eigenvalues**, the relevant result notes, and the relevant table notes appear. The image must have equal physical axis scaling and remain inside the report width. The description must state the two explained percentages, negative-eigenvalue handling, effective layers, and that the ordination is descriptive. Coordinate signs may reverse, so compare their absolute values or reflect the whole axis consistently.
+Pass when **Principal coordinates ordination**, **PCoA Ordination**, **Site Coordinates**, and **Eigenvalues** appear. The **Site Coordinates** note states the transformation, dissimilarity, square-root setting, and additive correction; the **Eigenvalues** note states the positive-eigenvalue denominator. The image must have equal physical axis scaling and remain inside the report width. The description must state the two explained percentages, negative-eigenvalue handling, effective layers, and that the ordination is descriptive. Coordinate signs may reverse, so compare their absolute values or reflect the whole axis consistently.
 
 <details>
 <summary>PCoA functionality regression checks</summary>
 
 - **Direct vegan parity:** in R, read the same CSV, select the feature columns, calculate `d <- vegan::vegdist(features, method = "bray")`, then run `fit <- vegan::wcmdscale(d, k = nrow(features) - 1, eig = TRUE, add = FALSE, x.ret = TRUE)`. Compare the first two positive `fit$eig` values, percentages calculated against `sum(fit$eig[fit$eig > 0])`, the negative count and sum, and `abs(fit$points[1, 1:2])` with the checkpoints above. Do not use the module internal PCoA helper to create the reference.
 - **Grouping overlays:** move `group` to **Grouping Variable**. Confirm points use both colour and shape and full group identities remain in **Site Coordinates**. Select **Group Centroids**, then **Connect Sites to Centroids**. Confirm **Group Centroids** appears with three groups and n = 8 each, the description names both layers, and selecting spiders also draws centroids. Clearing both controls must leave site coordinates and eigenvalues unchanged.
-- **Corrections:** under **Advanced Corrections**, select **Lingoes**, then **Cailliez**. Each run must report its correction and constant in the relevant table notes, update coordinates/eigenvalues, and complete without `NaN` or `Inf`. Restore None. Separately select **Square-root distances** and confirm the description and settings disclose it; restore the default.
-- **One positive axis:** in a disposable copy of the data, create two continuous columns containing proportional values such as `0,1,2,3,4` and `0,2,4,6,8`. Assign only those columns, select Euclidean, and leave grouping empty. Confirm **Site Coordinates** and **Eigenvalues** remain, the description explains that only one positive axis is available, and no blank ordination image appears.
-- **Invalid-state clearing:** from a valid result, remove every Feature variable. Confirm all previous PCoA images and tables disappear and only **Getting started** remains. Restore the eight features and confirm fresh results return.
+- **Corrections:** under **Advanced Corrections**, select **Lingoes**, then **Cailliez**. Each run must report its correction and constant in the **Site Coordinates** note, while the **Eigenvalues** note retains the positive-axis denominator; coordinates/eigenvalues update and complete without `NaN` or `Inf`. Restore None. Separately select **Square-root distances** and confirm the **Site Coordinates** note discloses it; restore the default.
+- **One positive axis:** in a disposable copy of the data, create two continuous columns containing proportional values such as `0,1,2,3,4` and `0,2,4,6,8`. Assign only those columns, select Euclidean, and leave grouping empty. Confirm **Site Coordinates** and **Eigenvalues** remain populated, the **PCoA Ordination** shell is retained without a misleading blank image, and the description explains that only one positive axis is available.
+- **Invalid-state clearing:** from a valid result, remove every Feature variable. Confirm **PCoA Ordination**, **Site Coordinates**, and **Eigenvalues** remain as titled shells with cleared data, while **Getting Started** provides the missing-feature guidance. Restore the eight features and confirm fresh results return.
 
 </details>
 
@@ -377,14 +377,14 @@ Open `miso-invalid.csv` and use PERMANOVA unless stated otherwise. Reopen the fi
 
 | Check | What to assign | Expected current behaviour |
 |---|---|---|
-| No features | `group` only | **Getting started** shows both required steps; no empty result table |
-| No group | `valid_01`, `valid_02`; no grouping variable | **Action needed** asks for one categorical Grouping variable; no empty result table |
+| No features | `group` only | Retain the titled **PERMANOVA Table** shell with cleared rows; **Getting started** shows both required steps |
+| No group | `valid_01`, `valid_02`; no grouping variable | Retain the titled **PERMANOVA Table** shell with cleared rows; **Action needed** asks for one categorical Grouping variable |
 | Text feature | Try to move `text_feature` to **Feature Variables** | jamovi refuses the transfer because the target permits numeric variables only |
-| Negative abundance | `valid_01`, `negative_feature`; group `group` | **Action needed** identifies `negative_feature`; no inferential table |
+| Negative abundance | `valid_01`, `negative_feature`; group `group` | Retain the titled **PERMANOVA Table** shell with cleared rows; **Action needed** identifies `negative_feature` |
 | Missing abundance | `valid_01`, `missing_feature`; group `group` | warning reports one excluded row and the summary reports seven samples |
 | All-zero feature | `valid_01`, `all_zero_feature`; group `group` | warning reports that the zero feature was removed |
 | All-zero sample | `zero_case_01`, `zero_case_02`; group `group` | warning reports that one all-zero sample was removed |
-| One group | `valid_01`, `valid_02`; group `single_group` | **Action needed** says the Grouping variable has fewer than two groups; no inferential table |
+| One group | `valid_01`, `valid_02`; group `single_group` | Retain the titled **PERMANOVA Table** shell with cleared rows; **Action needed** says the Grouping variable has fewer than two groups |
 
 ### Full large-data robustness pass
 

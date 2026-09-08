@@ -302,19 +302,19 @@ reference_nmds <- function(
         )
     }
     rows <- list(
-        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Stress", fit$stress, display = display_number(fit$stress, 4L), abs_tolerance = 5e-5, reference_function = "vegan::metaMDS", note = "Axis signs and orientation are not frozen; configuration checks use rotation-invariant distances."),
-        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Effective dimensions", k, display = as.character(k), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
-        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Random starts tried", finite_integer(fit$tries), display = as.character(finite_integer(fit$tries)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
-        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Similar best solution repeats", finite_integer(fit$converged), display = as.character(finite_integer(fit$converged)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
-        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Best solution first found", finite_integer(fit$bestry), display = nmds_best_start(fit), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
-        reference_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Iterations in retained solution", finite_integer(fit$iters), display = as.character(finite_integer(fit$iters)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
-        text_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Engine", as.character(fit$engine[[1L]]), "vegan::metaMDS"),
-        text_row(dataset, scenario_id, "nMDS", "Stress and convergence diagnostics", "Retained optimization stopping reason", nmds_stopping_reason(fit), "vegan::monoMDS icause"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Stress", fit$stress, display = display_number(fit$stress, 4L), abs_tolerance = 5e-5, reference_function = "vegan::metaMDS", note = "Axis signs and orientation are not frozen; configuration checks use rotation-invariant distances."),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Effective dimensions", k, display = as.character(k), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Random starts tried", finite_integer(fit$tries), display = as.character(finite_integer(fit$tries)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Similar best solution repeats", finite_integer(fit$converged), display = as.character(finite_integer(fit$converged)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Best solution first found", finite_integer(fit$bestry), display = nmds_best_start(fit), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        reference_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Iterations in retained solution", finite_integer(fit$iters), display = as.character(finite_integer(fit$iters)), abs_tolerance = 0, reference_function = "vegan::metaMDS"),
+        text_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Engine", as.character(fit$engine[[1L]]), "vegan::metaMDS"),
+        text_row(dataset, scenario_id, "nMDS", "Stress and Convergence Diagnostics", "Retained optimization stopping reason", nmds_stopping_reason(fit), "vegan::monoMDS icause"),
         reference_row(dataset, scenario_id, "nMDS", "Site Scores", "table rows", nrow(sites), display = as.character(nrow(sites)), abs_tolerance = 0, reference_function = "vegan::scores"),
         reference_row(dataset, scenario_id, "nMDS", "Feature Scores", "table rows", if (is.null(feature_points)) 0L else nrow(feature_points), display = as.character(if (is.null(feature_points)) 0L else nrow(feature_points)), abs_tolerance = 0, reference_function = "vegan::scores"),
         reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", "table rows", length(fitted_environment), display = as.character(length(fitted_environment)), abs_tolerance = 0, reference_function = "vegan::envfit"),
-        text_row(dataset, scenario_id, "nMDS", if (k == 3L) "NMDS1-NMDS2 view of a three-dimensional nMDS solution" else "Two-dimensional nMDS ordination", "configuration reference", "pairwise site distances", "stats::dist", "Rotation and reflection invariant; raw axes are intentionally not stored."),
-        text_row(dataset, scenario_id, "nMDS", "Shepard diagram", "plot", "present", "vegan::stressplot")
+        text_row(dataset, scenario_id, "nMDS", "Site Scores", "configuration reference", "pairwise site distances", "stats::dist", "Rotation and reflection invariant; raw axes are intentionally not stored."),
+        text_row(dataset, scenario_id, "nMDS", "Shepard Diagram Values", "plot", "present", "vegan::stressplot")
     )
     for (i in seq_along(distance_probs)) {
         label <- paste0(
@@ -384,20 +384,20 @@ reference_simper <- function(
         pair <- reference$pairs[[index]]
         contrast <- simper_contrast_label(pair)
         tab <- displayed[displayed$contrast == contrast, , drop = FALSE]
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " average dissimilarity"), reference$fit[[index]]$overall, reference_function = "vegan::simper(permutations = 0)")
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " n first group"), sum(as.character(reference$group) == pair[[1L]]), display = as.character(sum(as.character(reference$group) == pair[[1L]])), abs_tolerance = 0, reference_function = "group count")
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast summary", paste0(contrast, " n second group"), sum(as.character(reference$group) == pair[[2L]]), display = as.character(sum(as.character(reference$group) == pair[[2L]])), abs_tolerance = 0, reference_function = "group count")
-            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " rows"), as.character(nrow(tab)), "vegan::simper + independent crossing-feature filter")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast Summary", paste0(contrast, " average dissimilarity"), reference$fit[[index]]$overall, reference_function = "vegan::simper(permutations = 0)")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast Summary", paste0(contrast, " n first group"), sum(as.character(reference$group) == pair[[1L]]), display = as.character(sum(as.character(reference$group) == pair[[1L]])), abs_tolerance = 0, reference_function = "group count")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contrast Summary", paste0(contrast, " n second group"), sum(as.character(reference$group) == pair[[2L]]), display = as.character(sum(as.character(reference$group) == pair[[2L]])), abs_tolerance = 0, reference_function = "group count")
+            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive Feature Contributions", paste0(contrast, " rows"), as.character(nrow(tab)), "vegan::simper + independent crossing-feature filter")
         if (nrow(tab) > 0L) {
-            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first feature"), tab$feature[[1L]], "vegan::simper(permutations = 0)")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " first contribution percent"), 100 * tab$contribution[[1L]], reference_function = "vegan::simper(permutations = 0)")
-            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive feature contributions", paste0(contrast, " displayed cumulative percent"), 100 * tail(tab$cumulative, 1L), reference_function = "vegan::simper + independent crossing-feature filter")
+            rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Descriptive Feature Contributions", paste0(contrast, " first feature"), tab$feature[[1L]], "vegan::simper(permutations = 0)")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive Feature Contributions", paste0(contrast, " first contribution percent"), 100 * tab$contribution[[1L]], reference_function = "vegan::simper(permutations = 0)")
+            rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive Feature Contributions", paste0(contrast, " displayed cumulative percent"), 100 * tail(tab$cumulative, 1L), reference_function = "vegan::simper + independent crossing-feature filter")
             if (isTRUE(details)) {
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution variability", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution variability", paste0(contrast, " first SD"), tab$sd[[1L]], reference_function = "vegan::simper sd")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution variability", paste0(contrast, " first average divided by SD"), tab$ratio[[1L]], reference_function = "vegan::simper ratio")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group means", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group means", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution Variability", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution Variability", paste0(contrast, " first SD"), tab$sd[[1L]], reference_function = "vegan::simper sd")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution Variability", paste0(contrast, " first average divided by SD"), tab$ratio[[1L]], reference_function = "vegan::simper ratio")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
             }
         }
     }
@@ -414,11 +414,11 @@ reference_simper <- function(
             adjusted <- stats::p.adjust(assessed[[index]]$p, method = "holm")
             if (nrow(tab) > 0L) {
                 feature <- tab$feature[[1L]]
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Exploratory permutation assessment", paste0(contrast, " first displayed p"), assessed[[index]]$p[[feature]], display = display_p(assessed[[index]]$p[[feature]]), abs_tolerance = 0, reference_function = "vegan::simper permutation p")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Exploratory permutation assessment", paste0(contrast, " first displayed adjusted p"), adjusted[[feature]], display = display_p(adjusted[[feature]]), abs_tolerance = 0, reference_function = "p.adjust across full contrast")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Permutation Assessment", paste0(contrast, " first displayed p"), assessed[[index]]$p[[feature]], display = display_p(assessed[[index]]$p[[feature]]), abs_tolerance = 0, reference_function = "vegan::simper permutation p")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Permutation Assessment", paste0(contrast, " first displayed adjusted p"), adjusted[[feature]], display = display_p(adjusted[[feature]]), abs_tolerance = 0, reference_function = "p.adjust across full contrast")
             }
         }
-        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Analysis settings", "effective permutations", attr(assessed, "permutations"), display = as.character(attr(assessed, "permutations")), abs_tolerance = 0, reference_function = "attr(vegan::simper, permutations)")
+        rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Permutation Assessment", "effective permutations", attr(assessed, "permutations"), display = as.character(attr(assessed, "permutations")), abs_tolerance = 0, reference_function = "attr(vegan::simper, permutations)")
     }
 
     settings <- paste0(
@@ -427,7 +427,7 @@ reference_simper <- function(
         "; effective dissimilarity: Bray-Curtis",
         if (!identical(selected_distance, "bray")) paste0("; ignored legacy distance: ", selected_distance) else "",
         if (isTRUE(binary)) "; ignored legacy Binary request (separate from Presence/absence transformation)" else "")
-    rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Analysis settings", "effective choices", settings, "approved SIMPER contract")
+    rows[[length(rows) + 1L]] <- text_row(dataset, scenario_id, "SIMPER", "Contrast Summary", "effective choices", settings, "approved SIMPER contract")
     do.call(rbind, rows)
 }
 
@@ -455,7 +455,7 @@ reference_pcoa <- function(data, dataset, scenario_id) {
     points <- as.matrix(fit$points)
 
     rows <- list(
-        reference_row(dataset, scenario_id, "PCoA", "Data Summary",
+        reference_row(dataset, scenario_id, "PCoA", "Site Coordinates",
             "rows used", nrow(features), display = as.character(nrow(features)),
             abs_tolerance = 0, reference_function = "complete.cases + zero filtering"),
         reference_row(dataset, scenario_id, "PCoA", "Eigenvalues",

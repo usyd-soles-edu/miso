@@ -1,6 +1,6 @@
 Generated-at-UTC: 2026-07-15T00:00:00Z
-Source-commit: 8b0506432530223e6ed953b434233ddd785b2cf9
-R: 4.6.0
+Source-commit: 062fb61f2ec41c1f692d8f729e6ed1fc8e171efb
+R: 4.6.1
 vegan: 2.7.5
 Signed-input classifier: euclidean, manhattan, canberra, gower, mahalanobis (vegan 2.7.5)
 permute: 0.9.10
@@ -9,4 +9,4 @@ RNGversion: 4.0.0
 Platform: aarch64-apple-darwin23
 Locale: C
 Scenarios: 34
-Reference-rows: 427
+Reference-rows: 435

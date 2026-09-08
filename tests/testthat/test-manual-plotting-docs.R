@@ -34,11 +34,10 @@ test_that("click-by-click docs use the visible variable-target labels", {
         runbook=paste(readLines(manual_path("jamovi-ui-smoke-test.md"),
             warn=FALSE), collapse="\n"))
     visible_labels <- c(
-        "Feature variables (required)",
-        "Grouping variable (required)",
-        "Grouping variable (optional)",
-        "Environmental variables (optional)",
-        "Sample labels (optional)")
+        "Feature Variables",
+        "Grouping Variable",
+        "Environmental Variables",
+        "Sample Labels" )
 
     for (name in names(docs)) {
         document <- docs[[name]]
@@ -88,11 +87,11 @@ test_that("runbook distinguishes validated plotting states from remaining gaps",
         "Pending nMDS plot procedure",
         "Pending Cluster plot procedure",
         "Pending PCoA procedure",
-        "PERMANOVA companion PCoA",
+        "PERMANOVA Companion PCoA",
         "Ranked dissimilarities by pair category",
         "Distance-to-centre summary",
         "ten separate bounded contrast groups",
-        "Pairs shown in the Shepard diagram",
+        "Shepard Diagram Values",
         "Cluster membership",
         "Principal coordinates ordination")
     for (phrase in required)
@@ -175,4 +174,128 @@ test_that("reference generator records PCoA without Multivariate Inference, Simi
     expect_match(generator, "first site absolute PCoA1", fixed=TRUE)
     expect_match(generator, "negative eigenvalue sum", fixed=TRUE)
     expect_false(grepl("source\\(.*pcoa", generator))
+})
+
+test_that("manual destinations use current titled result owners", {
+    scenarios <- read.csv(manual_path("scenarios.csv"),
+        stringsAsFactors=FALSE, check.names=FALSE)
+    references <- read.csv(manual_path("reference-results.csv"),
+        stringsAsFactors=FALSE, check.names=FALSE)
+    generator <- paste(readLines(manual_path("generate-reference-results.R"),
+        warn=FALSE), collapse="\n")
+    stale <- c("Interpretation", "Analysis settings", "Data Summary",
+        "Result Tables", "Settings")
+    split_slots <- function(values) {
+        unlist(strsplit(as.character(values), "\\|", fixed=FALSE),
+            use.names=FALSE)
+    }
+    expect_false(any(split_slots(scenarios$result_slot) %in% stale))
+    expect_false(any(as.character(references$result_slot) %in% stale))
+    for (destination in stale)
+        expect_false(grepl(paste0("\\\"", destination, "\\\""),
+            generator, fixed=TRUE), info=destination)
+
+    current_titles <- c("Companion PCoA", "Contribution Plot",
+        "Contribution Values")
+    documents <- paste(
+        readLines(functionality_guide_path(), warn=FALSE),
+        readLines(manual_path("jamovi-ui-smoke-test.md"), warn=FALSE),
+        collapse="\n")
+    for (title in current_titles)
+        expect_match(documents, title, fixed=TRUE, info=title)
+    for (title in c("Contribution Plot", "Contribution Values"))
+        expect_true(any(grepl(title, scenarios$result_slot, fixed=TRUE)),
+            info=title)
+})
+
+test_that("incomplete states retain titled shells and clear their data", {
+    guide <- paste(readLines(functionality_guide_path(),
+        warn=FALSE), collapse="\\n")
+    runbook <- paste(readLines(manual_path("jamovi-ui-smoke-test.md"),
+        warn=FALSE), collapse="\\n")
+    for (document in c(guide, runbook)) {
+        expect_false(grepl("no empty result table|no inferential table appears|result tables remain absent|only getting-started guidance|no blank result",
+            document, ignore.case=TRUE))
+        expect_match(document, "retained", fixed=TRUE)
+        expect_match(document, "cleared", fixed=TRUE)
+    }
+    for (title in c("PERMANOVA Table", "Global ANOSIM",
+        "Dispersion Test", "Cluster Dendrogram", "PCoA Ordination",
+        "nMDS Ordination"))
+        expect_match(paste(guide, runbook), title, fixed=TRUE, info=title)
+})
+
+test_that("manual documentation uses the completed MISO contract and assets", {
+    root <- normalizePath(test_path("..", ".."), mustWork=TRUE)
+    readme <- paste(readLines(file.path(root, "README.md"),
+        warn=FALSE), collapse="\n")
+    guide <- paste(readLines(manual_path("jamovi-functionality-guide.md"),
+        warn=FALSE), collapse="\n")
+    runbook <- paste(readLines(manual_path("jamovi-ui-smoke-test.md"),
+        warn=FALSE), collapse="\n")
+    dataset_generator <- paste(readLines(
+        manual_path("generate-datasets.R"), warn=FALSE), collapse="\n")
+    reference_generator <- paste(readLines(
+        manual_path("generate-reference-results.R"), warn=FALSE), collapse="\n")
+    verifier <- paste(readLines(manual_path("verify-fixtures.R"),
+        warn=FALSE), collapse="\n")
+
+    for (document in c(readme, guide, runbook))
+        expect_match(document,
+            "Multivariate Inference, Similarity and Ordination (MISO)",
+            fixed=TRUE)
+    expect_match(readme,
+        "# Multivariate Inference, Similarity and Ordination (MISO)",
+        fixed=TRUE)
+    expect_match(runbook,
+        "Multivariate Inference, Similarity and Ordination (MISO)", fixed=TRUE)
+    expect_match(runbook, "Analyses → MISO", fixed=TRUE)
+    for (asset in c(
+        "miso-small.csv", "miso-large.csv", "miso-invalid.csv",
+        "miso-small-baselines.omv", "miso-large-baselines.omv")) {
+        path <- if (grepl("\\.omv$", asset)) {
+            file.path(root, "tests", "manual", "workbooks", asset)
+        } else {
+            manual_path(asset)
+        }
+        expect_true(file.exists(path), info=asset)
+        retired <- paste(c("t", "o", "f", "u"), collapse="")
+        retired_path <- file.path(dirname(path),
+            sub("^miso", retired, basename(path)))
+        expect_false(file.exists(retired_path), info=asset)
+    }
+    for (asset in c("miso-small.csv", "miso-large.csv", "miso-invalid.csv"))
+        expect_match(dataset_generator, asset, fixed=TRUE)
+    for (asset in c("miso-small.csv", "miso-large.csv"))
+        expect_match(reference_generator, asset, fixed=TRUE)
+    for (asset in c("miso-small.csv", "miso-large.csv", "miso-invalid.csv",
+        "reference-results.csv", "reference-session-info.txt"))
+        expect_match(verifier, asset, fixed=TRUE)
+    expect_match(runbook, "Don't Save", fixed=TRUE)
+    expect_match(runbook, "do not save recalculated `.omv` files", fixed=TRUE)
+    expect_match(runbook, "Never save recalculated `.omv` files", fixed=TRUE)
+    expect_match(runbook, "Still unverified:", fixed=TRUE)
+    expect_match(runbook, "VoiceOver speech", fixed=TRUE)
+    expect_match(runbook, "Windows NVDA", fixed=TRUE)
+})
+
+test_that("manual sources and test descriptions contain no retired identifiers", {
+    root <- normalizePath(test_path("..", ".."), mustWork=TRUE)
+    retired <- paste(c("t", "o", "f", "u"), collapse="")
+    scan <- c(
+        file.path(root, "README.md"),
+        list.files(file.path(root, "tests", "manual"), recursive=TRUE,
+            full.names=TRUE),
+        list.files(file.path(root, "tests", "testthat"), recursive=TRUE,
+            full.names=TRUE))
+    scan <- scan[file.info(scan)$isdir %in% FALSE]
+    scan <- scan[grepl("\\.(md|R|csv|txt)$|README\\.md$", scan,
+        ignore.case=TRUE)]
+    has_retired <- function(path) {
+        lines <- readLines(path, warn=FALSE, encoding="UTF-8")
+        any(grepl(retired, tolower(lines), fixed=TRUE))
+    }
+    hit_files <- scan[vapply(scan, has_retired, logical(1))]
+    expect_true(length(hit_files) == 0L,
+        info=paste("retired identifiers in", paste(hit_files, collapse=", ")))
 })

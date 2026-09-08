@@ -30,8 +30,8 @@ Run every analysis from both clean CSVs so cached workbook output cannot satisfy
 ### Pending PERMANOVA plot procedure
 
 1. Create PERMANOVA from each clean CSV with the baseline settings in `jamovi-functionality-guide.md`. Record the complete **PERMANOVA Table**.
-2. Confirm **Companion PCoA** is off and that **PERMANOVA Companion PCoA**, **PERMANOVA Companion PCoA**, coordinates, and centroids are absent.
-3. Select **Companion PCoA**. For the simple model, assert `group` is the effective display factor and that the 600 × 500 **PERMANOVA Companion PCoA**, **PERMANOVA Companion PCoA**, and **Companion PCoA Site Coordinates** appear.
+2. Confirm **Companion PCoA** is off and that its titled **PERMANOVA Companion PCoA**, **Companion PCoA Site Coordinates**, and **Companion PCoA Group Centroids** shells are retained with cleared data.
+3. Select **Companion PCoA**. For the simple model, assert `group` is the effective display factor and that the 600 × 500 **Companion PCoA** image, **PERMANOVA Companion PCoA** description, and **Companion PCoA Site Coordinates** table appear.
 4. Select **Group Centroids** and **Connect Sites to Centroids** independently. Assert the image and description report the effective layers and the full-data coordinate and centroid tables remain available.
 5. Add `treatment` under **Study Design and Model → Additional Factors**. Before enabling **Companion PCoA**, assign `treatment` under **Model Factor** and confirm the assignment remains. Enable the plot and verify the styling/table grouping follows the requested factor. The PERMANOVA test remains the inferential result; the companion PCoA is descriptive.
 6. With the plot enabled, try an ineligible covariate, a factor removed by filtering, and a deleted/unavailable factor. Confirm each assignment remains in the target and the companion description explicitly names the reason and the eligible retained factors; the PERMANOVA table and any calculable pairwise output remain visible.
@@ -53,8 +53,8 @@ Run every analysis from both clean CSVs so cached workbook output cannot satisfy
 
 ### Pending SIMPER plot procedure
 
-1. On the small three-group fixture, verify **Contribution plots by contrast** contains three separately titled **Contrast contribution** groups—not one tall composite—with one 580 × 430 image, **Plot details**, and **Values shown in this plot** per contrast.
-2. Compare each per-contrast value table with **Descriptive feature contributions**. Confirm complete detailed tables retain omitted features when requested and that the text describes contributions without causal language.
+1. On the small three-group fixture, verify **Contribution Plots by Contrast** contains three separately titled **Contrast contribution** groups—not one tall composite—with one 580 × 430 **Contribution Plot** image and **Contribution Values** table per contrast.
+2. Compare each **Contribution Values** table with **Descriptive Feature Contributions**. Confirm complete detailed tables retain omitted features when requested and that the text describes contributions without causal language.
 3. For a five-group fixture, assert ten separate bounded contrast groups. If the current fixture cannot provide five groups, record this case as unverified rather than inferring it from three groups.
 4. Select **Contrast overview heatmap**. Verify the 600 × 500 image, **Heatmap details**, and **Values shown in the heatmap**; clear it and assert all three disappear without changing contrast values.
 5. Repeat on the large file. Assert no image tower, wide composite, clipped heading, or report-level horizontal scrolling.
@@ -76,10 +76,10 @@ Run every analysis from both clean CSVs so cached workbook output cannot satisfy
 
 ### Pending PCoA procedure
 
-1. Create **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PCoA — Visualise distance structure** from each clean CSV. Confirm no-variable guidance and no blank result, then assign the feature range. Use None, Bray-Curtis, Binary off, Square-root distances off, and Additive correction None.
-2. Verify the 600 × 500 **Principal coordinates ordination**, equal physical axis scaling, adjacent **Ordination description**, complete **Site Coordinates**, **Eigenvalues**, the relevant result notes, and the relevant table notes. Compare small and large checkpoints with `reference-results.csv` and direct `vegan::wcmdscale`; compare coordinate magnitudes because whole axes may reflect.
+1. Create **Analyses → MISO → PCoA — Visualise distance structure** from each clean CSV. Confirm **PCoA Ordination**, **Site Coordinates**, and **Eigenvalues** shells are retained with cleared data while no-variable **Getting Started** guidance is shown; then assign the feature range. Use None, Bray-Curtis, Binary off, Square-root distances off, and Additive correction None.
+2. Verify the 600 × 500 **PCoA Ordination**, equal physical axis scaling, adjacent **Principal coordinates ordination** description, complete **Site Coordinates**, and **Eigenvalues**. Check the **Site Coordinates** note for preprocessing and the **Eigenvalues** note for the positive-eigenvalue denominator. Compare small and large checkpoints with `reference-results.csv` and direct `vegan::wcmdscale`; compare coordinate magnitudes because whole axes may reflect.
 3. Add `group`. Verify colour-plus-shape encoding and complete group values in the coordinate table. Select **Group Centroids**, then **Connect Sites to Centroids**; verify **Group Centroids**, effective-layer text, and invariant coordinates/eigenvalues.
-4. Run None, Lingoes, and Cailliez corrections. Verify the selected correction and finite constant in the relevant table note and direct `vegan::wcmdscale(add = ...)` parity. Test Square-root distances separately.
+4. Run None, Lingoes, and Cailliez corrections. Verify the selected correction and finite constant in the **Site Coordinates** note, the positive-axis denominator in the **Eigenvalues** note, and direct `vegan::wcmdscale(add = ...)` parity. Test Square-root distances separately.
 5. Create a five-row proportional two-feature case and select Euclidean. Verify the one-positive-axis state retains coordinate/eigenvalue tables and description but hides the two-dimensional image rather than leaving blank space.
 6. Remove all required features after a valid result. Verify every stale image/table clears. Restore them, then run the large case and confirm any 1,000-point display cap is disclosed while all site rows remain in the table.
 
@@ -102,7 +102,7 @@ For each assertion, record: build identifier, operating system, jamovi and modul
 
 Environment: superseded pre-rename module build (0.2.0), freshly built and installed into jamovi 2.7.36 on macOS Tahoe 26.5.2; re-record with Multivariate Inference, Similarity and Ordination (MISO) 1.0.0 at the next smoke run. Every analysis was created from `miso-small.csv` (24 rows, 8 feature variables) and `miso-large.csv` (360 rows, 48 feature variables); no cached workbook output was used.
 
-- PCoA: the ordination, Site Coordinates, Eigenvalues, interpretation, and relevant table notes appeared on both datasets with all site rows retained. A live defect exposed `NaN` for explained percentages on non-positive axes; the raw cells were changed to blanks, covered by a regression test, rebuilt, reinstalled, and confirmed finite in jamovi.
+- PCoA: the ordination, Site Coordinates, Eigenvalues, and their owning notes appeared on both datasets with all site rows retained. A live defect exposed `NaN` for explained percentages on non-positive axes; the raw cells were changed to blanks, covered by a regression test, rebuilt, reinstalled, and confirmed finite in jamovi.
 - PERMANOVA: the inferential table appeared on both datasets. Enabling the companion PCoA, group centroids, and spiders produced the named images and full coordinate/centroid tables without changing the PERMANOVA table.
 - ANOSIM: the ranked-dissimilarity image and complete summary appeared on both datasets. The large description disclosed the 600-mark cap. With seed 123 on the small dataset, toggling the diagnostic left Global R (`-0.0195`) and permutation p (`0.676`) unchanged.
 - PERMDISP: the distance diagnostic and summary appeared on both datasets. Enabling the ordination produced the image, site-to-centre segments, Plot key, and complete coordinate table without changing the Dispersion Test. Clearing the optional ordination correctly hid its image, description, and coordinate table together while the always-relevant distance summary remained.
@@ -140,7 +140,7 @@ Record the assignment, retained rows, and the analysis error/shell state in the 
 - Clean large CSV: `tests/manual/miso-large.csv`
 - Full-precision references: `tests/manual/reference-results.csv`
 
-Install the Multivariate Inference, Similarity and Ordination (MISO) build under test before starting. The `.omv` files contain cached results, so opening a workbook is not itself evidence that the current build works.
+Install the Multivariate Inference, Similarity and Ordination (MISO) build under test before starting. The `.omv` files contain cached results, so opening a workbook is not itself evidence that the current build works. Never save recalculated `.omv` files.
 
 ### Install safeguard
 
@@ -262,10 +262,10 @@ This provides consistent geometry. The remaining workflow should still use acces
 2. Fetch a fresh full state.
 3. Locate `text field ... Random seed, Value: 123`.
 4. Set it to `124` and press Return.
-5. Poll until the PERMANOVA the relevant table notes table displays `Random seed` followed by `124`.
+5. Poll until the **PERMANOVA Table** note displays `Random seed` followed by `124`.
 6. From the new state, locate the seed field with value `124`.
 7. Set it back to `123` and press Return.
-8. Poll until the PERMANOVA the relevant table notes table again displays `Random seed` followed by `123`.
+8. Poll until the **PERMANOVA Table** note again displays `Random seed` followed by `123`.
 
 The intermediate seed value is essential: it proves that jamovi committed the changed option and recalculated instead of merely redisplaying cached results.
 
@@ -290,7 +290,7 @@ The shortened Residual and Total rows are intentional. Their missing Pseudo-F an
 3. Wait until the window title is `miso-large-baselines` and the data status reports 360 rows.
 4. Activate `container PERMANOVA- Results`.
 5. Confirm that Random seed is `123` and Permutations is `199`.
-6. Repeat the committed seed sequence `123` to `124` to `123`, pressing Return and polling for each corresponding the relevant table notes value.
+6. Repeat the committed seed sequence `123` to `124` to `123`, pressing Return and polling the **PERMANOVA Table** note for each corresponding seed.
 
 Do not save the small workbook when switching. If jamovi presents a discard-changes confirmation, follow the current Computer Use confirmation policy before acting.
 
@@ -308,15 +308,15 @@ Again, Residual and Total must have blank F and p cells, and `NaN` must not appe
 
 ### 7. Run the PERMANOVA state matrix from a clean CSV
 
-Open `tests/manual/miso-small.csv`, create a new **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → PERMANOVA — Test group differences**, and fetch a fresh accessibility state after every change.
+Open `tests/manual/miso-small.csv`, create a new **Analyses → MISO → PERMANOVA — Test group differences**, and fetch a fresh accessibility state after every change.
 
-1. With no variables assigned, assert that **Getting Started** contains both required steps. Assert that the empty result tables and table notes are absent from the accessibility tree.
-2. Assign `feature_01`–`feature_08` to **Feature Variables** using keyboard selection and the transfer arrow. Assert that **Action needed** asks for a categorical Grouping variable and that result tables remain absent.
+1. With no variables assigned, assert that titled **PERMANOVA Table** and **Pairwise PERMANOVA** shells remain in the accessibility tree with cleared rows. **Getting Started** contains both required steps.
+2. Assign `feature_01`–`feature_08` to **Feature Variables** using keyboard selection and the transfer arrow. Assert that the retained **PERMANOVA Table** shell remains cleared and **Action needed** asks for a categorical Grouping variable.
 3. Assign `group` to **Grouping Variable**. Wait for `table PERMANOVA Table`, then assert that `table Pairwise PERMANOVA` and `Data handling warnings` are absent.
 4. Select **Pairwise comparisons**. Wait for a populated `table Pairwise PERMANOVA`. Clear Pairwise and assert that the table is removed from the accessibility tree.
 5. Expand **Study Design and Model**, assign `block` to **Blocking Variable**, and leave **Permutation restrictions** at **Free**. Assert that **Data handling warnings** says `Blocking variable 'block'` is assigned but not used, and the PERMANOVA table note reports `Block used: No`.
-6. Remove `block`, select **Within blocks — requires a Blocking variable**, and assert that the actionable correction appears with no inferential rows. Reassign `block` and assert that the table returns, the warning disappears, and the PERMANOVA table note reports `Block used: Yes` and names `block`.
-7. Restore **Free**, remove `group`, and assert that all previous rows and headings disappear. Restore `group` and assert that a fresh standard result appears.
+6. Remove `block`, select **Within blocks — requires a Blocking variable**, and assert that the retained **PERMANOVA Table** shell is cleared while the actionable correction appears. Reassign `block` and assert that the table returns, the warning disappears, and the **PERMANOVA Table** note reports `Block used: Yes` and names `block`.
+7. Restore **Free**, remove `group`, and assert the titled **PERMANOVA Table** and **Pairwise PERMANOVA** shells remain with cleared rows while the Grouping-variable guidance appears. Restore `group` and assert that a fresh standard result appears.
 
 Do not save the CSV as a workbook.
 
@@ -345,19 +345,19 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 #### Small baseline
 
 1. Open `miso-small-baselines.omv`, activate `container SIMPER- Results`, and fetch a fresh full state.
-2. Change **Top N features** from `10` to `9`. Wait for the relevant table notes to display `9`.
+2. Change **Top N features** from `10` to `9`. Wait for the **Descriptive Feature Contributions** table to display 9 rows per contrast.
 3. Assert that the visible **Descriptive feature contributions** table has only `Contrast`, `Feature`, `Contribution (%)`, and `Cumulative (%)`. The legacy wide internal table must not appear.
 4. Confirm three contrasts and the expected first rows: A vs B `feature_04` at about `21.2`, A vs C `feature_01` at about `26.3`, and B vs C `feature_04` at about `24.4`.
 5. Select **Detailed Statistics**. Assert a five-column **Contribution Variability** table and a four-column **Group Means** table, both contained within the report width. Clear the option and assert that both tables disappear.
 6. With **Assess contributions with permutations** clear, confirm its permutation count, adjustment, and seed controls are unavailable. Select it, enter `19`, retain Holm, and enter seed `123`. Assert a populated four-column **Exploratory permutation assessment** and truthful settings. Clear the assessment.
-7. Remove the required grouping variable. Assert that all prior SIMPER tables, plot, and assessment disappear and that guidance requests a grouping variable. Restore `group` and wait for all three contrasts to return without stale rows.
+7. Remove the required grouping variable. Retain the titled **Contrast Summary**, **Descriptive Feature Contributions**, **Contribution Plots by Contrast**, and **Permutation Assessment** shells with cleared data while guidance requests a grouping variable. Restore `group` and wait for all three contrasts to return without stale rows.
 8. At 200% jamovi zoom, confirm the option tips, four-column main table, and optional detail tables remain readable and reachable. The zoom sequence is `100 → 110 → 120 → 133 → 150 → 170 → 200`; restore it in reverse.
 9. Fail if `NaN` or `Inf` appears in the SIMPER result block.
 
 #### Large baseline
 
 1. Open `miso-large-baselines.omv`, activate SIMPER, and change Top N `10 → 9`.
-2. Assert the relevant result tables reports 360 analysed samples, 48 features, three groups, and three contrasts.
+2. Assert **Contrast Summary** reports three groups and three contrasts, and **Descriptive Feature Contributions** contains the 360-sample, 48-feature calculation.
 3. Assert exactly 9 contribution rows per contrast, 27 data rows total. The A vs B first row is `feature_47`, contribution `6.54`, cumulative `6.54`.
 4. Confirm the compact main table, plot, and settings appear without horizontal overflow or stale small-data rows.
 
@@ -366,13 +366,13 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 #### Small baseline
 
 1. Open `miso-small-baselines.omv`, activate `container nMDS- Results`, and confirm eight required features, `group`, `temperature` plus `pH`, None/Bray-Curtis, Shepard on, feature scores off, environmental permutations `99`, seed `123`, starts `20`, and iterations `200`.
-2. Change seed `123 → 124 → 123`. Wait for the relevant table notes after each change and do not read the environmental rows until the requested seed appears there. At seed 123, expect stress about `0.1636`, 24 **Site Scores**, temperature r² about `.292` with p `.060`, and pH r² about `.238` with p `.100`.
+2. Change seed `123 → 124 → 123`. Wait for the **Stress and Convergence Diagnostics** note after each change and do not read the **Environmental Fit** rows until the requested seed appears there. At seed 123, expect stress about `0.1636`, 24 **Site Scores**, temperature r² about `.292` with p `.060`, and pH r² about `.238` with p `.100`.
 3. Remove `group`. The ordination, Site Scores, and Environmental Fit must remain; group styling controls become unavailable and the plot description reports no grouping. Restore `group` and confirm stress/configuration are unchanged.
 4. Remove `pH`, then all environmental variables. Environmental Fit and vectors must follow the requested variables while the base ordination remains. Restore `temperature` and `pH`.
 5. Clear **Shepard Diagram** and select **Feature Scores**. Assert only the requested output changes and Feature Scores contains 8 rows. Restore Shepard on and Feature Scores off; Site Scores must remain identical.
 6. Change environmental permutations `99 → 19`. Expect temperature p `.050` and pH p `.250`; restore `99`.
 7. Select Standardize with Bray-Curtis. Assert an actionable compatibility message and no stale ordination, scores, or environmental fit. Select Euclidean to recover, then restore None/Bray-Curtis.
-8. Remove all required features. Assert the nMDS result block contains only getting-started guidance asking for at least two numeric features. Restore all eight features and wait for stress `0.1636` and the complete result set.
+8. Remove all required features. Assert titled **nMDS Ordination**, **Site Scores**, **Stress and Convergence Diagnostics**, and **Environmental Fit** shells remain with cleared data while **Getting Started** asks for at least two numeric features. Restore all eight features and wait for stress `0.1636` and the complete result set.
 9. At 200% zoom, confirm **Grouping Variable** and **Environmental Variables** are not cropped, the compact tips in **Group display** and **Environmental fit** are visible, and the report remains reachable. Restore 100%.
 10. Focus Random seed, press Tab and Shift-Tab, and confirm logical movement among the three reproducibility fields. Change the seed with `set_value`; after recalculation, the accessibility tree should still identify the seed field as focused rather than moving focus into the report. Restore seed `123`.
 11. Confirm the accessibility tree exposes the nMDS heading; named tables and images; the compact ordination description; `p (unadjusted)` headers; and the descriptive, non-inferential overlay warning.
@@ -421,14 +421,14 @@ Use the saved baselines so all variables are already assigned. Opening cached re
 
 Open `tests/manual/miso-invalid.csv`, create a new PERMANOVA, and return to a clean analysis before each case.
 
-1. Assign only `group`. Assert **Getting started** shows both required steps and no inferential table appears.
-2. Assign `valid_01` and `valid_02` without a group. Assert the guidance requests a Grouping variable and no inferential table appears.
+1. Assign only `group`. Assert the titled **PERMANOVA Table** shell remains cleared and **Getting Started** shows both required steps.
+2. Assign `valid_01` and `valid_02` without a group. Assert the retained **PERMANOVA Table** shell remains cleared and the guidance requests a Grouping variable.
 3. Try to move `text_feature` to **Feature Variables**. Assert jamovi refuses it and announces **Incorrect measure or data type**.
-4. Assign `valid_01` plus `negative_feature`, with group `group`. Assert the guidance names `negative_feature` and no inferential table appears.
+4. Assign `valid_01` plus `negative_feature`, with group `group`. Assert the retained **PERMANOVA Table** shell remains cleared and the guidance names `negative_feature`.
 5. Assign `valid_01` plus `missing_feature`, with group `group`. Assert one row is excluded, seven samples are analysed, and the inferential table is populated.
 6. Before the all-zero-feature case, open **Variables → Edit** for `all_zero_feature` and set **Measure type: Continuous**. Constant columns are otherwise imported as Nominal. Assign it with `valid_01` and group `group`; assert one all-zero feature is excluded and the inferential table is populated.
 7. Assign `zero_case_01` and `zero_case_02`, with group `group`. Assert one all-zero sample is excluded, seven samples are analysed, and the inferential table is populated.
-8. Assign `valid_01` and `valid_02`, with group `single_group`. Assert the guidance reports fewer than two groups and no inferential table appears.
+8. Assign `valid_01` and `valid_02`, with group `single_group`. Assert the retained **PERMANOVA Table** shell remains cleared and the guidance reports fewer than two groups.
 
 ### 15. Run the Cluster analysis workflow
 
@@ -436,19 +436,19 @@ Use the clean CSV fixtures because the saved baseline workbooks predate Cluster 
 
 #### Small dataset
 
-1. Open `tests/manual/miso-small.csv` and create **Analyses → Multivariate Inference, Similarity and Ordination (MISO) → Cluster analysis — Visualise sample similarity**.
+1. Open `tests/manual/miso-small.csv` and create **Analyses → MISO → Cluster analysis — Visualise sample similarity**.
 2. Assign `feature_01`–`feature_08` to **Feature Variables**.
-3. Assert the relevant result tables reports 24 samples, 8 features, and zero exclusions.
-4. Confirm the group-average dendrogram is visibly drawn, uses row numbers when **Sample Labels** is empty, and the relevant table notes reports None, Bray-Curtis, Group average (UPGMA), Data row numbers, and labels shown.
+3. Assert **Dendrogram Structure** reports 24 samples, 8 features, and zero exclusions.
+4. Confirm the **Cluster Dendrogram** is visibly drawn, uses row numbers when **Sample Labels** is empty, and the **Dendrogram Structure** note reports None, Bray-Curtis, Group average (UPGMA), Data row numbers, and labels shown.
 5. Confirm the 540 × 360 plot and its surrounding interpretation fit within the report card without report-level horizontal scrolling.
 6. Fail if `NaN` or `Inf` appears in the Cluster result block.
 
 #### Large dataset
 
 1. Open `tests/manual/miso-large.csv`, create Cluster analysis, and assign `feature_01`–`feature_48`.
-2. Assert the relevant result tables reports 360 samples, 48 features, and zero exclusions.
+2. Assert **Dendrogram Structure** reports 360 samples, 48 features, and zero exclusions.
 3. With **Show sample labels** selected, assert that the crowding warning appears and the dendrogram remains visible.
-4. Clear **Show sample labels**. Assert that the crowding warning disappears, the dendrogram remains visible, and relevant table notes disclose labels not shown.
+4. Clear **Show sample labels**. Assert that the crowding warning disappears, the dendrogram remains visible, and the **Dendrogram Structure** note discloses labels not shown.
 5. Confirm the plot remains contained without report-level horizontal scrolling. Fail if `NaN` or `Inf` appears.
 
 ### 16. Check result text width across analyses
