@@ -408,9 +408,22 @@ miso_parallel <- function(enabled, n=NULL) {
     cl <- tryCatch(parallel::makeCluster(cores), error=function(e) NULL)
     if (is.null(cl)) return(NULL)
     # adonis2/anosim/permutest dispatch vegan internals (e.g. do_getF) to the
-    # workers; a fresh PSOCK worker has no vegan namespace, so load vegan+permute.
-    ok <- tryCatch({ parallel::clusterEvalQ(cl, { library(vegan); library(permute) }); TRUE }, error=function(e) FALSE)
-    if (! ok) { try(parallel::stopCluster(cl), silent=TRUE); return(NULL) }
+    # workers; load namespaces without attaching either package to the search path.
+    loaded <- tryCatch(parallel::clusterEvalQ(cl, {
+        veganAvailable <- requireNamespace("vegan", quietly=TRUE)
+        permuteAvailable <- requireNamespace("permute", quietly=TRUE)
+        if (! veganAvailable || ! permuteAvailable)
+            stop("required analysis namespaces are unavailable", call.=FALSE)
+        loadNamespace("vegan")
+        loadNamespace("permute")
+        TRUE
+    }), error=function(e) NULL)
+    ok <- ! is.null(loaded) && length(loaded) == length(cl) &&
+        all(vapply(loaded, isTRUE, logical(1)))
+    if (! ok) {
+        try(parallel::stopCluster(cl), silent=TRUE)
+        return(NULL)
+    }
     cl
 }
 

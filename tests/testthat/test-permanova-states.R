@@ -10,6 +10,22 @@ permanova_state_data <- function() {
     )
 }
 
+test_that("PERMANOVA lifecycle seams retain the fitted output contract", {
+    data <- permanova_state_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        permN=19, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    private <- analysis$.__enclos_env__$private
+    expect_true(all(c(".preparePermanova", ".fitPermanova",
+        ".assemblePermanovaResults", ".runCompanionPcoa",
+        ".runPairwisePermanova") %in% names(private)))
+    expect_true(analysis$results$table$visible)
+    expect_true(nrow(analysis$results$table$asDF) > 0L)
+    expect_identical(private$.state$permutation$effective, "Free")
+})
+
 expect_result_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))

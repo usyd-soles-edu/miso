@@ -7,6 +7,25 @@ workflow_data <- function() {
     )
 }
 
+test_that("parallel workers load analysis namespaces without attaching them", {
+    testthat::skip_if_not_installed("vegan")
+    testthat::skip_if_not_installed("permute")
+    cluster <- miso:::miso_parallel(TRUE, n=2L)
+    if (is.null(cluster))
+        testthat::skip("parallel workers are unavailable")
+    on.exit(miso:::miso_parallel_stop(cluster), add=TRUE)
+
+    state <- parallel::clusterEvalQ(cluster, list(
+        veganLoaded="vegan" %in% loadedNamespaces(),
+        permuteLoaded="permute" %in% loadedNamespaces(),
+        veganAttached=any(grepl("^package:vegan$", search())),
+        permuteAttached=any(grepl("^package:permute$", search()))))
+    expect_true(all(vapply(state, `[[`, logical(1), "veganLoaded")))
+    expect_true(all(vapply(state, `[[`, logical(1), "permuteLoaded")))
+    expect_false(any(vapply(state, `[[`, logical(1), "veganAttached")))
+    expect_false(any(vapply(state, `[[`, logical(1), "permuteAttached")))
+})
+
 test_that("missing feature variables provide a clear note", {
     res <- permanova(
         data = data.frame(group = c("A", "B")),

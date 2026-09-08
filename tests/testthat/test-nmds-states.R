@@ -20,6 +20,21 @@ run_nmds_private <- function(data, ...) {
     analysis
 }
 
+test_that("nMDS lifecycle seams retain the fitted state contract", {
+    analysis <- run_nmds_private(
+        nmds_state_data(),
+        vars=paste0("feature_0", 1:4),
+        seed=123,
+        nmdsTrymax=2)
+    private <- analysis$.__enclos_env__$private
+    expect_true(all(c(".prepareNmds", ".fitNmds",
+        ".assembleNmdsResults") %in% names(private)))
+    expect_true(is.list(private$.state$fitArguments))
+    expect_identical(private$.state$effectiveK, 2L)
+    expect_true(is.finite(private$.state$fit$stress))
+    expect_equal(nrow(analysis$results$sites$asDF), nrow(nmds_state_data()))
+})
+
 nmds_squish <- function(value) {
     trimws(gsub("[[:space:]]+", " ", as.character(value)))
 }

@@ -7,25 +7,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .state = list(),
         .lastStructuralKey = NULL,
 
-        .run = function() {
-            structuralKey <- miso_options_signature(
-                self$options,
-                excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
-                    "pcoaCentroids", "pcoaSpiders"))
-            if (!is.null(private$.lastStructuralKey) &&
-                    identical(private$.lastStructuralKey, structuralKey)) {
-                private$.refreshDisplayOnly()
-                return()
-            }
-            private$.lastStructuralKey <- structuralKey
-            private$.state <- list(
-                warnings=character(), cl=NULL, permutation=NULL,
-                companion=list(
-                    requested=isTRUE(self$options$showCompanionPcoa),
-                    prep=NULL, model=NULL, fit=NULL,
-                    plotData=NULL, displayFactor=NULL))
-            private$.clearResults()
-
+        .preparePermanova = function() {
             if (length(self$options$vars) == 0) {
                 private$.showGuidance(
                     paste(
@@ -35,7 +17,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Results update automatically.",
                         sep="\n"),
                     title="Getting started")
-                return()
+                return(NULL)
             }
 
             if (miso_is_missing_var(self$options$factor)) {
@@ -44,7 +26,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "PERMANOVA is waiting for a Grouping variable.",
                         "Add one categorical variable containing at least two groups."),
                     title="Action needed")
-                return()
+                return(NULL)
             }
 
             prep <- miso_prepare_resemblance(
@@ -62,14 +44,14 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance(
                     paste0("PERMANOVA could not run: ", prep$message),
                     title="Action needed")
-                return()
+                return(NULL)
             }
 
             permutation <- private$.permutationState(prep)
             private$.state$permutation <- permutation
             if (! is.null(permutation$error)) {
                 private$.showGuidance(permutation$error, title="Action needed")
-                return()
+                return(NULL)
             }
 
             private$.state$warnings <- c(
@@ -77,22 +59,79 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep$warnings,
                 permutation$warnings)
             private$.state$cl <- miso_parallel(self$options$useParallel)
-            on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
+            prep
+        },
 
-            main <- private$.runPermanova(prep)
-            if (! main$success) {
-                private$.clearResults()
-                correction <- if (grepl("saturated", main$error, fixed=TRUE))
-                    "The selected model has no residual degrees of freedom. Remove a model term or use more samples."
-                else
-                    "Check the selected variables and model settings."
-                private$.showGuidance(
-                    paste0(
-                        "PERMANOVA could not run: ", correction,
-                        "\nTechnical detail: ", main$error),
-                    title="Action needed")
-                return()
+        .fitPermanova = function(prep) {
+            miso_set_seed(prep)
+            model <- private$.makeModelData(prep)
+            result <- tryCatch(
+                private$.adonisModel(prep, model),
+                error=function(e) e)
+            if (inherits(result, "error"))
+                return(list(success=FALSE, error=result$message))
+            list(success=TRUE, result=result, model=model)
+        },
+
+        .assemblePermanovaResults = function(prep, main) {
+            tab <- as.data.frame(main$result)
+            rn <- rownames(tab)
+            for (i in seq_len(nrow(tab))) {
+                notApplicable <- rn[i] %in% c("Residual", "Total")
+                rowKey <- as.character(i)
+                values <- list(
+                    source=miso_display_term(rn[i], prep),
+                    df=miso_num_or_na(tab[i, "Df"]),
+                    sumsqs=miso_num_or_na(tab[i, "SumOfSqs"]),
+                    r2=miso_num_or_na(tab[i, "R2"]),
+                    f=if (notApplicable) "" else miso_num_or_na(tab[i, "F"]),
+                    p=if (notApplicable) "" else miso_num_or_na(tab[i, "Pr(>F)"]))
+                self$results$table$addRow(rowKey=rowKey, values=values)
             }
+
+            permutation <- private$.state$permutation
+            blockDetail <- if (identical(permutation$notice$kind, "table"))
+                permutation$notice$text
+            else if (identical(permutation$notice$kind, "warning"))
+                sprintf(
+                    "Block used: No (Blocking variable '%s' is not used with Free permutations).",
+                    permutation$block)
+            else if (identical(permutation$block, "None"))
+                "Block used: No (no Blocking variable assigned)."
+            else
+                sprintf(
+                    "Block used: %s (Blocking variable: %s).",
+                    if (isTRUE(permutation$blockUsed)) "Yes" else "No",
+                    permutation$block)
+            seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
+            executionLabel <- if (is.null(private$.state$cl))
+                "Serial" else "Parallel"
+            sequenceDetail <- if (identical(self$options$permScheme, "series"))
+                " Sequence order: Current data-row order."
+            else
+                ""
+            self$results$table$setNote(
+                key="method",
+                note=sprintf(
+                    paste(
+                        "Transformation: %s. Dissimilarity index: %s.",
+                        "Binary dissimilarity: %s. Square-root distances: %s.",
+                        "Additive correction: %s. Test type: %s.",
+                        "Permutation restrictions: %s (%d requested). %s",
+                        "Random seed: %s. Execution: %s.%s"),
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    private$.enabledLabel(self$options$distBinary),
+                    private$.enabledLabel(self$options$distSqrt),
+                    private$.additiveLabel(self$options$distAdd),
+                    private$.testTypeLabel(self$options$permBy),
+                    permutation$effective,
+                    as.integer(self$options$permN),
+                    blockDetail,
+                    seedLabel,
+                    executionLabel,
+                    sequenceDetail),
+                init=FALSE)
 
             private$.runCompanionPcoa(prep, main$model)
 
@@ -123,6 +162,47 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             private$.showSuccessfulResults(pairwiseShown)
             private$.setWarnings(private$.state$warnings)
+        },
+
+        .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options,
+                excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
+                    "pcoaCentroids", "pcoaSpiders"))
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.state <- list(
+                warnings=character(), cl=NULL, permutation=NULL,
+                companion=list(
+                    requested=isTRUE(self$options$showCompanionPcoa),
+                    prep=NULL, model=NULL, fit=NULL,
+                    plotData=NULL, displayFactor=NULL))
+            private$.clearResults()
+
+            prep <- private$.preparePermanova()
+            if (is.null(prep))
+                return()
+            on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
+
+            main <- private$.fitPermanova(prep)
+            if (! main$success) {
+                private$.clearResults()
+                correction <- if (grepl("saturated", main$error, fixed=TRUE))
+                    "The selected model has no residual degrees of freedom. Remove a model term or use more samples."
+                else
+                    "Check the selected variables and model settings."
+                private$.showGuidance(
+                    paste0(
+                        "PERMANOVA could not run: ", correction,
+                        "\nTechnical detail: ", main$error),
+                    title="Action needed")
+                return()
+            }
+            private$.assemblePermanovaResults(prep, main)
         },
 
         .refreshDisplayOnly = function() {
@@ -548,79 +628,6 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         self$options$permN))
 
             state
-        },
-
-        .runPermanova = function(prep) {
-            miso_set_seed(prep)
-            model <- private$.makeModelData(prep)
-            result <- tryCatch(
-                private$.adonisModel(prep, model),
-                error=function(e) e)
-            if (inherits(result, "error"))
-                return(list(success=FALSE, error=result$message))
-
-            tab <- as.data.frame(result)
-            rn <- rownames(tab)
-            for (i in seq_len(nrow(tab))) {
-                notApplicable <- rn[i] %in% c("Residual", "Total")
-                rowKey <- as.character(i)
-                values <- list(
-                    source=miso_display_term(rn[i], prep),
-                    df=miso_num_or_na(tab[i, "Df"]),
-                    sumsqs=miso_num_or_na(tab[i, "SumOfSqs"]),
-                    r2=miso_num_or_na(tab[i, "R2"]),
-                    f=if (notApplicable) "" else miso_num_or_na(tab[i, "F"]),
-                    p=if (notApplicable) "" else miso_num_or_na(tab[i, "Pr(>F)"]))
-                self$results$table$addRow(rowKey=rowKey, values=values)
-            }
-
-            permutation <- private$.state$permutation
-            blockDetail <- if (identical(permutation$notice$kind, "table"))
-                permutation$notice$text
-            else if (identical(permutation$notice$kind, "warning"))
-                sprintf(
-                    "Block used: No (Blocking variable '%s' is not used with Free permutations).",
-                    permutation$block)
-            else if (identical(permutation$block, "None"))
-                "Block used: No (no Blocking variable assigned)."
-            else
-                sprintf(
-                    "Block used: %s (Blocking variable: %s).",
-                    if (isTRUE(permutation$blockUsed)) "Yes" else "No",
-                    permutation$block)
-            seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
-            executionLabel <- if (is.null(private$.state$cl))
-                "Serial" else "Parallel"
-            sequenceDetail <- if (identical(self$options$permScheme, "series"))
-                " Sequence order: Current data-row order."
-            else
-                ""
-            self$results$table$setNote(
-                key="method",
-                note=sprintf(
-                    paste(
-                        "Transformation: %s. Dissimilarity index: %s.",
-                        "Binary dissimilarity: %s. Square-root distances: %s.",
-                        "Additive correction: %s. Test type: %s.",
-                        "Permutation restrictions: %s (%d requested). %s",
-                        "Random seed: %s. Execution: %s.%s"),
-                    private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance),
-                    private$.enabledLabel(self$options$distBinary),
-                    private$.enabledLabel(self$options$distSqrt),
-                    private$.additiveLabel(self$options$distAdd),
-                    private$.testTypeLabel(self$options$permBy),
-                    permutation$effective,
-                    as.integer(self$options$permN),
-                    blockDetail,
-                    seedLabel,
-                    executionLabel,
-                    sequenceDetail),
-                init=FALSE)
-            list(
-                success=TRUE,
-                result=result,
-                model=model)
         },
 
         .adonisModel = function(prep, model=NULL) {

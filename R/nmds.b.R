@@ -11,19 +11,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .summaryRowNo = 0L,
         .rowCursors = list(),
 
-        .run = function() {
-            structuralKey <- private$.structuralKey()
-            private$.structuralChanged <- !identical(
-                private$.lastStructuralKey, structuralKey)
-            if (!private$.structuralChanged) {
-                private$.refreshDisplayOnly()
-                return()
-            }
-            private$.lastStructuralKey <- structuralKey
-            private$.rowCursors <- list()
-            private$.summaryRowNo <- 0L
-            private$.clearResults()
-
+        .prepareNmds = function() {
             requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) < 2L) {
                 if (length(requestedVars) == 0L) {
@@ -35,7 +23,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Action needed",
                         "Add at least two usable numeric Feature variables.")
                 }
-                return()
+                return(NULL)
             }
 
             requestedK <- suppressWarnings(as.integer(self$options$nmdsK))
@@ -43,7 +31,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("Action needed", sprintf(
                     "Dimensions must be 2 or the retained legacy value 3; received %s.",
                     as.character(self$options$nmdsK)))
-                return()
+                return(NULL)
             }
 
             preparationDistance <- if (
@@ -74,14 +62,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 } else {
                     private$.showGuidance("Action needed", prep$message)
                 }
-                return()
+                return(NULL)
             }
 
             if (prep$varsUsed < 2L) {
                 private$.showGuidance(
                     "Action needed",
                     "Add at least two usable numeric Feature variables.")
-                return()
+                return(NULL)
             }
 
             minimumSites <- requestedK + 1L
@@ -89,14 +77,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("Action needed", sprintf(
                     "A %d-dimensional nMDS needs at least %d usable sites. Check missing feature values and Feature variable assignments.",
                     requestedK, minimumSites))
-                return()
+                return(NULL)
             }
 
             checkedDistance <- private$.validateDistance(
                 prep$transformed, self$options$distance)
             if (checkedDistance$error) {
                 private$.showGuidance("Action needed", checkedDistance$message)
-                return()
+                return(NULL)
             }
             prep$dist <- checkedDistance$distance
 
@@ -116,10 +104,13 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$warnings <- c(private$.state$warnings, sprintf(
                     "Only %d sites were retained for %d dimensions; stress may be artificially low or uninformative and is not rated as good or excellent.",
                     prep$rowsUsed, requestedK))
+            prep
+        },
 
+        .fitNmds = function(prep) {
             private$.state$fitArguments <- list(
                 distance=self$options$distance,
-                k=requestedK,
+                k=private$.state$effectiveK,
                 trymax=as.integer(self$options$nmdsTrymax),
                 maxit=as.integer(self$options$nmdsMaxit),
                 wascores=isTRUE(self$options$nmdsSpecies),
@@ -145,11 +136,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("nMDS could not find a solution", sprintf(
                     "nMDS could not find a solution. Check feature variation and the selected settings. Technical detail: %s",
                     conditionMessage(fit)))
-                return()
+                return(list(success=FALSE))
             }
 
+            k <- private$.state$effectiveK
             sites <- tryCatch(
-                vegan::scores(fit, display="sites", choices=seq_len(requestedK)),
+                vegan::scores(fit, display="sites", choices=seq_len(k)),
                 error=function(e) e)
             if (inherits(sites, "error") || is.null(sites)) {
                 detail <- if (inherits(sites, "error"))
@@ -159,12 +151,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("nMDS could not find a solution", sprintf(
                     "nMDS could not find a solution. Check feature variation and the selected settings. Technical detail: %s",
                     detail))
-                return()
+                return(list(success=FALSE))
             }
 
             features <- if (isTRUE(self$options$nmdsSpecies)) {
                 tryCatch(
-                    vegan::scores(fit, display="species", choices=seq_len(requestedK)),
+                    vegan::scores(fit, display="species", choices=seq_len(k)),
                     error=function(e) NULL)
             } else {
                 NULL
@@ -187,6 +179,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     paste(
                         "The retained optimization reached the maximum iterations;",
                         "consider increasing Maximum iterations per start."))
+            list(success=TRUE)
+        },
+
+        .assembleNmdsResults = function(prep) {
             private$.prepareGroup(prep)
             private$.prepareOverlays()
             private$.prepareEnvironmental(prep)
@@ -219,6 +215,28 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 showShepard=showShepard,
                 showEnv=length(private$.state$envRows) > 0L,
                 showFeatures=! is.null(private$.state$features))
+        },
+
+        .run = function() {
+            structuralKey <- private$.structuralKey()
+            private$.structuralChanged <- !identical(
+                private$.lastStructuralKey, structuralKey)
+            if (!private$.structuralChanged) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.rowCursors <- list()
+            private$.summaryRowNo <- 0L
+            private$.clearResults()
+
+            prep <- private$.prepareNmds()
+            if (is.null(prep))
+                return()
+            fit <- private$.fitNmds(prep)
+            if (!isTRUE(fit$success))
+                return()
+            private$.assembleNmdsResults(prep)
         },
 
         .htmlEscape = function(value) {
