@@ -38,8 +38,12 @@ anosim_negative_data <- function() {
 expect_anosim_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("summary", "global", "settings")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_anosim_yaml_node <- function(node, name) {
@@ -465,9 +469,10 @@ test_that("ANOSIM valid invalid valid transitions clear stale output", {
     factor_option$.__enclos_env__$private$.value <- NULL
     analysis$run()
     expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$global$visible)
+    expect_true(analysis$results$global$visible)
     expect_false(analysis$results$pairwise$visible)
-    expect_equal(length(analysis$results$global$rowKeys), 0L)
+    expect_equal(length(analysis$results$global$rowKeys), 1L)
+    expect_true(all(is.na(analysis$results$global$asDF$value)))
     expect_equal(length(analysis$results$pairwise$rowKeys), 0L)
 
     factor_option$.__enclos_env__$private$.value <- "group"
@@ -520,8 +525,9 @@ test_that("ineffective ANOSIM blocks stop inference", {
     )
 
     expect_match(miso_squish_result(result$guidance), "does not vary within any block")
-    expect_false(result$global$visible)
-    expect_equal(nrow(result$global$asDF), 0L)
+    expect_true(result$global$visible)
+    expect_equal(nrow(result$global$asDF), 1L)
+    expect_true(all(is.na(result$global$asDF$value)))
 })
 
 test_that("blocked pairwise ANOSIM uses the displayed permutation design", {
@@ -775,4 +781,73 @@ test_that("rank plot renders from Image state even when showRankPlot is false", 
     analysis$.__enclos_env__$private$.plotRank(image)
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("rank diagnostic toggle preserves inferential table structure across reruns", {
+    data <- anosim_state_data()
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        anosimPairwise=TRUE,
+        showRankPlot=TRUE,
+        anosimN=19,
+        seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        global=analysis$results$global$asDF,
+        pairwise=analysis$results$pairwise$asDF,
+        settings=analysis$results$settings$asDF)
+    keys <- list(
+        summary=analysis$results$summary$rowKeys,
+        global=analysis$results$global$rowKeys,
+        pairwise=analysis$results$pairwise$rowKeys)
+
+    showRankPlotOption <- options$option("showRankPlot")
+    showRankPlotOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(analysis$results$rankPlot$visible)
+    expect_false(analysis$results$rankPlotDescription$visible)
+    expect_true(analysis$results$rankSummary$visible)
+    expect_gt(nrow(analysis$results$rankSummary$asDF), 0L)
+
+    expect_identical(analysis$results$summary$rowKeys, keys$summary)
+    expect_identical(analysis$results$global$rowKeys, keys$global)
+    expect_identical(analysis$results$pairwise$rowKeys, keys$pairwise)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    expect_equal(analysis$results$global$asDF, before$global, tolerance=0)
+    expect_equal(analysis$results$pairwise$asDF, before$pairwise, tolerance=0)
+    expect_identical(analysis$results$settings$asDF, before$settings)
+    expect_true(analysis$results$global$visible)
+    expect_true(analysis$results$pairwise$visible)
+})
+
+test_that("structural grouping inputs rebuild pairwise rows while display toggles do not", {
+    data <- anosim_state_data()
+    data$quarter <- factor(rep(c("W", "X", "Y", "Z"), length.out=nrow(data)))
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        strata="quarter",
+        anosimPairwise=TRUE,
+        anosimN=19,
+        seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    keys <- analysis$results$pairwise$rowKeys
+    contrastsBefore <- analysis$results$pairwise$asDF$contrast
+
+    factorOption <- options$option("factor")
+    factorOption$.__enclos_env__$private$.value <- "quarter"
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(analysis$results$pairwise$rowKeys, keys))
+    expect_gt(length(analysis$results$pairwise$rowKeys), length(keys))
+    expect_false(identical(
+        analysis$results$pairwise$asDF$contrast,
+        contrastsBefore))
+    expect_setequal(
+        analysis$results$pairwise$asDF$contrast,
+        c("W vs X", "W vs Y", "W vs Z", "X vs Y", "X vs Z", "Y vs Z"))
 })

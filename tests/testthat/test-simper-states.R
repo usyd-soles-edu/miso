@@ -26,8 +26,12 @@ simper_many_feature_data <- function(groups=LETTERS[1:2], per_group=4L) {
 expect_simper_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("summary", "contrasts", "contributions", "settings")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_simper_yaml_node <- function(node, name) {
@@ -515,7 +519,7 @@ test_that("incompatible hidden transformations stop actionably", {
             transform=transform)
         expect_true(result$guidance$visible)
         expect_match(as.character(result$guidance$asString()), "cannot produce valid")
-        expect_false(result$contributions$visible)
+        expect_true(result$contributions$visible)
         expect_false(result$table$visible)
         expect_equal(nrow(result$contributions$asDF), 0L)
         expect_equal(nrow(result$table$asDF), 0L)
@@ -658,7 +662,9 @@ test_that("SIMPER valid invalid valid transitions clear stale output", {
     factor_option$.__enclos_env__$private$.value <- NULL
     analysis$run()
     expect_true(analysis$results$guidance$visible)
-    for (name in c("contributions", "variability", "means", "table")) {
+    expect_true(analysis$results$contributions$visible)
+    expect_equal(length(analysis$results$contributions$rowKeys), 0L)
+    for (name in c("variability", "means", "table")) {
         expect_false(analysis$results[[name]]$visible)
         expect_equal(length(analysis$results[[name]]$rowKeys), 0L)
     }
@@ -1152,4 +1158,81 @@ test_that("contribution plots and heatmap render from serialized Image state", {
         heatmapImage,
         function(img) private$.plotHeatmap(img),
         600, 500)
+})
+
+test_that("details and heatmap toggles preserve descriptive tables across reruns", {
+    data <- simper_state_data()
+    options <- simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        simperDetails=TRUE,
+        simperHeatmap=TRUE,
+        seed=123)
+    analysis <- simperClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        contrasts=analysis$results$contrasts$asDF,
+        contributions=analysis$results$contributions$asDF)
+    keys <- list(
+        summary=analysis$results$summary$rowKeys,
+        contrasts=analysis$results$contrasts$rowKeys,
+        contributions=analysis$results$contributions$rowKeys)
+    itemKeys <- analysis$results$contributionPlots$itemKeys
+
+    simperDetailsOption <- options$option("simperDetails")
+    simperDetailsOption$.__enclos_env__$private$.value <- FALSE
+    simperHeatmapOption <- options$option("simperHeatmap")
+    simperHeatmapOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(analysis$results$variability$visible)
+    expect_false(analysis$results$variabilityPurpose$visible)
+    expect_false(analysis$results$means$visible)
+    expect_false(analysis$results$meansPurpose$visible)
+    expect_equal(length(analysis$results$variability$rowKeys), 0L)
+    expect_equal(length(analysis$results$means$rowKeys), 0L)
+    expect_false(analysis$results$heatmap$visible)
+    expect_false(analysis$results$heatmapDescription$visible)
+    expect_false(analysis$results$heatmapValues$visible)
+    expect_false(analysis$results$heatmapValuesPurpose$visible)
+    expect_equal(length(analysis$results$heatmapValues$rowKeys), 0L)
+    expect_true(analysis$results$contributionPlots$visible)
+    expect_length(analysis$results$contributionPlots$items, 3L)
+
+    expect_identical(analysis$results$summary$rowKeys, keys$summary)
+    expect_identical(analysis$results$contrasts$rowKeys, keys$contrasts)
+    expect_identical(
+        analysis$results$contributions$rowKeys, keys$contributions)
+    expect_identical(
+        analysis$results$contributionPlots$itemKeys, itemKeys)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    expect_equal(analysis$results$contrasts$asDF, before$contrasts, tolerance=0)
+    expect_equal(
+        analysis$results$contributions$asDF, before$contributions,
+        tolerance=0)
+})
+
+test_that("structural display filtering rebuilds contribution rows while array items persist", {
+    data <- simper_state_data()
+    options <- simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        simperTop=10,
+        seed=123)
+    analysis <- simperClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    keys <- analysis$results$contributions$rowKeys
+    itemKeys <- analysis$results$contributionPlots$itemKeys
+    rowsBefore <- nrow(analysis$results$contributions$asDF)
+
+    topOption <- options$option("simperTop")
+    topOption$.__enclos_env__$private$.value <- 1
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(analysis$results$contributions$rowKeys, keys))
+    expect_lt(nrow(analysis$results$contributions$asDF), rowsBefore)
+    # The contrast set is unchanged, so the array items are not rebuilt.
+    expect_identical(
+        analysis$results$contributionPlots$itemKeys, itemKeys)
+    expect_length(analysis$results$contributionPlots$items, 3L)
 })

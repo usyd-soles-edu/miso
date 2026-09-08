@@ -6,8 +6,17 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = anosimBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options, excluded="showRankPlot")
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
             private$.state <- list(
                 warnings=character(),
                 restriction=NULL,
@@ -17,7 +26,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 effectivePermutations=NA_integer_,
                 pairwisePermutations=integer(),
                 rankPlotData=NULL)
-            private$.resetResults()
+            private$.clearResults()
 
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
@@ -97,11 +106,22 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.showSuccessfulResults(pairwiseShown)
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            showRank <- isTRUE(self$options$showRankPlot) &&
+                !is.null(private$.state$rankPlotData)
+            self$results$rankPlot$setVisible(showRank)
+            self$results$rankPlotDescription$setVisible(showRank)
+            self$results$rankSummary$setVisible(
+                !is.null(private$.state$rankPlotData))
+            self$results$rankSummaryPurpose$setVisible(
+                !is.null(private$.state$rankPlotData))
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_table(self$results$summary)
-            miso_clear_table(self$results$global)
+            miso_clear_fixed_table(self$results$summary, 6L)
+            miso_clear_fixed_table(self$results$global, 1L)
             miso_clear_table(self$results$pairwise)
             miso_clear_table(self$results$rankSummary)
             rankSummary <- self$results$rankSummary
@@ -123,6 +143,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "rankSummary", "rankSummaryPurpose", "note", "settings",
                     "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "globalPurpose", "global", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -132,6 +154,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
                     "summary", "summaryPurpose", "global", "globalPurpose",
                     "note", "settings", "settingsPurpose"))
@@ -333,8 +356,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$rankPlot$setState(private$.state$rankPlotData)
             private$.populateRankDiagnostic()
 
-            self$results$global$addRow(
-                rowKey="r",
+            miso_set_fixed_row(
+                self$results$global, 1L,
                 values=list(
                     statistic="Global R",
                     value=r,

@@ -197,7 +197,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="summary",
                 title="",
-                rows=0,
+                rows=11,
                 visible=FALSE,
                 columns=list(
                     list(
@@ -215,9 +215,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="warnings",
@@ -317,9 +315,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="centroidsPurpose",
@@ -417,9 +413,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="interpretation",
@@ -454,7 +448,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="settings",
                 title="",
-                rows=0,
+                rows=6,
                 visible=FALSE,
                 columns=list(
                     list(
@@ -472,9 +466,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))}))
+                    "correction")))}))
 
 pcoaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "pcoaBase",

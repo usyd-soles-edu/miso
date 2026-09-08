@@ -28,7 +28,7 @@ items:
   - name: summary
     title: ''
     type: Table
-    rows: 0
+    rows: 11
     visible: false
     columns:
       - name: item
@@ -37,7 +37,14 @@ items:
       - name: value
         title: Value
         type: text
-    clearWith: *clearWith
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction
 
   - name: warnings
     title: ''
@@ -89,7 +96,14 @@ items:
         title: PCoA2
         type: number
         format: zto
-    clearWith: *clearWith
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction
 
   - name: centroidsPurpose
     title: Group centroids
@@ -145,7 +159,14 @@ items:
         title: Explained (%)
         type: number
         format: zto
-    clearWith: *clearWith
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction
 
   - name: interpretation
     title: How to read this ordination
@@ -162,7 +183,7 @@ items:
   - name: settings
     title: ''
     type: Table
-    rows: 0
+    rows: 6
     visible: false
     columns:
       - name: setting
@@ -171,6 +192,13 @@ items:
       - name: value
         title: Value
         type: text
-    clearWith: *clearWith
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction
 
 ...

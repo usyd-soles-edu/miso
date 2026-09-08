@@ -28,8 +28,12 @@ cluster_yaml_node <- function(node, name) {
 expect_cluster_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("summary", "dendrogramStructure", "settings")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 run_cluster_private <- function(data, ...) {
@@ -836,9 +840,10 @@ test_that("cluster valid invalid valid transitions clear stale state", {
     expect_true(analysis$results$guidance$visible)
     expect_false(analysis$results$dendrogram$visible)
     expect_false(analysis$results$dendrogramDescription$visible)
-    expect_false(analysis$results$dendrogramStructure$visible)
+    expect_true(analysis$results$dendrogramStructure$visible)
     expect_false(analysis$results$membership$visible)
-    expect_equal(length(analysis$results$summary$rowKeys), 0L)
+    expect_equal(length(analysis$results$summary$rowKeys), 5L)
+    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
     expect_equal(length(analysis$results$membership$rowKeys), 0L)
     expect_equal(length(analysis$results$dendrogramStructure$rowKeys), 0L)
     expect_null(cluster_private(analysis)$.state$fit)
@@ -920,4 +925,78 @@ test_that("dendrogram renders from serialized Image state alone", {
     private$.plotDendrogram(image)
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("label display toggle preserves cluster tables across reruns", {
+    data <- cluster_state_data()
+    options <- clusterOptions$new(
+        vars=paste0("feature_0", 1:4),
+        labels="sample",
+        sampleLabels="show")
+    analysis <- clusterClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        structure=analysis$results$dendrogramStructure$asDF,
+        membership=analysis$results$membership$asDF,
+        settings=analysis$results$settings$asDF)
+    keys <- list(
+        summary=analysis$results$summary$rowKeys,
+        structure=analysis$results$dendrogramStructure$rowKeys,
+        membership=analysis$results$membership$rowKeys)
+
+    sampleLabelsOption <- options$option("sampleLabels")
+    sampleLabelsOption$.__enclos_env__$private$.value <- "hide"
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_true(analysis$results$dendrogram$visible)
+    expect_identical(
+        analysis$results$dendrogramStructure$rowKeys, keys$structure)
+    expect_identical(analysis$results$membership$rowKeys, keys$membership)
+    expect_identical(analysis$results$summary$rowKeys, keys$summary)
+    expect_equal(
+        analysis$results$dendrogramStructure$asDF, before$structure,
+        tolerance=0)
+    expect_equal(
+        analysis$results$membership$asDF, before$membership, tolerance=0)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    # The settings table reports label visibility, so its value updates in
+    # place while its row structure and unrelated rows stay stable.
+    settings <- setNames(
+        analysis$results$settings$asDF$value,
+        analysis$results$settings$asDF$setting)
+    expect_match(unname(settings[["Sample labels"]]), "hidden", fixed=TRUE)
+    settingsBefore <- setNames(before$settings$value, before$settings$setting)
+    expect_identical(
+        settings[names(settings) != "Sample labels"],
+        settingsBefore[names(settings) != "Sample labels"])
+})
+
+test_that("structural feature inputs rebuild membership and structure rows", {
+    data <- cluster_state_data()
+    data$feature_05 <- c(
+        2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, NA, 36)
+    options <- clusterOptions$new(
+        vars=paste0("feature_0", 1:5),
+        labels="sample",
+        defineClusters=TRUE,
+        cutMode="number",
+        numberClusters=3)
+    analysis <- clusterClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    structureKeys <- analysis$results$dendrogramStructure$rowKeys
+    membershipKeys <- analysis$results$membership$rowKeys
+    rowsUsed <- nrow(analysis$results$membership$asDF)
+
+    varsOption <- options$option("vars")
+    varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(
+        analysis$results$dendrogramStructure$rowKeys, structureKeys))
+    expect_false(identical(
+        analysis$results$membership$rowKeys, membershipKeys))
+    expect_gt(nrow(analysis$results$membership$asDF), rowsUsed)
+    expect_gt(
+        nrow(analysis$results$dendrogramStructure$asDF),
+        2L * rowsUsed - 1L)
 })

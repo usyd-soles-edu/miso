@@ -18,7 +18,7 @@ items:
     title: ''
     type: Table
     visible: false
-    rows: 0
+    rows: 6
     columns:
       - name: item
         title: Item
@@ -41,7 +41,7 @@ items:
     title: ''
     type: Table
     visible: false
-    rows: 0
+    rows: 1
     columns:
       - name: statistic
         title: Statistic
@@ -88,11 +88,33 @@ items:
     title: Ranked dissimilarities by pair category
     type: Html
     visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - strata
+      - permRestriction
+      - permScheme
+      - anosimN
+      - seed
+      - showRankPlot
 
   - name: rankPlot
     title: ''
     type: Image
     visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - strata
+      - permRestriction
+      - permScheme
+      - anosimN
+      - seed
+      - showRankPlot
     width: 600
     height: 480
     renderFun: .plotRank

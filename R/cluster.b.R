@@ -5,9 +5,20 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = clusterBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .summaryRowNo = 0L,
+        .settingsRowNo = 0L,
         .autoLabelLimit = 40L,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options, excluded="sampleLabels")
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
             private$.state <- list(
                 prep=NULL,
                 fit=NULL,
@@ -21,8 +32,10 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 cutLine=NULL,
                 cutDescription="No clusters were defined.",
                 clusterStyleAvailable=TRUE,
-                warnings=character())
-            private$.resetResults()
+                warnings=character(),
+                summaryRowNo=0L,
+                settingsRowNo=0L)
+            private$.clearResults()
 
             if (length(self$options$vars) == 0L) {
                 private$.showGuidance(
@@ -122,15 +135,42 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.showSuccessfulResults()
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            if (is.null(private$.state$fit))
+                return()
+            labelChoice <- private$.effectiveSampleLabelMode()
+            private$.state$labelMode <- labelChoice$mode
+            private$.state$labelModeSource <- labelChoice$source
+            private$.state$showLabels <- private$.labelsAreShown(
+                length(private$.state$labels), labelChoice$mode)
+            self$results$dendrogram$setState(list(
+                fit=private$.state$fit,
+                labels=private$.state$labels,
+                showLabels=private$.state$showLabels,
+                membership=private$.state$membership,
+                cutLine=private$.state$cutLine,
+                distanceLabel=private$.distanceLabel(self$options$distance)))
+            self$results$dendrogram$setVisible(TRUE)
+            self$results$dendrogramDescription$setVisible(TRUE)
+            miso_update_row_where(
+                self$results$settings, "setting", "Sample labels",
+                list(setting="Sample labels", value=sprintf(
+                    "%s (%s)",
+                    switch(labelChoice$mode, auto="Automatic", show="Show", hide="Hide"),
+                    if (private$.state$showLabels) "shown" else "hidden")))
+        },
+
+        .clearResults = function() {
+            private$.summaryRowNo <- 0L
+            private$.settingsRowNo <- 0L
             self$results$guidance$setContent("")
-            miso_clear_table(self$results$summary)
+            miso_clear_fixed_table(self$results$summary, 5L)
             self$results$warnings$setContent("")
             self$results$dendrogramDescription$setContent("")
             miso_clear_table(self$results$dendrogramStructure)
             miso_clear_table(self$results$membership)
             self$results$interpretation$setContent("")
-            miso_clear_table(self$results$settings)
+            miso_clear_fixed_table(self$results$settings, 6L)
             for (name in c(
                     "summaryPurpose", "dendrogramStructurePurpose",
                     "membershipPurpose", "settingsPurpose"))
@@ -143,6 +183,8 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "membershipPurpose", "interpretation", "settings",
                     "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "dendrogramStructurePurpose", "dendrogramStructure", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -152,6 +194,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function() {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
                     "summary", "summaryPurpose", "dendrogram",
                     "dendrogramDescription", "dendrogramStructure",
@@ -348,9 +391,11 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .addSummary = function(item, value) {
-            key <- as.character(length(self$results$summary$rowKeys) + 1L)
-            self$results$summary$addRow(
-                rowKey=key,
+            private$.summaryRowNo <- private$.summaryRowNo + 1L
+            key <- as.character(private$.summaryRowNo)
+            miso_set_fixed_row(
+                self$results$summary,
+                rowNo=private$.summaryRowNo,
                 values=list(item=item, value=as.character(value)))
         },
 
@@ -424,9 +469,11 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .addSetting = function(setting, value) {
-            key <- as.character(length(self$results$settings$rowKeys) + 1L)
-            self$results$settings$addRow(
-                rowKey=key,
+            private$.settingsRowNo <- private$.settingsRowNo + 1L
+            key <- as.character(private$.settingsRowNo)
+            miso_set_fixed_row(
+                self$results$settings,
+                rowNo=private$.settingsRowNo,
                 values=list(setting=setting, value=as.character(value)))
         },
 

@@ -291,7 +291,7 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="summary",
                 title="",
-                rows=0,
+                rows=11,
                 visible=FALSE,
                 columns=list(
                     list(
@@ -312,7 +312,6 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "nmdsK",
                     "nmdsTrymax",
                     "nmdsMaxit",
-                    "nmdsShepard",
                     "nmdsOverlay",
                     "nmdsEnv",
                     "nmdsSpecies",
@@ -490,7 +489,7 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="stress",
                 title="",
-                rows=0,
+                rows=8,
                 visible=FALSE,
                 columns=list(
                     list(

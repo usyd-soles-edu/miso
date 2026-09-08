@@ -25,7 +25,7 @@ permdisp_populate_test_ordination <- function(ordination) {
     analysis <- permdispClass$new(
         options=options, data=permdisp_state_data())
     private <- analysis$.__enclos_env__$private
-    private$.resetResults()
+    private$.clearResults()
     private$.state <- list(
         ordination=ordination,
         distanceDiagnostic=NULL)
@@ -37,8 +37,12 @@ permdisp_populate_test_ordination <- function(ordination) {
 expect_permdisp_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("summary", "anova", "distances", "settings")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_permdisp_yaml_node <- function(node, name) {
@@ -238,13 +242,14 @@ test_that("PERMDISP valid invalid valid transitions clear stale results", {
     factor_option$.__enclos_env__$private$.value <- NULL
     analysis$run()
     expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$anova$visible)
+    expect_true(analysis$results$anova$visible)
     expect_false(analysis$results$plot$visible)
     expect_false(analysis$results$plotDescription$visible)
     expect_false(analysis$results$ordinationPlot$visible)
     expect_false(analysis$results$ordinationDescription$visible)
     expect_false(analysis$results$ordinationScores$visible)
-    expect_equal(length(analysis$results$summary$rowKeys), 0L)
+    expect_equal(length(analysis$results$summary$rowKeys), 6L)
+    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
     expect_equal(length(analysis$results$distances$rowKeys), 0L)
     expect_equal(length(analysis$results$anova$rowKeys), 0L)
     expect_equal(length(analysis$results$pairwise$rowKeys), 0L)
@@ -910,4 +915,82 @@ test_that("ordination plot renders from serialized Image state alone", {
     analysis$.__enclos_env__$private$.plotOrdination(image)
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("ordination toggle preserves dispersion tables across reruns", {
+    data <- permdisp_state_data()
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        dispPairwise=TRUE,
+        showDistancePlot=TRUE,
+        showOrdinationPlot=TRUE,
+        permN=19,
+        seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        anova=analysis$results$anova$asDF,
+        distances=analysis$results$distances$asDF,
+        pairwise=analysis$results$pairwise$asDF,
+        settings=analysis$results$settings$asDF)
+    keys <- list(
+        summary=analysis$results$summary$rowKeys,
+        anova=analysis$results$anova$rowKeys,
+        distances=analysis$results$distances$rowKeys,
+        pairwise=analysis$results$pairwise$rowKeys)
+
+    showOrdinationPlotOption <- options$option("showOrdinationPlot")
+    showOrdinationPlotOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_false(analysis$results$ordinationDescription$visible)
+    expect_false(analysis$results$ordinationScores$visible)
+    expect_false(analysis$results$ordinationScoresPurpose$visible)
+    expect_equal(length(analysis$results$ordinationScores$rowKeys), 0L)
+
+    expect_identical(analysis$results$summary$rowKeys, keys$summary)
+    expect_identical(analysis$results$anova$rowKeys, keys$anova)
+    expect_identical(analysis$results$distances$rowKeys, keys$distances)
+    expect_identical(analysis$results$pairwise$rowKeys, keys$pairwise)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    expect_equal(analysis$results$anova$asDF, before$anova, tolerance=0)
+    expect_equal(analysis$results$distances$asDF, before$distances, tolerance=0)
+    expect_equal(analysis$results$pairwise$asDF, before$pairwise, tolerance=0)
+    expect_identical(analysis$results$settings$asDF, before$settings)
+    expect_true(analysis$results$anova$visible)
+    expect_true(analysis$results$distances$visible)
+    expect_true(analysis$results$pairwise$visible)
+})
+
+test_that("structural sample inputs rebuild coordinate rows while term rows update in place", {
+    data <- permdisp_state_data()
+    data$sp4 <- c(NA_real_, 3, 1, 9, 7, 8, 2, 5, 4)
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3", "sp4"),
+        factor="group",
+        showOrdinationPlot=TRUE,
+        permN=19,
+        seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    distanceKeys <- analysis$results$distances$rowKeys
+    anovaKeys <- analysis$results$anova$rowKeys
+    scoreKeys <- analysis$results$ordinationScores$rowKeys
+    scoreRowsBefore <- nrow(analysis$results$ordinationScores$asDF)
+
+    varsOption <- options$option("vars")
+    varsOption$.__enclos_env__$private$.value <- c("sp1", "sp2", "sp3")
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(analysis$results$ordinationScores$rowKeys, scoreKeys))
+    expect_gt(
+        nrow(analysis$results$ordinationScores$asDF), scoreRowsBefore)
+    # Group-level tables keep their row structure and refresh values only.
+    expect_identical(analysis$results$distances$rowKeys, distanceKeys)
+    expect_identical(analysis$results$anova$rowKeys, anovaKeys)
+    expect_setequal(
+        analysis$results$distances$asDF$group,
+        c("A", "B", "C"))
 })

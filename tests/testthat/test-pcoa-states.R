@@ -370,10 +370,11 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     emptyAnalysis <- run_pcoa_private(data, character())
     empty <- emptyAnalysis$results
     expect_true(empty$guidance$visible)
-    for (name in c("summary", "warnings", "ordination",
-            "ordinationDescription", "sites", "centroids", "eigenvalues",
-            "interpretation", "settings"))
+    for (name in c("warnings", "ordination",
+            "ordinationDescription", "centroids", "interpretation"))
         expect_false(empty[[name]]$visible, info=name)
+    for (name in c("summary", "sites", "eigenvalues", "settings"))
+        expect_true(empty[[name]]$visible, info=name)
 
     analysis <- run_pcoa_private(data, vars, factor="group",
         showCentroids=TRUE, showSpiders=TRUE)
@@ -641,4 +642,91 @@ test_that("PCoA ordination renders from serialized Image state alone", {
     analysis$.__enclos_env__$private$.plotPcoa(image)
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("centroid toggle preserves coordinate tables across reruns", {
+    index <- seq_len(9L)
+    data <- data.frame(
+        feature_01=1 + index %% 4,
+        feature_02=2 + (index * 3) %% 5,
+        feature_03=1 + (index * 2) %% 3,
+        feature_04=4 + (index * 5) %% 7,
+        group=factor(rep(c("A", "B", "C"), each=3L)),
+        quarter=factor(rep(c("W", "X", "Y", "Z"), length.out=9L)))
+    options <- pcoaOptions$new(
+        vars=paste0("feature_0", 1:4),
+        factor="group",
+        showCentroids=TRUE,
+        showSpiders=TRUE)
+    analysis <- pcoaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        sites=analysis$results$sites$asDF,
+        eigenvalues=analysis$results$eigenvalues$asDF,
+        settings=analysis$results$settings$asDF)
+    keys <- list(
+        sites=analysis$results$sites$rowKeys,
+        summary=analysis$results$summary$rowKeys)
+
+    showCentroidsOption <- options$option("showCentroids")
+    showCentroidsOption$.__enclos_env__$private$.value <- FALSE
+    showSpidersOption <- options$option("showSpiders")
+    showSpidersOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
+
+    expect_false(analysis$results$centroids$visible)
+    expect_false(analysis$results$centroidsPurpose$visible)
+    expect_gt(length(analysis$results$centroids$rowKeys), 0L)
+
+    expect_identical(analysis$results$sites$rowKeys, keys$sites)
+    expect_identical(analysis$results$summary$rowKeys, keys$summary)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    expect_equal(analysis$results$sites$asDF, before$sites, tolerance=0)
+    expect_equal(
+        analysis$results$eigenvalues$asDF, before$eigenvalues, tolerance=0)
+    # The settings table reports overlay status, so its values update in place
+    # while its row structure stays stable.
+    settings <- setNames(
+        analysis$results$settings$asDF$value,
+        analysis$results$settings$asDF$setting)
+    expect_identical(unname(settings[["Group centroids"]]), "Not requested")
+    expect_identical(unname(settings[["Group spiders"]]), "Not requested")
+    settingsBefore <- setNames(before$settings$value, before$settings$setting)
+    expect_identical(
+        settings[names(settings) != "Group centroids" &
+            names(settings) != "Group spiders"],
+        settingsBefore[names(settings) != "Group centroids" &
+            names(settings) != "Group spiders"])
+    expect_true(analysis$results$sites$visible)
+    expect_true(analysis$results$eigenvalues$visible)
+})
+
+test_that("structural sample inputs rebuild site rows while centroid rows update in place", {
+    index <- seq_len(9L)
+    data <- data.frame(
+        feature_01=1 + index %% 4,
+        feature_02=2 + (index * 3) %% 5,
+        feature_03=1 + (index * 2) %% 3,
+        feature_04=4 + (index * 5) %% 7,
+        feature_05=c(2, 4, 6, 8, 10, 12, 14, 16, NA),
+        group=factor(rep(c("A", "B", "C"), each=3L)))
+    options <- pcoaOptions$new(
+        vars=paste0("feature_0", 1:5),
+        factor="group",
+        showCentroids=TRUE)
+    analysis <- pcoaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
+    siteKeys <- analysis$results$sites$rowKeys
+    centroidKeys <- analysis$results$centroids$rowKeys
+    siteRowsBefore <- nrow(analysis$results$sites$asDF)
+
+    varsOption <- options$option("vars")
+    varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
+    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
+    expect_false(identical(analysis$results$sites$rowKeys, siteKeys))
+    expect_gt(nrow(analysis$results$sites$asDF), siteRowsBefore)
+    # Centroids remain one row per retained group: structure is stable.
+    expect_identical(analysis$results$centroids$rowKeys, centroidKeys)
+    expect_setequal(analysis$results$centroids$asDF$group, c("A", "B", "C"))
 })

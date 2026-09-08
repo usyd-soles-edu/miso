@@ -193,8 +193,12 @@ expect_nmds_plot_inside_frame <- function(data) {
 expect_nmds_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("summary", "sites", "stress", "settings")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 expect_only_nmds_guidance <- function(result) {
@@ -295,8 +299,16 @@ test_that("nMDS result schema contains no initially visible shell", {
         "nmdsK", "nmdsTrymax", "nmdsMaxit", "nmdsShepard", "nmdsOverlay",
         "nmdsEnv", "nmdsSpecies", "nmdsHull", "nmdsEllipse", "nmdsSpider",
         "nmdsEnvPerm")
+    expected_summary_clear_with <- setdiff(
+        expected_clear_with, "nmdsShepard")
     expect_true(all(vapply(
-        items, function(x) identical(x$clearWith, expected_clear_with), logical(1))))
+        items, function(x) {
+            expected <- if (identical(x$name, "summary"))
+                expected_summary_clear_with
+            else
+                expected_clear_with
+            identical(x$clearWith, expected)
+        }, logical(1))))
     expect_identical(
         vapply(items, `[[`, character(1), "name"),
         c(
@@ -1496,8 +1508,10 @@ test_that("valid-invalid-valid reruns clear all stale result state", {
     varsOption$value <- "feature_01"
     private$.run()
     expect_only_nmds_guidance(analysis$results)
-    expect_identical(nrow(analysis$results$summary$asDF), 0L)
-    expect_identical(nrow(analysis$results$stress$asDF), 0L)
+    expect_identical(nrow(analysis$results$summary$asDF), 11L)
+    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
+    expect_identical(nrow(analysis$results$stress$asDF), 8L)
+    expect_true(all(is.na(analysis$results$stress$asDF$value) | analysis$results$stress$asDF$value == ""))
     expect_identical(nrow(analysis$results$envfit$asDF), 0L)
     expect_identical(nrow(analysis$results$sites$asDF), 0L)
     expect_identical(nrow(analysis$results$features$asDF), 0L)
@@ -1827,4 +1841,91 @@ test_that("Shepard diagram renders from serialized Image state alone", {
     private$.plotShepard(image)
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("Shepard toggle preserves ordination tables across reruns", {
+    index <- seq_len(9L)
+    data <- data.frame(
+        feature_01=1 + index %% 4,
+        feature_02=2 + (index * 3) %% 5,
+        feature_03=1 + (index * 2) %% 3,
+        feature_04=4 + (index * 5) %% 7,
+        env1=index + sin(index),
+        env2=10 - index + cos(index),
+        group=factor(rep(c("A", "B", "C"), each=3L)))
+    options <- nmdsOptions$new(
+        vars=paste0("feature_0", 1:4),
+        factor="group",
+        nmdsShepard=TRUE,
+        nmdsEnv=c("env1", "env2"),
+        nmdsEnvPerm=19,
+        nmdsTrymax=2,
+        seed=123)
+    analysis <- nmdsClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        sites=analysis$results$sites$asDF,
+        stress=analysis$results$stress$asDF,
+        settings=analysis$results$settings$asDF)
+    keys <- list(
+        sites=analysis$results$sites$rowKeys,
+        envfit=analysis$results$envfit$rowKeys)
+
+    nmdsShepardOption <- options$option("nmdsShepard")
+    nmdsShepardOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(analysis$results$shepard$visible)
+    expect_false(analysis$results$shepardDescription$visible)
+    expect_false(analysis$results$shepardPairs$visible)
+    expect_false(analysis$results$shepardPairsPurpose$visible)
+    expect_equal(length(analysis$results$shepardPairs$rowKeys), 0L)
+
+    expect_identical(analysis$results$sites$rowKeys, keys$sites)
+    expect_identical(analysis$results$envfit$rowKeys, keys$envfit)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    expect_equal(analysis$results$sites$asDF, before$sites, tolerance=0)
+    expect_equal(analysis$results$stress$asDF, before$stress, tolerance=0)
+    # The settings table reports Shepard status, so its values update in place
+    # while its row structure and unrelated rows stay stable.
+    settings <- setNames(
+        analysis$results$settings$asDF$value,
+        analysis$results$settings$asDF$setting)
+    expect_identical(unname(settings[["Shepard diagram"]]), "Hidden")
+    settingsBefore <- setNames(
+        before$settings$value, before$settings$setting)
+    expect_identical(
+        settings[names(settings) != "Shepard diagram"],
+        settingsBefore[names(settings) != "Shepard diagram"])
+    expect_true(analysis$results$sites$visible)
+    expect_true(analysis$results$stress$visible)
+    expect_true(analysis$results$envfit$visible)
+})
+
+test_that("structural environmental inputs rebuild fit rows while display toggles do not", {
+    index <- seq_len(9L)
+    data <- data.frame(
+        feature_01=1 + index %% 4,
+        feature_02=2 + (index * 3) %% 5,
+        feature_03=1 + (index * 2) %% 3,
+        feature_04=4 + (index * 5) %% 7,
+        env1=index + sin(index),
+        env2=10 - index + cos(index),
+        group=factor(rep(c("A", "B", "C"), each=3L)))
+    options <- nmdsOptions$new(
+        vars=paste0("feature_0", 1:4),
+        nmdsEnv=c("env1", "env2"),
+        nmdsEnvPerm=19,
+        nmdsTrymax=2,
+        seed=123)
+    analysis <- nmdsClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    keys <- analysis$results$envfit$rowKeys
+
+    envOption <- options$option("nmdsEnv")
+    envOption$.__enclos_env__$private$.value <- "env1"
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(analysis$results$envfit$rowKeys, keys))
+    expect_setequal(analysis$results$envfit$asDF$variable, "env1")
 })

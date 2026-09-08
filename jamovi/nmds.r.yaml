@@ -36,7 +36,7 @@ items:
   - name: summary
     title: ''
     type: Table
-    rows: 0
+    rows: 11
     visible: false
     columns:
       - name: item
@@ -55,7 +55,6 @@ items:
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
-      - nmdsShepard
       - nmdsOverlay
       - nmdsEnv
       - nmdsSpecies
@@ -194,7 +193,7 @@ items:
   - name: stress
     title: ''
     type: Table
-    rows: 0
+    rows: 8
     visible: false
     columns:
       - name: item

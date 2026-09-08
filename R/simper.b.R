@@ -5,16 +5,30 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = simperBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .lastDisplayKey = NULL,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options, excluded=c("simperDetails", "simperHeatmap"))
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.lastDisplayKey <- list(
+                simperDetails=isTRUE(self$options$simperDetails),
+                simperHeatmap=isTRUE(self$options$simperHeatmap))
             private$.state <- list(
                 warnings=character(),
                 plotData=NULL,
                 contrastTotals=integer(),
                 contrastLabels=character(),
                 requestedPermutations=NA_integer_,
-                effectivePermutations=NA_integer_)
-            private$.resetResults()
+                effectivePermutations=NA_integer_,
+                descriptive=NULL)
+            private$.clearResults()
 
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
@@ -88,6 +102,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             descriptive <- private$.runDescriptive(prep)
             if (is.null(descriptive))
                 return()
+            private$.state$descriptive <- descriptive
 
             private$.populateSummary(prep, length(descriptive$contrastRows))
             private$.populatePurposes()
@@ -104,10 +119,81 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.showSuccessfulResults(assessmentShown)
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            descriptive <- private$.state$descriptive
+            details <- isTRUE(self$options$simperDetails)
+            heatmap <- isTRUE(self$options$simperHeatmap)
+            previousDisplay <- private$.lastDisplayKey
+            private$.lastDisplayKey <- list(
+                simperDetails=details,
+                simperHeatmap=heatmap)
+            detailsChanged <- is.null(previousDisplay) ||
+                !identical(previousDisplay$simperDetails, details)
+            heatmapChanged <- is.null(previousDisplay) ||
+                !identical(previousDisplay$simperHeatmap, heatmap)
+
+            if (detailsChanged) {
+                miso_clear_table(self$results$variability)
+                miso_clear_table(self$results$means)
+                if (details && !is.null(descriptive))
+                    private$.populateOptionalDetailRows(descriptive)
+            }
+            self$results$variability$setVisible(details && !is.null(descriptive))
+            self$results$variabilityPurpose$setVisible(details && !is.null(descriptive))
+            self$results$means$setVisible(details && !is.null(descriptive))
+            self$results$meansPurpose$setVisible(details && !is.null(descriptive))
+
+            if (heatmapChanged) {
+                miso_clear_table(self$results$heatmapValues)
+                if (heatmap && !is.null(descriptive))
+                    private$.populateOptionalHeatmap()
+            }
+            self$results$heatmap$setVisible(heatmap && !is.null(descriptive))
+            self$results$heatmapDescription$setVisible(heatmap && !is.null(descriptive))
+            self$results$heatmapValues$setVisible(heatmap && !is.null(descriptive))
+            self$results$heatmapValuesPurpose$setVisible(heatmap && !is.null(descriptive))
+        },
+
+        .populateOptionalDetailRows = function(descriptive) {
+            for (index in seq_along(descriptive$fullRows)) {
+                values <- descriptive$fullRows[[index]]
+                values$contrastIndex <- NULL
+                values$firstGroup <- NULL
+                values$secondGroup <- NULL
+                self$results$variability$addRow(
+                    rowKey=as.character(index),
+                    values=values[c("contrast", "feature", "average", "sd", "ratio")])
+                self$results$means$addRow(
+                    rowKey=as.character(index),
+                    values=values[c("contrast", "feature", "meanFirst", "meanSecond")])
+            }
+        },
+
+        .populateOptionalHeatmap = function() {
+            self$results$heatmapDescription$setContent(
+                private$.heatmapDescription())
+            heatmapData <- private$.heatmapData()
+            self$results$heatmap$setState(heatmapData)
+            if (is.null(heatmapData))
+                return()
+            for (row in seq_len(nrow(heatmapData)))
+                self$results$heatmapValues$addRow(
+                    rowKey=as.character(row),
+                    values=list(
+                        contrast=as.character(heatmapData$contrast[[row]]),
+                        feature=as.character(heatmapData$feature[[row]]),
+                        contribution=if (isTRUE(heatmapData$missing[[row]]))
+                            ""
+                        else
+                            miso_num_or_na(heatmapData$contribution[[row]]),
+                        selected=if (isTRUE(heatmapData$missing[[row]]))
+                            "No" else "Yes"))
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_table(self$results$summary)
+            miso_clear_fixed_table(self$results$summary, 5L)
             miso_clear_table(self$results$contrasts)
             miso_clear_table(self$results$contributions)
             miso_clear_table(self$results$variability)
@@ -143,6 +229,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "assessmentPurpose", "note", "settings",
                     "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "contrastsPurpose", "contrasts", "contributionsPurpose", "contributions", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -152,6 +240,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(assessmentShown=FALSE) {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
                     "summary", "summaryPurpose", "contrasts",
                     "contrastsPurpose", "contributions",
@@ -341,8 +430,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 c("Observed groups", length(unique(as.character(prep$group)))),
                 c("Contrasts", contrastCount))
             for (index in seq_along(rows))
-                self$results$summary$addRow(
-                    rowKey=as.character(index),
+                miso_set_fixed_row(
+                    self$results$summary, index,
                     values=list(item=rows[[index]][[1L]], value=as.character(rows[[index]][[2L]])))
         },
 
@@ -360,14 +449,16 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$table$addRow(
                     rowKey=as.character(index),
                     values=values)
-                self$results$variability$addRow(
-                    rowKey=as.character(index),
-                    values=values[c(
-                        "contrast", "feature", "average", "sd", "ratio")])
-                self$results$means$addRow(
-                    rowKey=as.character(index),
-                    values=values[c(
-                        "contrast", "feature", "meanFirst", "meanSecond")])
+                if (isTRUE(self$options$simperDetails)) {
+                    self$results$variability$addRow(
+                        rowKey=as.character(index),
+                        values=values[c(
+                            "contrast", "feature", "average", "sd", "ratio")])
+                    self$results$means$addRow(
+                        rowKey=as.character(index),
+                        values=values[c(
+                            "contrast", "feature", "meanFirst", "meanSecond")])
+                }
             }
 
             for (index in seq_along(descriptive$displayRows)) {
@@ -426,26 +517,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             direction=direction))
                 }
             }
-            self$results$heatmapDescription$setContent(
-                private$.heatmapDescription())
-            heatmapData <- private$.heatmapData()
-            self$results$heatmap$setState(heatmapData)
-            if (!is.null(heatmapData))
-                for (row in seq_len(nrow(heatmapData)))
-                    self$results$heatmapValues$addRow(
-                        rowKey=as.character(row),
-                        values=list(
-                            contrast=as.character(
-                                heatmapData$contrast[[row]]),
-                            feature=as.character(heatmapData$feature[[row]]),
-                            contribution=if (
-                                    isTRUE(heatmapData$missing[[row]]))
-                                ""
-                            else
-                                miso_num_or_na(
-                                    heatmapData$contribution[[row]]),
-                            selected=if (isTRUE(heatmapData$missing[[row]]))
-                                "No" else "Yes"))
+            if (isTRUE(self$options$simperHeatmap))
+                private$.populateOptionalHeatmap()
         },
 
         .runAssessment = function(prep, displayRows) {

@@ -6,10 +6,22 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = pcoaBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .structuralChanged = TRUE,
+        .rowCursors = list(),
 
         .run = function() {
+            structuralKey <- private$.structuralKey()
+            private$.structuralChanged <- !identical(
+                private$.lastStructuralKey, structuralKey)
+            if (!private$.structuralChanged) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.rowCursors <- list()
             private$.state <- list(prep=NULL, pcoa=NULL, plotData=NULL)
-            private$.resetResults()
+            private$.clearResults()
 
             requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) == 0L) {
@@ -69,7 +81,30 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.showSuccessfulResults()
         },
 
-        .resetResults = function() {
+        .clearDisplayResults = function() {
+            miso_clear_table(self$results$centroids)
+            self$results$centroids$setVisible(FALSE)
+            self$results$centroidsPurpose$setVisible(FALSE)
+        },
+
+        .refreshDisplayOnly = function() {
+            if (is.null(private$.state$pcoa)) {
+                private$.clearDisplayResults()
+                return()
+            }
+            plotData <- .misoPreparePcoaPlot(
+                private$.state$pcoa,
+                showCentroids=self$options$showCentroids,
+                showSpiders=self$options$showSpiders)
+            private$.state$plotData <- plotData
+            self$results$ordination$setState(plotData)
+            private$.clearDisplayResults()
+            private$.populateCentroids()
+            private$.updateDisplaySettings()
+            private$.showSuccessfulResults()
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$ordinationDescription$setContent("")
@@ -81,8 +116,12 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             for (name in c("summary", "sites", "centroids", "eigenvalues",
                     "settings")) {
                 table <- self$results[[name]]
-                miso_clear_table(table)
-                table$.__enclos_env__$private$.rowNames <- character()
+                if (name == "summary")
+                    miso_clear_fixed_table(table, 11L)
+                else if (name == "settings")
+                    miso_clear_fixed_table(table, 6L)
+                else
+                    miso_clear_table(table)
             }
             for (name in c(
                     "guidance", "summary", "summaryPurpose", "warnings",
@@ -91,6 +130,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "eigenvalues", "eigenvaluesPurpose", "interpretation",
                     "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "sitesPurpose", "sites", "eigenvaluesPurpose", "eigenvalues", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -100,6 +141,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function() {
+            self$results$guidance$setVisible(FALSE)
             fit <- private$.state$pcoa
             plotAvailable <- !is.null(private$.state$plotData) &&
                 isTRUE(private$.state$plotData$available)
@@ -156,8 +198,44 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .addRow = function(table, values) {
-            key <- as.character(length(table$rowKeys) + 1L)
-            table$addRow(rowKey=key, values=values)
+            name <- table$name
+            current <- private$.rowCursors[[name]]
+            if (is.null(current)) current <- 0L
+            current <- current + 1L
+            private$.rowCursors[[name]] <- current
+            miso_add_or_set_row(table, as.character(current), values)
+        },
+
+        .updateDisplaySettings = function() {
+            fit <- private$.state$pcoa
+            plotData <- private$.state$plotData
+            requested <- isTRUE(self$options$showCentroids) ||
+                isTRUE(self$options$showSpiders)
+            miso_update_row_where(
+                self$results$settings, "setting", "Group centroids",
+                list(setting="Group centroids", value=private$.overlayStatus(
+                    requested=requested,
+                    rendered=!is.null(plotData) &&
+                        isTRUE(plotData$showCentroids),
+                    implied=isTRUE(self$options$showSpiders) &&
+                        !isTRUE(self$options$showCentroids))))
+            miso_update_row_where(
+                self$results$settings, "setting", "Group spiders",
+                list(setting="Group spiders", value=private$.overlayStatus(
+                    requested=isTRUE(self$options$showSpiders),
+                    rendered=!is.null(plotData) &&
+                        isTRUE(plotData$showSpiders))))
+        },
+
+        .structuralKey = function() {
+            serialize(list(
+                vars=self$options$vars,
+                factor=self$options$factor,
+                transform=self$options$transform,
+                distance=self$options$distance,
+                distBinary=self$options$distBinary,
+                sqrtDist=self$options$sqrtDist,
+                correction=self$options$correction), NULL)
         },
 
         .populateSummary = function() {
@@ -180,9 +258,10 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     if (is.null(prep$primary)) "Not selected" else prep$primary),
                 c("Positive axes", fit$positiveAxisCount),
                 c("Negative eigenvalues", fit$negativeAxisCount))
-            for (row in rows)
-                private$.addRow(self$results$summary,
-                    list(item=row[[1L]], value=as.character(row[[2L]])))
+            for (i in seq_along(rows))
+                miso_set_fixed_row(
+                    self$results$summary, i,
+                    list(item=rows[[i]][[1L]], value=as.character(rows[[i]][[2L]])))
         },
 
         .populateSites = function() {
@@ -299,9 +378,10 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         requested=isTRUE(self$options$showSpiders),
                         rendered=!is.null(plotData) &&
                             isTRUE(plotData$showSpiders))))
-            for (row in rows)
-                private$.addRow(self$results$settings,
-                    list(setting=row[[1L]], value=as.character(row[[2L]])))
+            for (i in seq_along(rows))
+                miso_set_fixed_row(
+                    self$results$settings, i,
+                    list(setting=rows[[i]][[1L]], value=as.character(rows[[i]][[2L]])))
         },
 
         .overlayStatus = function(requested, rendered, implied=FALSE) {

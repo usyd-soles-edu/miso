@@ -6,9 +6,23 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = nmdsBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .structuralChanged = TRUE,
+        .summaryRowNo = 0L,
+        .rowCursors = list(),
 
         .run = function() {
-            private$.resetResults()
+            structuralKey <- private$.structuralKey()
+            private$.structuralChanged <- !identical(
+                private$.lastStructuralKey, structuralKey)
+            if (!private$.structuralChanged) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.rowCursors <- list()
+            private$.summaryRowNo <- 0L
+            private$.clearResults()
 
             requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) < 2L) {
@@ -377,22 +391,92 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     },
 
         .addSummary = function(label, value) {
-            key <- as.character(length(self$results$summary$rowKeys) + 1L)
-            self$results$summary$addRow(
-                rowKey=key,
-                values=list(item=label, value=as.character(value)))
+            private$.summaryRowNo <- private$.summaryRowNo + 1L
+            miso_set_fixed_row(
+                self$results$summary,
+                private$.summaryRowNo,
+                list(item=label, value=as.character(value)))
+        },
+
+        .structuralKey = function() {
+            serialize(list(
+                vars=self$options$vars,
+                factor=self$options$factor,
+                transform=self$options$transform,
+                distance=self$options$distance,
+                distBinary=self$options$distBinary,
+                seed=self$options$seed,
+                nmdsK=self$options$nmdsK,
+                nmdsTrymax=self$options$nmdsTrymax,
+                nmdsMaxit=self$options$nmdsMaxit,
+                nmdsOverlay=self$options$nmdsOverlay,
+                nmdsEnv=self$options$nmdsEnv,
+                nmdsSpecies=self$options$nmdsSpecies,
+                nmdsHull=self$options$nmdsHull,
+                nmdsEllipse=self$options$nmdsEllipse,
+                nmdsSpider=self$options$nmdsSpider,
+                nmdsEnvPerm=self$options$nmdsEnvPerm), NULL)
+        },
+
+        .refreshDisplayOnly = function() {
+            showShepard <- isTRUE(self$options$nmdsShepard) &&
+                isTRUE(private$.state$shepardValid)
+            if (showShepard) {
+                miso_clear_table(self$results$shepardPairs)
+                private$.populateShepardPairs()
+                self$results$shepard$setState(private$.shepardPlotData())
+            } else {
+                miso_clear_table(self$results$shepardPairs)
+            }
+            self$results$shepard$setVisible(showShepard)
+            self$results$shepardDescription$setVisible(showShepard)
+            self$results$shepardPairs$setVisible(showShepard)
+            self$results$shepardPairsPurpose$setVisible(showShepard)
+            miso_update_row_where(
+                self$results$settings, "setting", "Shepard diagram",
+                list(setting="Shepard diagram",
+                    value=if (showShepard) "Shown" else "Hidden"))
+        },
+
+        .populateShepardPairs = function() {
+            shepardPairs <- private$.state$shepardDisplayData
+            if (is.null(shepardPairs) || nrow(shepardPairs) == 0L)
+                return()
+            for (i in seq_len(nrow(shepardPairs)))
+                miso_add_or_set_row(
+                    self$results$shepardPairs,
+                    rowKey=as.character(i),
+                    values=list(
+                        dissimilarity=miso_num_or_na(
+                            shepardPairs$dissimilarity[[i]]),
+                        ordinationDistance=miso_num_or_na(
+                            shepardPairs$ordinationDistance[[i]]),
+                        monotonicFit=miso_num_or_na(
+                            shepardPairs$monotonicFit[[i]])))
+        },
+
+        .clearDisplayResults = function() {
+            miso_clear_table(self$results$shepardPairs)
+            self$results$shepard$setVisible(FALSE)
+            self$results$shepardDescription$setVisible(FALSE)
+            self$results$shepardPairs$setVisible(FALSE)
+            self$results$shepardPairsPurpose$setVisible(FALSE)
         },
 
         .addSetting = function(label, value) {
-            key <- as.character(length(self$results$settings$rowKeys) + 1L)
-            self$results$settings$addRow(
-                rowKey=key,
-                values=list(setting=label, value=as.character(value)))
+            current <- private$.rowCursors$settings
+            if (is.null(current)) current <- 0L
+            current <- current + 1L
+            private$.rowCursors$settings <- current
+            miso_add_or_set_row(
+                self$results$settings,
+                as.character(current),
+                list(setting=label, value=as.character(value)))
         },
 
         .populateSummary = function() {
+            private$.summaryRowNo <- 0L
             prep <- private$.state$prep
-            private$.clearTable(self$results$summary)
             private$.addSummary("Core samples used", prep$rowsUsed)
             private$.addSummary("Feature variables used", prep$varsUsed)
             private$.addSummary(
@@ -563,7 +647,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 warnings=unique(warnings))
         },
 
-        .resetResults = function() {
+        .clearResults = function() {
             private$.state <- list(
                 warnings=character(), fit=NULL, prep=NULL, sites=NULL,
                 features=NULL, group=NULL, groupLabels=NULL,
@@ -590,8 +674,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "shepardPairsPurpose", "envfitPurpose", "featuresPurpose",
                     "settingsPurpose"))
                 self$results[[name]]$setContent("")
-            private$.clearTable(self$results$summary)
-            private$.clearTable(self$results$stress)
+            miso_clear_fixed_table(self$results$summary, 11L)
+            miso_clear_fixed_table(self$results$stress, 8L)
             private$.clearTable(self$results$shepardPairs)
             private$.clearTable(self$results$envfit)
             self$results$envfit$setNote(
@@ -609,6 +693,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "features", "featuresPurpose", "settings",
                     "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "sitesPurpose", "sites", "stressPurpose", "stress", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(title, paragraphs) {
@@ -619,6 +705,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
+            self$results$guidance$setVisible(FALSE)
             hasWarnings <- length(private$.state$warnings) > 0L
             if (hasWarnings)
                 self$results$warnings$setContent(miso_warning_block(
@@ -1054,7 +1141,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             for (i in seq_along(rows)) {
                 row <- rows[[i]]
-                self$results$envfit$addRow(
+                miso_add_or_set_row(
+                    self$results$envfit,
                     rowKey=row$name,
                     values=list(
                         variable=row$name,
@@ -1292,24 +1380,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.fitValue(fit, "iters")),
                 c("Engine", private$.fitValue(fit, "engine")))
             for (i in seq_along(diagnosticRows))
-                self$results$stress$addRow(
-                    rowKey=as.character(i),
+                miso_set_fixed_row(
+                    self$results$stress, i,
                     values=list(
                         item=diagnosticRows[[i]][[1L]],
                         value=diagnosticRows[[i]][[2L]]))
 
-            shepardPairs <- private$.state$shepardDisplayData
-            if (isTRUE(self$options$nmdsShepard) && !is.null(shepardPairs))
-                for (i in seq_len(nrow(shepardPairs)))
-                    self$results$shepardPairs$addRow(
-                        rowKey=as.character(i),
-                        values=list(
-                            dissimilarity=miso_num_or_na(
-                                shepardPairs$dissimilarity[[i]]),
-                            ordinationDistance=miso_num_or_na(
-                                shepardPairs$ordinationDistance[[i]]),
-                            monotonicFit=miso_num_or_na(
-                                shepardPairs$monotonicFit[[i]])))
+            if (isTRUE(self$options$nmdsShepard))
+                private$.populateShepardPairs()
 
             isThreeDimensional <- identical(k, 3L)
             self$results$sites$getColumn("NMDS3")$setVisible(
@@ -1338,7 +1416,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     else
                         NA_real_,
                     group=groupValue)
-                self$results$sites$addRow(
+                miso_add_or_set_row(
+                    self$results$sites,
                     rowKey=as.character(prep$rowIndex[[i]]), values=values)
             }
 
@@ -1346,7 +1425,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (! is.null(features)) {
                 featureNames <- private$.featureNames()
                 for (i in seq_len(nrow(features)))
-                    self$results$features$addRow(
+                    miso_add_or_set_row(
+                        self$results$features,
                         rowKey=as.character(i),
                         values=list(
                             feature=featureNames[[i]],

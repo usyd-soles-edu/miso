@@ -5,14 +5,26 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = permanovaBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options,
+                excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
+                    "pcoaCentroids", "pcoaSpiders"))
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
             private$.state <- list(
                 warnings=character(), cl=NULL, permutation=NULL,
                 companion=list(
                     requested=isTRUE(self$options$showCompanionPcoa),
-                    fit=NULL, plotData=NULL, displayFactor=NULL))
-            private$.resetResults()
+                    prep=NULL, model=NULL, fit=NULL,
+                    plotData=NULL, displayFactor=NULL))
+            private$.clearResults()
 
             if (length(self$options$vars) == 0) {
                 private$.showGuidance(
@@ -79,7 +91,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             main <- private$.runPermanova(prep)
             if (! main$success) {
-                private$.resetResults()
+                private$.clearResults()
                 correction <- if (grepl("saturated", main$error, fixed=TRUE))
                     "The selected model has no residual degrees of freedom. Remove a model term or use more samples."
                 else
@@ -133,7 +145,27 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.setWarnings(private$.state$warnings)
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            requested <- isTRUE(self$options$showCompanionPcoa)
+            companion <- private$.state$companion
+            if (requested && !is.null(companion$prep) &&
+                    !is.null(companion$model)) {
+                miso_clear_table(self$results$companionPcoaSites)
+                miso_clear_table(self$results$companionPcoaCentroids)
+                private$.runCompanionPcoa(companion$prep, companion$model)
+                return()
+            }
+            miso_clear_table(self$results$companionPcoaSites)
+            miso_clear_table(self$results$companionPcoaCentroids)
+            self$results$companionPcoa$setVisible(FALSE)
+            self$results$companionPcoaDescription$setVisible(FALSE)
+            self$results$companionPcoaSites$setVisible(FALSE)
+            self$results$companionPcoaSitesPurpose$setVisible(FALSE)
+            self$results$companionPcoaCentroids$setVisible(FALSE)
+            self$results$companionPcoaCentroidsPurpose$setVisible(FALSE)
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$companionPcoaDescription$setContent("")
@@ -143,7 +175,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "companionPcoaCentroidsPurpose", "pairwisePurpose",
                     "settingsPurpose"))
                 self$results[[name]]$setContent("")
-            miso_clear_table(self$results$summary)
+            miso_clear_fixed_table(self$results$summary, 6L)
             miso_clear_table(self$results$table)
             miso_clear_table(self$results$companionPcoaSites)
             miso_clear_table(self$results$companionPcoaCentroids)
@@ -164,6 +196,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "pairwise", "pairwisePurpose", "note", "settings",
                     "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "tablePurpose", "table", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -173,6 +207,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
                     "summary", "summaryPurpose", "table", "tablePurpose",
                     "note", "settings", "settingsPurpose"))
@@ -215,6 +250,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .runCompanionPcoa = function(prep, model) {
+            private$.state$companion$prep <- prep
+            private$.state$companion$model <- model
             if (!isTRUE(self$options$showCompanionPcoa))
                 return()
 

@@ -29,7 +29,7 @@ items:
     title: ''
     type: Table
     visible: false
-    rows: 0
+    rows: 5
     columns:
       - name: item
         title: Item
@@ -193,7 +193,7 @@ items:
     title: ''
     type: Table
     visible: false
-    rows: 0
+    rows: 6
     columns:
       - name: setting
         title: Setting

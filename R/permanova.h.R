@@ -319,7 +319,7 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 name="summary",
                 title="",
                 visible=FALSE,
-                rows=0,
+                rows=6,
                 columns=list(
                     list(
                         `name`="item", 

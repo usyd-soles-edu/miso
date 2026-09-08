@@ -6,8 +6,22 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = permdispBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .lastDisplayKey = NULL,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options,
+                excluded=c("showDistancePlot", "showOrdinationPlot"))
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.lastDisplayKey <- list(
+                showDistancePlot=isTRUE(self$options$showDistancePlot),
+                showOrdinationPlot=isTRUE(self$options$showOrdinationPlot))
             private$.state <- list(
                 warnings=character(),
                 distances=NULL,
@@ -17,7 +31,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pValue=NA_real_,
                 restriction=NULL,
                 cl=NULL)
-            private$.resetResults()
+            private$.clearResults()
 
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
@@ -85,10 +99,47 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.showSuccessfulResults(outcome$pairwiseShown)
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            showDistance <- isTRUE(self$options$showDistancePlot)
+            requestedOrdination <- isTRUE(self$options$showOrdinationPlot)
+            previousDisplay <- private$.lastDisplayKey
+            private$.lastDisplayKey <- list(
+                showDistancePlot=showDistance,
+                showOrdinationPlot=requestedOrdination)
+            ordinationChanged <- is.null(previousDisplay) ||
+                !identical(previousDisplay$showOrdinationPlot,
+                    requestedOrdination)
+            distance <- private$.state$distanceDiagnostic
+            if (showDistance && !is.null(distance))
+                self$results$plot$setState(distance)
+            self$results$plot$setVisible(showDistance && !is.null(distance))
+            self$results$plotDescription$setVisible(showDistance &&
+                !is.null(distance))
+            ordination <- private$.state$ordination
+            tableAvailable <- requestedOrdination && !is.null(ordination) &&
+                isTRUE(ordination$tableAvailable)
+            if (ordinationChanged) {
+                if (tableAvailable) {
+                    miso_clear_table(self$results$ordinationScores)
+                    private$.populateOrdinationScores()
+                } else if (!requestedOrdination) {
+                    miso_clear_table(self$results$ordinationScores)
+                }
+            }
+            if (requestedOrdination && !is.null(ordination))
+                self$results$ordinationPlot$setState(ordination)
+            self$results$ordinationPlot$setVisible(
+                requestedOrdination && !is.null(ordination) &&
+                isTRUE(ordination$available))
+            self$results$ordinationDescription$setVisible(requestedOrdination)
+            self$results$ordinationScores$setVisible(tableAvailable)
+            self$results$ordinationScoresPurpose$setVisible(tableAvailable)
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_table(self$results$summary)
+            miso_clear_fixed_table(self$results$summary, 6L)
             miso_clear_table(self$results$distances)
             miso_clear_table(self$results$anova)
             miso_clear_table(self$results$pairwise)
@@ -119,6 +170,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "ordinationScores", "ordinationScoresPurpose", "note",
                     "settings", "settingsPurpose"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("summaryPurpose", "summary", "anovaPurpose", "anova", "distancesPurpose", "distances", "settingsPurpose", "settings"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -128,6 +181,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
                     "summary", "summaryPurpose", "distances",
                     "distancesPurpose", "anova", "anovaPurpose", "note",
@@ -386,16 +440,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             ordination <- private$.state$ordination
             if (!isTRUE(self$options$showOrdinationPlot))
                 return()
-            if (!is.null(ordination) && isTRUE(ordination$tableAvailable)) {
-                coordinates <- rbind(ordination$sites[, c("point", "pointType", "group", "plotKey", "axis1",
-                    "axis2")], ordination$centres[, c("point", "pointType", "group", "plotKey", "axis1", "axis2")])
-                for (i in seq_len(nrow(coordinates))) {
-                    values <- coordinates[i, , drop = FALSE]
-                    self$results$ordinationScores$addRow(rowKey = as.character(i), values = list(point = values$point,
-                        pointType = values$pointType, group = values$group, plotKey = values$plotKey, axis1 = miso_num_or_na(values$axis1),
-                        axis2 = miso_num_or_na(values$axis2)))
-                }
-            }
+            private$.populateOrdinationScores()
             if (is.null(ordination) || !isTRUE(ordination$available)) {
                 reason <- if (!is.null(ordination$reason))
                     ordination$reason
@@ -432,6 +477,27 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 title="PERMDISP ordination"))
         }
 ,
+
+        .populateOrdinationScores = function() {
+            ordination <- private$.state$ordination
+            if (is.null(ordination) || !isTRUE(ordination$tableAvailable))
+                return()
+            coordinates <- rbind(
+                ordination$sites[, c("point", "pointType", "group", "plotKey", "axis1", "axis2")],
+                ordination$centres[, c("point", "pointType", "group", "plotKey", "axis1", "axis2")])
+            for (i in seq_len(nrow(coordinates))) {
+                values <- coordinates[i, , drop=FALSE]
+                self$results$ordinationScores$addRow(
+                    rowKey=as.character(i),
+                    values=list(
+                        point=values$point,
+                        pointType=values$pointType,
+                        group=values$group,
+                        plotKey=values$plotKey,
+                        axis1=miso_num_or_na(values$axis1),
+                        axis2=miso_num_or_na(values$axis2)))
+            }
+        },
 
         .restrictionState = function() {
             current <- self$options$permRestriction

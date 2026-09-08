@@ -18,7 +18,7 @@ items:
     title: ''
     type: Table
     visible: false
-    rows: 0
+    rows: 6
     columns:
       - name: item
         title: Item
@@ -93,11 +93,15 @@ items:
     title: Distance to group centre
     type: Html
     visible: false
+    clearWith:
+      - showDistancePlot
 
   - name: plot
     title: ''
     type: Image
     visible: false
+    clearWith:
+      - showDistancePlot
     width: 600
     height: 460
     renderFun: .plotDistances
@@ -148,11 +152,15 @@ items:
     title: Ordination with group centres
     type: Html
     visible: false
+    clearWith:
+      - showOrdinationPlot
 
   - name: ordinationPlot
     title: ''
     type: Image
     visible: false
+    clearWith:
+      - showOrdinationPlot
     width: 600
     height: 500
     renderFun: .plotOrdination
@@ -166,6 +174,8 @@ items:
     title: ''
     type: Table
     visible: false
+    clearWith:
+      - showOrdinationPlot
     rows: 0
     columns:
       - name: point

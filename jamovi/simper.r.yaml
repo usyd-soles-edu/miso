@@ -18,7 +18,7 @@ items:
     title: ''
     type: Table
     visible: false
-    rows: 0
+    rows: 5
     columns:
       - name: item
         title: Item
@@ -89,6 +89,8 @@ items:
     title: ''
     type: Table
     visible: false
+    clearWith:
+      - simperDetails
     rows: 0
     columns:
       - name: contrast
@@ -116,6 +118,8 @@ items:
     title: ''
     type: Table
     visible: false
+    clearWith:
+      - simperDetails
     rows: 0
     columns:
       - name: contrast
@@ -223,11 +227,15 @@ items:
     title: Contrast overview heatmap
     type: Html
     visible: false
+    clearWith:
+      - simperHeatmap
 
   - name: heatmap
     title: ''
     type: Image
     visible: false
+    clearWith:
+      - simperHeatmap
     width: 600
     height: 500
     renderFun: .plotHeatmap
@@ -236,11 +244,15 @@ items:
     title: SIMPER contrast heatmap values
     type: Html
     visible: false
+    clearWith:
+      - simperHeatmap
 
   - name: heatmapValues
     title: ''
     type: Table
     visible: false
+    clearWith:
+      - simperHeatmap
     rows: 0
     columns:
       - name: contrast

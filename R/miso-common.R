@@ -1,3 +1,10 @@
+miso_options_signature <- function(options, excluded=character()) {
+    names <- setdiff(options$names, excluded)
+    values <- lapply(names, function(name) options$option(name)$value)
+    names(values) <- names
+    serialize(values, NULL)
+}
+
 miso_clean_vars <- function(x) {
     if (is.null(x) || length(x) == 0)
         character()
@@ -185,6 +192,75 @@ miso_summary_rows <- function(prep, transform, distance) {
 
 miso_clear_table <- function(table) {
     try(table$deleteRows(), silent=TRUE)
+    if (!is.null(table$.__enclos_env__$private$.rowNames))
+        table$.__enclos_env__$private$.rowNames <- character()
+}
+
+# Fixed-shape result tables keep their schema rows for the whole analysis
+# lifecycle. Clearing writes typed blanks into those rows instead of replacing
+# the Cell objects, so display-only reruns cannot collapse the report.
+miso_clear_fixed_table <- function(table, rows) {
+    values <- setNames(lapply(table$columns, function(column) {
+        if (column$type %in% c("integer", "number")) NA_real_ else ""
+    }), vapply(table$columns, `[[`, character(1), "name"))
+    if (length(table$rowKeys) == 0L)
+        for (rowNo in seq_len(rows))
+            table$addRow(rowKey=as.character(rowNo), values=values)
+    if (length(table$rowKeys) != rows)
+        stop("fixed result table has an unexpected row count", call.=FALSE)
+    for (rowNo in seq_len(rows))
+        table$setRow(rowNo=rowNo, values=values)
+    invisible(NULL)
+}
+
+miso_set_fixed_row <- function(table, rowNo, values) {
+    rowNo <- as.integer(rowNo)
+    if (length(rowNo) == 0L || is.na(rowNo)) {
+        rowNo <- 1L
+        if (length(table$rowKeys) > 0L) {
+            current <- table$asDF
+            rowNo <- which(rowSums(as.data.frame(lapply(
+                current, function(column) is.na(column) | column == ""))) == ncol(current))[[1L]]
+        }
+    }
+    if (length(table$rowKeys) < rowNo) {
+        blank <- setNames(lapply(table$columns, function(column) {
+            if (column$type %in% c("integer", "number")) NA_real_ else ""
+        }), vapply(table$columns, `[[`, character(1), "name"))
+        for (key in seq.int(length(table$rowKeys) + 1L, rowNo))
+            table$addRow(rowKey=as.character(key), values=blank)
+    }
+    table$setRow(rowNo=rowNo, values=values)
+    invisible(NULL)
+}
+
+miso_update_row_where <- function(table, column, value, values) {
+    if (length(table$rowKeys) == 0L)
+        return(invisible(FALSE))
+    data <- table$asDF
+    if (!column %in% names(data))
+        return(invisible(FALSE))
+    rowNo <- match(as.character(value), as.character(data[[column]]))
+    if (is.na(rowNo))
+        return(invisible(FALSE))
+    table$setRow(rowNo=rowNo, values=values)
+    invisible(TRUE)
+}
+
+miso_add_or_set_row <- function(table, rowKey, values) {
+    numericKey <- suppressWarnings(as.integer(rowKey))
+    rowNo <- if (length(numericKey) == 1L &&
+            !is.na(numericKey) && numericKey <= length(table$rowKeys))
+        numericKey
+    else if (length(table$rowKeys) > 0L)
+        match(as.character(rowKey), as.character(unlist(table$rowKeys, use.names=FALSE)))
+    else
+        NA_integer_
+    if (length(rowNo) == 1L && !is.na(rowNo))
+        table$setRow(rowNo=rowNo, values=values)
+    else
+        table$addRow(rowKey=as.character(rowKey), values=values)
+    invisible(NULL)
 }
 
 miso_set_seed <- function(prep) {

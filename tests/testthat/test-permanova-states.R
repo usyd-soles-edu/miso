@@ -13,8 +13,12 @@ permanova_state_data <- function() {
 expect_result_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("summary", "table", "settings")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 test_that("PERMANOVA study design controls use the full option width", {
@@ -198,10 +202,11 @@ test_that("valid invalid valid transitions clear stale result state", {
     factorOption$.__enclos_env__$private$.value <- NULL
     analysis$run()
     expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$table$visible)
-    expect_false(analysis$results$summary$visible)
+    expect_true(analysis$results$table$visible)
+    expect_true(analysis$results$summary$visible)
     expect_equal(length(analysis$results$table$rowKeys), 0L)
-    expect_equal(length(analysis$results$summary$rowKeys), 0L)
+    expect_equal(length(analysis$results$summary$rowKeys), 6L)
+    expect_true(all(is.na(analysis$results$summary$asDF$value) | analysis$results$summary$asDF$value == ""))
 
     factorOption$.__enclos_env__$private$.value <- "group"
     analysis$run()
@@ -374,7 +379,8 @@ test_that("within-block validation identifies ineffective and singleton blocks",
     expect_match(
         miso_squish_result(failed$guidance),
         "Grouping variable does not vary within any block")
-    expect_false(failed$table$visible)
+    expect_true(failed$table$visible)
+    expect_equal(length(failed$table$rowKeys), 0L)
 
     singleton <- permanova_state_data()
     singleton$block <- factor(c("solo", "x", "y", "x", "y", "x", "y", "x", "y"))
@@ -1091,4 +1097,86 @@ test_that("companion PCoA renders from serialized Image state alone", {
     analysis$.__enclos_env__$private$.plotCompanionPcoa(image)
     grDevices::dev.off()
     expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("companion PCoA toggle preserves inferential table structure across reruns", {
+    data <- permanova_state_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        permPairwise=TRUE,
+        showCompanionPcoa=TRUE,
+        pcoaCentroids=TRUE,
+        permN=19,
+        seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressMessages(suppressWarnings(analysis$run()))
+    before <- list(
+        summary=analysis$results$summary$asDF,
+        table=analysis$results$table$asDF,
+        pairwise=analysis$results$pairwise$asDF,
+        settings=analysis$results$settings$asDF)
+    keys <- list(
+        summary=analysis$results$summary$rowKeys,
+        table=analysis$results$table$rowKeys,
+        pairwise=analysis$results$pairwise$rowKeys)
+
+    showCompanionPcoaOption <- options$option("showCompanionPcoa")
+    showCompanionPcoaOption$.__enclos_env__$private$.value <- FALSE
+    suppressMessages(suppressWarnings(analysis$run()))
+
+    expect_false(analysis$results$companionPcoa$visible)
+    expect_false(analysis$results$companionPcoaDescription$visible)
+    expect_false(analysis$results$companionPcoaSites$visible)
+    expect_false(analysis$results$companionPcoaSitesPurpose$visible)
+    expect_false(analysis$results$companionPcoaCentroids$visible)
+    expect_false(analysis$results$companionPcoaCentroidsPurpose$visible)
+    expect_equal(length(analysis$results$companionPcoaSites$rowKeys), 0L)
+    expect_equal(length(analysis$results$companionPcoaCentroids$rowKeys), 0L)
+
+    expect_identical(analysis$results$summary$rowKeys, keys$summary)
+    expect_identical(analysis$results$table$rowKeys, keys$table)
+    expect_identical(analysis$results$pairwise$rowKeys, keys$pairwise)
+    expect_equal(analysis$results$summary$asDF, before$summary, tolerance=0)
+    expect_equal(analysis$results$table$asDF, before$table, tolerance=0)
+    expect_equal(analysis$results$pairwise$asDF, before$pairwise, tolerance=0)
+    expect_identical(analysis$results$settings$asDF, before$settings)
+    expect_true(analysis$results$table$visible)
+    expect_true(analysis$results$pairwise$visible)
+})
+
+test_that("structural model inputs rebuild term rows while value-only changes update in place", {
+    data <- permanova_state_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        permFactors="site",
+        permN=19,
+        seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressMessages(suppressWarnings(analysis$run()))
+    keys <- analysis$results$table$rowKeys
+    firstCell <- miso_table_first_cell(analysis$results$table)
+    rowsBefore <- length(keys)
+
+    # Value-only option change: same model terms, so no structural rebuild.
+    permNOption <- options$option("permN")
+    permNOption$.__enclos_env__$private$.value <- 29
+    suppressMessages(suppressWarnings(analysis$run()))
+    expect_identical(analysis$results$table$rowKeys, keys)
+    expect_identical(firstCell, miso_table_first_cell(analysis$results$table))
+    expect_gt(length(analysis$results$table$rowKeys), 0L)
+
+    # Structural input: adding model interactions rebuilds the term rows.
+    interactionsOption <- options$option("permInteractions")
+    interactionsOption$.__enclos_env__$private$.value <- TRUE
+    suppressMessages(suppressWarnings(analysis$run()))
+    expect_false(identical(analysis$results$table$rowKeys, keys))
+    expect_false(identical(
+        firstCell, miso_table_first_cell(analysis$results$table)))
+    expect_gt(length(analysis$results$table$rowKeys), rowsBefore)
+    expect_match(
+        as.character(analysis$results$table$asString()),
+        "group",
+        fixed=TRUE)
 })
