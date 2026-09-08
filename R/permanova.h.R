@@ -297,7 +297,10 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             super$initialize(
                 options=options,
                 name="",
-                title="PERMANOVA")
+                title="PERMANOVA",
+                refs=list(
+                    "vegan",
+                    "anderson2001"))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
@@ -527,6 +530,11 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' Tests whether multivariate composition is associated with one or more 
 #' predictors using PERMANOVA through vegan::adonis2. Supports restricted 
 #' permutations, pairwise comparisons, and a descriptive companion PCoA.
+#' @section References:
+#' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+#'
+#' Anderson, M. J. (2001). A new method for non-parametric multivariate analysis of variance. Austral Ecology, 26(1), 32-46. https://doi.org/10.1111/j.1442-9993.2001.01070.pp.x
+#'
 #' @param data .
 #' @param vars .
 #' @param factor .

@@ -2,6 +2,8 @@
 name: pcoa
 title: PCoA
 jrs: '1.1'
+refs:
+  - vegan
 
 items:
   - name: guidance

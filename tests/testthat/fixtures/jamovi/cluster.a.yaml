@@ -8,6 +8,10 @@ version: '1.0.0'
 jas: '1.2'
 description:
   main: Groups samples by hierarchical clustering of dissimilarities calculated with vegan::vegdist and stats::hclust. The dendrogram and optional cluster memberships are descriptive.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
 
 options:
   - name: data

@@ -57,27 +57,19 @@ enabling spiders also draws the centroids.}
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
-  \code{results$sitesPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$sites} \tab \tab \tab \tab \tab a table \cr
-  \code{results$centroidsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$centroids} \tab \tab \tab \tab \tab a table \cr
-  \code{results$eigenvaluesPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$eigenvalues} \tab \tab \tab \tab \tab a table \cr
-  \code{results$interpretation} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$sites$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$sites)}
 }
 \description{
 Performs descriptive principal coordinates analysis (PCoA) of pairwise 
@@ -85,3 +77,8 @@ dissimilarities among sites. The ordination visualises resemblance
 structure and does not test group differences. When called from R, it 
 returns the jamovi analysis results object.
 }
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+}
+

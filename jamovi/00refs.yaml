@@ -1,0 +1,56 @@
+refs:
+  - id: vegan
+    type: software
+    author: >-
+      Jari Oksanen, Gavin L. Simpson, F. Guillaume Blanchet, Roeland Kindt,
+      Pierre Legendre, Peter R. Minchin, R. B. O'Hara, Peter Solymos,
+      M. Henry H. Stevens, Eduard Szoecs, Helene Wagner, Michael Bedward,
+      Ben Bolker, Daniel Borcard, Gustavo Carvalho, Miquel De Caceres,
+      Sebastien Durand, Heloisa Beatriz Antoniazi Evangelista, Geoffrey Hannigan,
+      Mark O. Hill, Leo Lahti, Cameron Martino, Marie-Helene Ouellette,
+      Eduardo Ribeiro Cunha, Tyler Smith, Adrian Stier, Cajo J. F. Ter Braak,
+      and James Weedon
+    year: 2026
+    title: 'vegan: Community Ecology Package'
+    version: '2.7-5'
+    publisher: 'R package'
+    url: 'https://vegandevs.github.io/vegan/'
+
+  - id: anderson2001
+    type: article
+    author: 'Anderson, M. J.'
+    year: 2001
+    title: >-
+      A new method for non-parametric multivariate analysis of variance
+    journal: 'Austral Ecology'
+    volume: 26
+    issue: 1
+    pages: '32-46'
+    doi: '10.1111/j.1442-9993.2001.01070.pp.x'
+    url: 'https://doi.org/10.1111/j.1442-9993.2001.01070.pp.x'
+
+  - id: anderson2006
+    type: article
+    author: 'Anderson, M. J.'
+    year: 2006
+    title: >-
+      Distance-based tests for homogeneity of multivariate dispersions
+    journal: 'Biometrics'
+    volume: 62
+    issue: 1
+    pages: '245-253'
+    doi: '10.1111/j.1541-0420.2005.00440.x'
+    url: 'https://doi.org/10.1111/j.1541-0420.2005.00440.x'
+
+  - id: clarke1993
+    type: article
+    author: 'Clarke, K. R.'
+    year: 1993
+    title: >-
+      Non-parametric multivariate analyses of changes in community structure
+    journal: 'Australian Journal of Ecology'
+    volume: 18
+    issue: 1
+    pages: '117-143'
+    doi: '10.1111/j.1442-9993.1993.tb00438.x'
+    url: 'https://doi.org/10.1111/j.1442-9993.1993.tb00438.x'

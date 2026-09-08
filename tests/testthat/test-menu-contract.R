@@ -36,3 +36,14 @@ test_that("every library analysis has a public description", {
     expect_true(all(nzchar(descriptions)))
     expect_true(all(nchar(descriptions) <= 300L))
 })
+
+test_that("README uses exact MISO naming and attributes methods to vegan", {
+    root <- normalizePath(test_path("..", ".."), mustWork=TRUE)
+    readme <- paste(readLines(file.path(root, "README.md"), warn=FALSE),
+        collapse="\n")
+    expect_match(readme,
+        "Multivariate Inference, Similarity and Ordination (MISO)", fixed=TRUE)
+    expect_match(readme, "vegan", fixed=TRUE)
+    expect_match(readme, "cite `vegan`", fixed=TRUE)
+    expect_false(grepl("Multivariate Abundance Workflows", readme, fixed=TRUE))
+})

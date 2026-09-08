@@ -86,32 +86,30 @@ centroid; spiders also show centroids.}
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
-  \code{results$tablePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
   \code{results$companionPcoaDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
-  \code{results$companionPcoaSitesPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$companionPcoaSites} \tab \tab \tab \tab \tab a table \cr
-  \code{results$companionPcoaCentroidsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$companionPcoaCentroids} \tab \tab \tab \tab \tab a table \cr
-  \code{results$pairwisePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$table$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$table)}
 }
 \description{
 Tests whether multivariate composition is associated with one or more 
 predictors using PERMANOVA through vegan::adonis2. Supports restricted 
 permutations, pairwise comparisons, and a descriptive companion PCoA.
 }
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+
+Anderson, M. J. (2001). A new method for non-parametric multivariate analysis of variance. Austral Ecology, 26(1), 32-46. https://doi.org/10.1111/j.1442-9993.2001.01070.pp.x
+}
+

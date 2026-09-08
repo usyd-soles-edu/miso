@@ -2,6 +2,8 @@
 name: cluster
 title: Cluster analysis
 jrs: '1.1'
+refs:
+  - vegan
 
 items:
   - name: guidance

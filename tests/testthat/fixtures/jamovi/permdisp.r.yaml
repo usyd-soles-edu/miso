@@ -2,6 +2,9 @@
 name: permdisp
 title: PERMDISP
 jrs: '1.1'
+refs:
+  - vegan
+  - anderson2006
 
 items:
   - name: guidance

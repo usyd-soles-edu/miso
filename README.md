@@ -12,6 +12,16 @@ Multivariate Inference, Similarity and Ordination (MISO) brings common multivari
 | SIMPER | `vegan::simper` | Summarises contributions to Bray-Curtis dissimilarity |
 | PCoA | `vegan::wcmdscale` | Visualises distance structure using principal coordinates |
 
+## Method citations
+
+Multivariate Inference, Similarity and Ordination (MISO) uses the following
+method references in addition to the [`vegan`](https://vegandevs.github.io/vegan/)
+package reference:
+
+- PERMANOVA: Anderson (2001), *Austral Ecology*, 26, 32-46.
+- PERMDISP: Anderson (2006), *Biometrics*, 62, 245-253.
+- ANOSIM and SIMPER: Clarke (1993), *Australian Journal of Ecology*, 18, 117-143.
+
 ## Installation
 
 Multivariate Inference, Similarity and Ordination (MISO) is being prepared for submission to the jamovi module library. Until it is listed, clone this repository and run the following from the module repository directory:

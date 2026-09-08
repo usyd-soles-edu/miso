@@ -46,28 +46,26 @@ label modes were introduced.}
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$dendrogramDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
-  \code{results$dendrogramStructurePurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$dendrogramStructure} \tab \tab \tab \tab \tab a table \cr
-  \code{results$membershipPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$membership} \tab \tab \tab \tab \tab a table \cr
-  \code{results$interpretation} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$dendrogramStructure$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$dendrogramStructure)}
 }
 \description{
 Groups samples by hierarchical clustering of dissimilarities calculated 
 with vegan::vegdist and stats::hclust. The dendrogram and optional cluster 
 memberships are descriptive.
 }
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+}
+

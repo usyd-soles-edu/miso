@@ -8,6 +8,10 @@ version: '1.0.0'
 jas: '1.2'
 description:
   main: Produces a non-metric multidimensional scaling ordination through vegan::metaMDS. Reports stress and convergence and can add group, feature, environmental, and Shepard diagnostics.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
 
 options:
   - name: data

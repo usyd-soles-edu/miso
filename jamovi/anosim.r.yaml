@@ -2,6 +2,9 @@
 name: anosim
 title: ANOSIM
 jrs: '1.1'
+refs:
+  - vegan
+  - clarke1993
 
 items:
   - name: guidance

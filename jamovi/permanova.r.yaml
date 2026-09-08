@@ -2,6 +2,9 @@
 name: permanova
 title: PERMANOVA
 jrs: '1.1'
+refs:
+  - vegan
+  - anderson2001
 
 items:
   - name: guidance

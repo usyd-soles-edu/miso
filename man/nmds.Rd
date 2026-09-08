@@ -66,36 +66,31 @@ nmds(
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
-  \code{results$sitesPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$sites} \tab \tab \tab \tab \tab a table \cr
-  \code{results$stressPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
   \code{results$shepardDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
-  \code{results$shepardPairsPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$shepardPairs} \tab \tab \tab \tab \tab a table \cr
-  \code{results$envfitPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a html \cr
-  \code{results$featuresPurpose} \tab \tab \tab \tab \tab a html \cr
   \code{results$features} \tab \tab \tab \tab \tab a table \cr
-  \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$sites$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$sites)}
 }
 \description{
 Produces a non-metric multidimensional scaling ordination through 
 vegan::metaMDS. Reports stress and convergence and can add group, feature, 
 environmental, and Shepard diagnostics.
 }
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+}
+
