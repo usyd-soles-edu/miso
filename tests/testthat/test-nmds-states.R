@@ -1274,8 +1274,10 @@ test_that("legacy 3D fixture matches an independent full configuration", {
     expect_identical(
         runtimeTitle,
         "NMDS1-NMDS2 view of a three-dimensional nMDS solution")
-    expect_identical(scenarioOutputs[[2L]], runtimeTitle)
-    expect_identical(referenceTitle, runtimeTitle)
+    # Schema CSVs carry static slot titles only; the dynamic 2D-view title
+    # is asserted directly above (R/nmds.b.R .run setTitle).
+    expect_identical(scenarioOutputs[[1L]], "nMDS Ordination")
+    expect_identical(referenceTitle, "Site Scores")
 })
 
 test_that("legacy Binary is exactly inert for the fixture baseline", {
@@ -1318,15 +1320,14 @@ test_that("nMDS migration scenarios use current result names", {
         stringsAsFactors=FALSE,
         check.names=FALSE)
     scenarios <- scenarios[scenarios$analysis == "nMDS", ]
+    # Result-slot titles and order follow jamovi/nmds.r.yaml.
     expectedOutputs <- paste(
-        "Result Tables",
-        "Two-dimensional nMDS ordination",
-        "Stress and convergence diagnostics",
+        "nMDS Ordination",
+        "Stress and Convergence Diagnostics",
         "Shepard Diagram",
+        "Shepard Diagram Values",
         "Environmental Fit",
-        "Interpretation",
         "Site Scores",
-        "Table Notes",
         sep="|")
 
     expect_identical(
