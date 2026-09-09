@@ -62,13 +62,15 @@ const updateControlStates = ui => {
         ui.pcoaDisplayFactor, ui.pcoaCentroids, ui.pcoaSpiders,
     ];
     const dependentHadFocus = dependentControls.some(containsFocus);
-    const displayEnabled = multifactor;
+    const displayEnabled = primary.length > 0 || multifactor;
     const centroidsEnabled = requested && validGroup;
     const spidersEnabled = requested && validGroup;
 
     // Keep this target available while the plot is off so users can assign a
-    // model factor before enabling the companion PCoA. The R-side guard
-    // explains retained, dropped, and unavailable assignments.
+    // model factor before enabling the companion PCoA. Primary-only models
+    // keep it available too: the primary factor drives the automatic display
+    // group. The R-side guard explains retained, dropped, and unavailable
+    // assignments.
     ui.pcoaDisplayFactor.setEnabled(displayEnabled);
     ui.pcoaCentroids.setEnabled(centroidsEnabled);
     ui.pcoaSpiders.setEnabled(spidersEnabled);

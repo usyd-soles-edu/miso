@@ -47,16 +47,36 @@ const makeUi = ({
     permAdjust: control('holm'),
 });
 
+// Primary-only model: Display Groups By must stay enabled whether or not
+// the companion plot is on, so users can assign or reassign the display
+// factor before enabling the plot. Dependent rules are retained: centroids
+// and spiders stay gated on the companion toggle and a valid display group.
 let ui = makeUi({requested: false});
 events.update_control_states(ui);
-assert.strictEqual(ui.pcoaDisplayFactor.enabled, false);
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
 assert.strictEqual(ui.pcoaCentroids.enabled, false);
 assert.strictEqual(ui.pcoaSpiders.enabled, false);
 ui.showCompanionPcoa.current = true;
 events.update_control_states(ui);
-assert.strictEqual(ui.pcoaDisplayFactor.enabled, false);
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
 assert.strictEqual(ui.pcoaCentroids.enabled, true);
 assert.strictEqual(ui.pcoaSpiders.enabled, true);
+
+// With no primary and no additional model factor there is no eligible group
+// to name, so the display target must remain disabled.
+ui = makeUi({primary: [], requested: false});
+events.update_control_states(ui);
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, false);
+assert.strictEqual(ui.pcoaCentroids.enabled, false);
+assert.strictEqual(ui.pcoaSpiders.enabled, false);
+
+// Additional factors keep the display target enabled even without a
+// primary factor, matching the multifactor rule.
+ui = makeUi({primary: [], additional: ['site'], requested: false});
+events.update_control_states(ui);
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
+assert.strictEqual(ui.pcoaCentroids.enabled, false);
+assert.strictEqual(ui.pcoaSpiders.enabled, false);
 
 ui = makeUi({additional: ['site']});
 events.update_control_states(ui);
@@ -75,6 +95,20 @@ assert.strictEqual(ui.pcoaDisplayFactor.focused, 0);
 ui.showCompanionPcoa.current = true;
 events.update_control_states(ui);
 assert.strictEqual(ui.pcoaDisplayFactor.current, 'site');
+assert.strictEqual(ui.pcoaCentroids.enabled, true);
+assert.strictEqual(ui.pcoaSpiders.enabled, true);
+
+// Primary-only models allow the same pre-assignment of an eligible display
+// factor while the plot is off; the R-side guard honours it on rerun.
+ui = makeUi({displayed: 'group', requested: false});
+global.document = {activeElement: ui.pcoaDisplayFactor.element};
+events.update_control_states(ui);
+assert.strictEqual(ui.pcoaDisplayFactor.current, 'group');
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
+assert.strictEqual(ui.pcoaDisplayFactor.focused, 0);
+ui.showCompanionPcoa.current = true;
+events.update_control_states(ui);
+assert.strictEqual(ui.pcoaDisplayFactor.current, 'group');
 assert.strictEqual(ui.pcoaCentroids.enabled, true);
 assert.strictEqual(ui.pcoaSpiders.enabled, true);
 
@@ -98,7 +132,9 @@ events.update_control_states(ui);
 ui.permFactors.current = [];
 events.update_control_states(ui);
 assert.strictEqual(ui.pcoaDisplayFactor.current, 'site');
-assert.strictEqual(ui.pcoaDisplayFactor.enabled, false);
+// Returning to a primary-only model keeps the display target available so
+// the retained assignment can be reviewed or replaced.
+assert.strictEqual(ui.pcoaDisplayFactor.enabled, true);
 assert.strictEqual(ui.pcoaCentroids.enabled, true);
 
 ui = makeUi({additional: ['site'], displayed: 'site', requested: false});

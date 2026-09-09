@@ -939,6 +939,9 @@ test_that("PERMANOVA companion JavaScript manages eligibility and focus", {
         "pcoaDisplayFactor.setEnabled(displayEnabled)",
         fixed=TRUE)
     expect_match(js,
+        "const displayEnabled = primary.length > 0 || multifactor;",
+        fixed=TRUE)
+    expect_match(js,
         "const displayed = selections(ui.pcoaDisplayFactor.value())",
         fixed=TRUE)
     expect_false(grepl("pcoaDisplayFactor.setValue(null)", js, fixed=TRUE))
@@ -1022,6 +1025,36 @@ test_that("PERMANOVA publishes retained display notices after off-to-on toggle",
     expect_match(notice, "collapsing", fixed=TRUE)
     expect_match(notice, "not retained", fixed=TRUE)
     expect_match(notice, "automatically displays 'group'", fixed=TRUE)
+})
+
+test_that("primary-only display assignments are retained by the R-side guard", {
+    data <- permanova_state_data()
+    data$covariate <- seq_len(nrow(data))
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        pcoaDisplayFactor="covariate",
+        showCompanionPcoa=FALSE, permN=19, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$table$visible)
+    expect_false(analysis$results$companionPcoaDescription$visible)
+
+    show <- options$option("showCompanionPcoa")
+    show$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$table$visible)
+    # The primary factor is the automatic display group; the retained
+    # ineligible assignment is explained rather than silently applied.
+    expect_true(analysis$results$companionPcoa$visible)
+    expect_true(analysis$results$companionPcoaSites$visible)
+    expect_identical(
+        analysis$.__enclos_env__$private$.state$companion$displayFactor,
+        "group")
+    expect_true(analysis$results$warnings$visible)
+    warning <- miso_squish_result(analysis$results$warnings)
+    expect_match(warning, "covariate", fixed=TRUE)
+    expect_match(warning, "not a categorical factor retained", fixed=TRUE)
+    expect_match(warning, "automatically displays 'group'", fixed=TRUE)
 })
 
 test_that("PERMANOVA companion JavaScript executes control-state behavior", {

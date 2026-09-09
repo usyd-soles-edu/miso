@@ -280,12 +280,30 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 if (! notApplicable && is.na(private$.state$pValue))
                     private$.state$pValue <- miso_num_or_na(atab[i, "Pr(>F)"])
             }
+            seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
             self$results$anova$setNote(
                 key="structuralCells",
                 note=sprintf(
-                    "Transformation: %s. Dissimilarity index: %s. Blank F and Permutation p cells are not applicable to the Residual row.",
+                    paste(
+                        "Transformation: %s. Dissimilarity index: %s.",
+                        "Binary dissimilarity: %s. Square-root distances: %s.",
+                        "Additive correction: %s. Centre: %s.",
+                        "Bias adjustment: %s.",
+                        "Requested permutation restriction: %s.",
+                        "Effective restriction: %s. Permutations: %d.",
+                        "Random seed: %s. Blank F and Permutation p cells are",
+                        "not applicable to the Residual row."),
                     private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance)),
+                    private$.distanceLabel(self$options$distance),
+                    private$.enabledLabel(isTRUE(self$options$distBinary)),
+                    private$.enabledLabel(isTRUE(self$options$distSqrt)),
+                    private$.additiveLabel(self$options$distAdd),
+                    private$.centreLabel(self$options$dispType),
+                    private$.enabledLabel(isTRUE(self$options$dispBias)),
+                    private$.state$restriction$requested,
+                    private$.state$restriction$effective,
+                    as.integer(self$options$permN),
+                    seedLabel),
                 init=FALSE)
 
             pairwiseShown <- FALSE
@@ -361,9 +379,19 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             self$results$pairwise$setNote(
                 key="scope",
-                note=paste(
-                    "These comparisons test differences in dispersion,",
-                    "not differences in group location."),
+                note=sprintf(
+                    paste(
+                        "These comparisons test differences in dispersion,",
+                        "not differences in group location, between levels of",
+                        "Grouping variable '%s'.",
+                        "Effective permutation restriction: %s.",
+                        "Permutations: %d.",
+                        "P-value adjustment: %s; the adjustment family covers all",
+                        "pairwise contrasts among the grouping-variable levels."),
+                    self$options$factor,
+                    private$.state$restriction$effective,
+                    as.integer(self$options$permN),
+                    private$.adjustmentLabel(self$options$dispAdjust)),
                 init=FALSE)
             TRUE
         },
