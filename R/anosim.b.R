@@ -10,7 +10,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             structuralKey <- miso_options_signature(
-                self$options, excluded="showRankPlot")
+                self$options, excluded="showRankPlot", data=self$data)
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()

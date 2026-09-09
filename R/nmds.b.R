@@ -424,7 +424,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 nmdsHull=self$options$nmdsHull,
                 nmdsEllipse=self$options$nmdsEllipse,
                 nmdsSpider=self$options$nmdsSpider,
-                nmdsEnvPerm=self$options$nmdsEnvPerm), NULL)
+                nmdsEnvPerm=self$options$nmdsEnvPerm,
+                dataSignature=miso_data_signature(self$data)), NULL)
         },
 
         .refreshDisplayOnly = function() {

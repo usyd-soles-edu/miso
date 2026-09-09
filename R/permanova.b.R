@@ -168,7 +168,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
-                    "pcoaCentroids", "pcoaSpiders"))
+                    "pcoaCentroids", "pcoaSpiders"),
+                data=self$data)
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()

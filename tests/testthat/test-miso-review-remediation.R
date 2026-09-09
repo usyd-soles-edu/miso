@@ -371,6 +371,133 @@ test_that("run-generated notes survive restored analyses and display-only update
     expect_match(note_text(simperRestored$results$assessment), "P-values")
 })
 
+# --- P1 results-review remediation: data-aware structural cache keys ---
+#
+# jamovi reruns the same analysis object when its dataset is edited, so a
+# structural cache key that covers options only lets same-object data edits
+# take the display-only branch and serve stale results. These probes edit
+# feature values, group assignments, and the filtered row set on the live
+# analysis object and require the rerun to match a fresh analysis of the
+# edited data.
+
+miso_cache_probe_data <- function() {
+    data.frame(
+        sp1=c(1, 2, 1, 7, 8, 7, 3, 4, 3),
+        sp2=c(2, 1, 2, 8, 7, 8, 4, 3, 4),
+        sp3=c(1, 1, 2, 6, 7, 6, 3, 3, 2),
+        group=factor(rep(c("A", "B", "C"), each=3L)))
+}
+
+miso_cache_probes <- list(
+    list(
+        analysis="PERMANOVA",
+        build=function(data) permanovaClass$new(options=permanovaOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123),
+            data=data),
+        statistic=function(analysis) analysis$results$table$asDF),
+    list(
+        analysis="ANOSIM",
+        build=function(data) anosimClass$new(options=anosimOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group", anosimN=19, seed=123),
+            data=data),
+        statistic=function(analysis) analysis$results$global$asDF),
+    list(
+        analysis="PERMDISP",
+        build=function(data) permdispClass$new(options=permdispOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123),
+            data=data),
+        statistic=function(analysis) analysis$results$anova$asDF),
+    list(
+        analysis="PCoA",
+        build=function(data) pcoaClass$new(options=pcoaOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group"), data=data),
+        statistic=function(analysis) analysis$results$sites$asDF),
+    list(
+        analysis="nMDS",
+        build=function(data) nmdsClass$new(options=nmdsOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group",
+            seed=123, nmdsTrymax=2), data=data),
+        statistic=function(analysis) analysis$results$sites$asDF),
+    list(
+        analysis="cluster",
+        build=function(data) clusterClass$new(options=clusterOptions$new(
+            vars=c("sp1", "sp2", "sp3"), defineClusters=TRUE,
+            numberClusters=3), data=data),
+        statistic=function(analysis) analysis$results$membership$asDF),
+    list(
+        analysis="SIMPER",
+        build=function(data) simperClass$new(options=simperOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group", simperN=19,
+            seed=123), data=data),
+        statistic=function(analysis) analysis$results$contrasts$asDF))
+
+miso_feature_edit <- function(data) {
+    # Collapse group C onto group A's feature values.
+    data$sp1[c(7L, 8L, 9L)] <- c(1, 2, 1)
+    data$sp2[c(7L, 8L, 9L)] <- c(2, 1, 2)
+    data$sp3[c(7L, 8L, 9L)] <- c(1, 1, 2)
+    data
+}
+
+miso_group_edit <- function(data) {
+    # Move one sample from group B into group A.
+    data$group <- factor(
+        c("A", "A", "A", "A", "B", "B", "C", "C", "C"),
+        levels=c("A", "B", "C"))
+    data
+}
+
+miso_row_edit <- function(data) {
+    # A new sample joins the filtered row set. Values are assigned by column
+    # name because jmvcore trims each analysis's data to its required
+    # variables, so not every analysis object still carries 'group'.
+    row <- setNames(as.list(rep(5, ncol(data))), names(data))
+    if (! is.null(row$group))
+        row$group <- "A"
+    data[nrow(data) + 1L, ] <- row
+    data
+}
+
+miso_expect_rerun_tracks_data <- function(probe, edit) {
+    analysis <- probe$build(miso_cache_probe_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- probe$statistic(analysis)
+
+    # jamovi updates the dataset on the live analysis object and reruns it;
+    # this is the same seam the existing state tests use.
+    private <- analysis$.__enclos_env__$private
+    private$.data <- edit(private$.data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    after <- probe$statistic(analysis)
+
+    fresh <- probe$build(private$.data)
+    suppressWarnings(suppressMessages(fresh$run()))
+
+    expect_equal(after, probe$statistic(fresh),
+        info=paste(probe$analysis, "must recompute after the data edit"))
+    expect_false(isTRUE(all.equal(before, after)),
+        info=paste(probe$analysis,
+            "probe must respond to the data edit for this test to bite"))
+}
+
+test_that("same-object reruns recompute after feature values change", {
+    for (probe in miso_cache_probes)
+        miso_expect_rerun_tracks_data(probe, miso_feature_edit)
+})
+
+test_that("same-object reruns recompute after group assignments change", {
+    for (probe in miso_cache_probes) {
+        if (identical(probe$analysis, "cluster"))
+            next  # cluster has no grouping input to reassign
+        miso_expect_rerun_tracks_data(probe, miso_group_edit)
+    }
+})
+
+test_that("same-object reruns recompute after the filtered row set changes", {
+    for (probe in miso_cache_probes)
+        miso_expect_rerun_tracks_data(probe, miso_row_edit)
+})
+
 test_that("table notes retain interpretation-critical method choices", {
     data <- data.frame(sp1=c(1,2,1,7,8,7,3,4,3), sp2=c(2,1,2,8,7,8,4,3,4), sp3=c(1,1,2,6,7,6,3,3,2), group=factor(rep(c("A", "B", "C"), each=3)), block=factor(rep(1:3, times=3)))
     anosimResult <- anosim(data=data, vars=c("sp1", "sp2", "sp3"), factor="group",

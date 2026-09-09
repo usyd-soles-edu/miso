@@ -176,7 +176,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance=self$options$distance,
                 distBinary=self$options$distBinary,
                 sqrtDist=self$options$sqrtDist,
-                correction=self$options$correction), NULL)
+                correction=self$options$correction,
+                dataSignature=miso_data_signature(self$data)), NULL)
         },
 
 

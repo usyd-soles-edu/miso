@@ -1,7 +1,29 @@
-miso_options_signature <- function(options, excluded=character()) {
+# Deterministic full-data signature for structural cache keys. jamovi reruns
+# the same analysis object when its dataset is edited, so a key that covers
+# options only would let same-object data edits serve stale results. The
+# signature canonicalizes column values (and factor levels, separately from
+# their codes) so identical data yields identical raw output while any feature
+# value, group assignment, or filtered-row change yields different bytes.
+miso_data_signature <- function(data) {
+    if (is.null(data))
+        return(serialize(NULL, NULL))
+    columns <- lapply(seq_along(data), function(i) {
+        column <- data[[i]]
+        if (is.factor(column))
+            list(levels=levels(column), values=as.integer(column))
+        else
+            list(values=as.vector(column))
+    })
+    names(columns) <- names(data)
+    serialize(list(rows=nrow(data), columns=columns), NULL)
+}
+
+miso_options_signature <- function(options, excluded=character(), data=NULL) {
     names <- setdiff(options$names, excluded)
     values <- lapply(names, function(name) options$option(name)$value)
     names(values) <- names
+    if (! is.null(data))
+        values$.data <- miso_data_signature(data)
     serialize(values, NULL)
 }
 

@@ -10,7 +10,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             structuralKey <- miso_options_signature(
-                self$options, excluded=c("simperDetails", "simperHeatmap"))
+                self$options, excluded=c("simperDetails", "simperHeatmap"),
+                data=self$data)
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()
