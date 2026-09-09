@@ -1088,3 +1088,73 @@ test_that("SIMPER keeps method settings in surviving table notes", {
     expect_true(result$contributions$visible)
     expect_match(miso_table_note(result$contributions, "meaning"), "contribution|dissimilarity")
 })
+
+miso_simper_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+test_that("value-only data edits refresh SIMPER tables and keep their cells", {
+    data <- simper_state_data()
+    build_options <- function() simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", simperDetails=TRUE,
+        simperHeatmap=TRUE, simperAssess=TRUE, simperN=19, seed=123)
+    analysis <- simperClass$new(options=build_options(), data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    tableKeys <- analysis$results$table$rowKeys
+    tableCells <- miso_simper_cells(analysis$results$table)
+    contrastKeys <- analysis$results$contrasts$rowKeys
+    contributionKeys <- analysis$results$contributions$rowKeys
+    heatmapKeys <- analysis$results$heatmapValues$rowKeys
+    assessmentKeys <- analysis$results$assessment$rowKeys
+    before <- analysis$results$table$asDF
+
+    # Same samples, groups, contrasts, and features; only feature values
+    # change, so the data signature changes but every row key survives.
+    edited <- simper_state_data()
+    edited$sp2 <- edited$sp2 + 0.5
+    analysis$.__enclos_env__$private$.data$sp2 <- edited$sp2
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_identical(analysis$results$table$rowKeys, tableKeys)
+    expect_identical(analysis$results$contrasts$rowKeys, contrastKeys)
+    expect_identical(analysis$results$contributions$rowKeys, contributionKeys)
+    expect_identical(analysis$results$heatmapValues$rowKeys, heatmapKeys)
+    expect_identical(analysis$results$assessment$rowKeys, assessmentKeys)
+    expect_true(identical(miso_simper_cells(analysis$results$table), tableCells))
+    expect_false(isTRUE(all.equal(before, analysis$results$table$asDF)))
+
+    fresh <- simperClass$new(options=build_options(), data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$table$asDF, fresh$results$table$asDF, tolerance=1e-12)
+    expect_equal(
+        analysis$results$heatmapValues$asDF, fresh$results$heatmapValues$asDF,
+        tolerance=1e-12)
+})
+
+test_that("data edits that drop features rebuild SIMPER rows and stay fresh", {
+    data <- simper_state_data()
+    options <- simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", simperN=19, seed=123)
+    analysis <- simperClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    tableKeys <- analysis$results$table$rowKeys
+
+    # An all-zero feature is excluded by preparation, so the same live
+    # analysis must rebuild its keyed rows with fewer features.
+    edited <- simper_state_data()
+    edited$sp3 <- 0
+    analysis$.__enclos_env__$private$.data$sp3 <- edited$sp3
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(identical(analysis$results$table$rowKeys, tableKeys))
+    expect_false(any(analysis$results$table$asDF$feature == "sp3"))
+    expect_true(all(analysis$results$table$asDF$feature %in% c("sp1", "sp2")))
+
+    fresh <- simperClass$new(options=simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", simperN=19, seed=123),
+        data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$table$asDF, fresh$results$table$asDF, tolerance=1e-12)
+})

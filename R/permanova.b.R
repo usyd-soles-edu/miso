@@ -76,18 +76,19 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .assemblePermanovaResults = function(prep, main) {
             tab <- as.data.frame(main$result)
             rn <- rownames(tab)
-            for (i in seq_len(nrow(tab))) {
-                notApplicable <- rn[i] %in% c("Residual", "Total")
-                rowKey <- as.character(i)
-                values <- list(
-                    source=miso_display_term(rn[i], prep),
-                    df=miso_num_or_na(tab[i, "Df"]),
-                    sumsqs=miso_num_or_na(tab[i, "SumOfSqs"]),
-                    r2=miso_num_or_na(tab[i, "R2"]),
-                    f=if (notApplicable) "" else miso_num_or_na(tab[i, "F"]),
-                    p=if (notApplicable) "" else miso_num_or_na(tab[i, "Pr(>F)"]))
-                self$results$table$addRow(rowKey=rowKey, values=values)
-            }
+            termRows <- lapply(seq_len(nrow(tab)), function(i) {
+                notApplicable <- rn[[i]] %in% c("Residual", "Total")
+                list(
+                    key=as.character(i),
+                    values=list(
+                        source=miso_display_term(rn[[i]], prep),
+                        df=miso_num_or_na(tab[i, "Df"]),
+                        sumsqs=miso_num_or_na(tab[i, "SumOfSqs"]),
+                        r2=miso_num_or_na(tab[i, "R2"]),
+                        f=if (notApplicable) "" else miso_num_or_na(tab[i, "F"]),
+                        p=if (notApplicable) "" else miso_num_or_na(tab[i, "Pr(>F)"])))
+            })
+            miso_reconcile_table_rows(self$results$table, termRows)
 
             permutation <- private$.state$permutation
             blockDetail <- if (identical(permutation$notice$kind, "table"))
@@ -160,6 +161,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         pairwise$warnings)
                 }
             }
+            if (! pairwiseShown)
+                miso_clear_table(self$results$pairwise)
             private$.showSuccessfulResults(pairwiseShown)
             private$.setWarnings(private$.state$warnings)
         },
@@ -184,14 +187,20 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     plotData=NULL, displayFactor=NULL))
             private$.clearResults()
 
-            prep <- private$.preparePermanova()
-            if (is.null(prep))
+            prep <- tryCatch(private$.preparePermanova(), error=function(e) e)
+            if (inherits(prep, "error")) {
+                private$.discardKeyedRows()
+                stop(prep)
+            }
+            if (is.null(prep)) {
+                private$.discardKeyedRows()
                 return()
+            }
             on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
 
             main <- private$.fitPermanova(prep)
             if (! main$success) {
-                private$.clearResults()
+                private$.discardKeyedRows()
                 correction <- if (grepl("saturated", main$error, fixed=TRUE))
                     "The selected model has no residual degrees of freedom. Remove a model term or use more samples."
                 else
@@ -230,10 +239,10 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$companionPcoaDescription$setContent("")
-            miso_clear_table(self$results$table)
+            miso_clear_table_values(self$results$table)
             miso_clear_table(self$results$companionPcoaSites)
             miso_clear_table(self$results$companionPcoaCentroids)
-            miso_clear_table(self$results$pairwise)
+            miso_clear_table_values(self$results$pairwise)
             self$results$pairwise$setNote(
                 key="scope",
                 note="",
@@ -250,6 +259,14 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results[[name]]$setVisible(FALSE)
             for (name in c("table"))
                 self$results[[name]]$setVisible(TRUE)
+        },
+
+        # Destructive row removal for keyed result tables on rerun paths that
+        # do not repopulate them: guidance, rejections, and failed fits must
+        # not leave stale or blank rows behind.
+        .discardKeyedRows = function() {
+            miso_clear_table(self$results$table)
+            miso_clear_table(self$results$pairwise)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -777,12 +794,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pvals
             else
                 stats::p.adjust(pvals, method=method)
-            for (i in seq_along(rows)) {
-                rows[[i]]$padj <- adjusted[[i]]
-                self$results$pairwise$addRow(
-                    rowKey=as.character(i),
-                    values=rows[[i]])
-            }
+            pairwiseRows <- lapply(seq_along(rows), function(i) {
+                values <- rows[[i]]
+                values$padj <- adjusted[[i]]
+                list(key=as.character(i), values=values)
+            })
+            miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
             retained <- c(prep$extra, prep$covariateNames)
             retainedText <- if (length(retained) == 0L)

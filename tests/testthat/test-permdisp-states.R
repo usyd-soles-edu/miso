@@ -924,3 +924,71 @@ test_that("PERMDISP copied pairwise notes state the adjustment and contrast fami
             "among the grouping-variable levels"),
         fixed=TRUE)
 })
+
+miso_permdisp_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+test_that("value-only data edits refresh dispersion tables and keep their cells", {
+    data <- permdisp_state_data()
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        dispPairwise=TRUE, permN=19, seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    distanceKeys <- analysis$results$distances$rowKeys
+    anovaKeys <- analysis$results$anova$rowKeys
+    pairwiseKeys <- analysis$results$pairwise$rowKeys
+    distanceCells <- miso_permdisp_cells(analysis$results$distances)
+    anovaCells <- miso_permdisp_cells(analysis$results$anova)
+    before <- analysis$results$distances$asDF
+
+    # Same samples and groups; only feature values change, so the data
+    # signature changes but every row key survives the rerun.
+    edited <- permdisp_state_data()
+    edited$sp1 <- c(2, 3, 2, 6, 9, 6, 4, 3, 2)
+    analysis$.__enclos_env__$private$.data$sp1 <- edited$sp1
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_identical(analysis$results$distances$rowKeys, distanceKeys)
+    expect_identical(analysis$results$anova$rowKeys, anovaKeys)
+    expect_identical(analysis$results$pairwise$rowKeys, pairwiseKeys)
+    expect_true(identical(
+        miso_permdisp_cells(analysis$results$distances), distanceCells))
+    expect_true(identical(miso_permdisp_cells(analysis$results$anova), anovaCells))
+    expect_false(isTRUE(all.equal(before, analysis$results$distances$asDF)))
+
+    fresh <- permdispClass$new(options=permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        dispPairwise=TRUE, permN=19, seed=123), data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$distances$asDF, fresh$results$distances$asDF,
+        tolerance=1e-12)
+    expect_equal(
+        analysis$results$anova$asDF, fresh$results$anova$asDF, tolerance=1e-12)
+})
+
+test_that("data edits that remove a group rebuild dispersion rows and stay fresh", {
+    data <- permdisp_state_data()
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    distanceKeys <- analysis$results$distances$rowKeys
+
+    edited <- permdisp_state_data(two_groups=TRUE)
+    analysis$.__enclos_env__$private$.data <- edited
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(identical(analysis$results$distances$rowKeys, distanceKeys))
+    expect_identical(analysis$results$distances$asDF$group, c("A", "B"))
+
+    fresh <- permdispClass$new(options=permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123),
+        data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$distances$asDF, fresh$results$distances$asDF,
+        tolerance=1e-12)
+})

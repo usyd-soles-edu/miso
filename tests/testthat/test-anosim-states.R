@@ -615,3 +615,73 @@ test_that("ANOSIM reports interpretation-critical settings in surviving table no
     expect_match(miso_table_note(result$global, "meaning"), "Effective restriction")
     expect_match(miso_table_note(result$pairwise, "scope"), "P-value adjustment")
 })
+
+miso_anosim_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+test_that("value-only data edits refresh ANOSIM tables and keep their cells", {
+    data <- anosim_state_data()
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        anosimPairwise=TRUE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    pairwiseKeys <- analysis$results$pairwise$rowKeys
+    rankKeys <- analysis$results$rankSummary$rowKeys
+    pairwiseCells <- miso_anosim_cells(analysis$results$pairwise)
+    rankCells <- miso_anosim_cells(analysis$results$rankSummary)
+    before <- analysis$results$pairwise$asDF
+
+    # Same samples, groups, and contrasts; only feature values change, so the
+    # data signature changes but every row key survives the rerun.
+    edited <- anosim_state_data()
+    edited$sp1 <- edited$sp1 + 0.25
+    analysis$.__enclos_env__$private$.data$sp1 <- edited$sp1
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_identical(analysis$results$pairwise$rowKeys, pairwiseKeys)
+    expect_identical(analysis$results$rankSummary$rowKeys, rankKeys)
+    expect_true(identical(
+        miso_anosim_cells(analysis$results$pairwise), pairwiseCells))
+    expect_true(identical(
+        miso_anosim_cells(analysis$results$rankSummary), rankCells))
+    expect_false(isTRUE(all.equal(before, analysis$results$pairwise$asDF)))
+
+    fresh <- anosimClass$new(options=anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        anosimPairwise=TRUE, anosimN=19, seed=123), data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$pairwise$asDF, fresh$results$pairwise$asDF,
+        tolerance=1e-12)
+    expect_equal(
+        analysis$results$rankSummary$asDF, fresh$results$rankSummary$asDF,
+        tolerance=1e-12)
+})
+
+test_that("data edits that remove a group rebuild ANOSIM rows and stay fresh", {
+    data <- anosim_state_data()
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    rankKeys <- analysis$results$rankSummary$rowKeys
+
+    edited <- anosim_state_data(two_groups=TRUE)
+    analysis$.__enclos_env__$private$.data <- edited
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(identical(analysis$results$rankSummary$rowKeys, rankKeys))
+    expect_identical(
+        analysis$results$rankSummary$asDF$category,
+        c("Between", "Within A", "Within B"))
+
+    fresh <- anosimClass$new(options=anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", anosimN=19, seed=123),
+        data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$rankSummary$asDF, fresh$results$rankSummary$asDF,
+        tolerance=1e-12)
+})

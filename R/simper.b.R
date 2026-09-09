@@ -34,6 +34,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(
                     paste(
                         "SIMPER (similarity percentages) explores which features contribute most to Bray-Curtis dissimilarity between groups.",
@@ -45,12 +46,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             if (! hasVars) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "SIMPER is waiting for Feature variables.",
                     "Add one or more numeric response columns, such as species abundances."))
                 return()
             }
             if (! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "SIMPER is waiting for a Grouping variable.",
                     "Add one categorical column containing at least two observed groups."))
@@ -58,21 +61,29 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             if (self$options$transform %in% c("standardize", "rclr")) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "This transformation cannot produce valid non-negative inputs for Bray-Curtis SIMPER.",
                     "Choose a compatible transformation in Analysis choices."))
                 return()
             }
 
-            prep <- miso_prepare_resemblance(
-                data=self$data,
-                vars=self$options$vars,
-                factor=self$options$factor,
-                transform=self$options$transform,
-                distance="bray",
-                seed=self$options$seed,
-                distBinary=FALSE)
+            prep <- tryCatch(
+                miso_prepare_resemblance(
+                    data=self$data,
+                    vars=self$options$vars,
+                    factor=self$options$factor,
+                    transform=self$options$transform,
+                    distance="bray",
+                    seed=self$options$seed,
+                    distBinary=FALSE),
+                error=function(e) e)
+            if (inherits(prep, "error")) {
+                private$.discardKeyedRows()
+                stop(prep)
+            }
             if (isTRUE(prep$error)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(prep$message)
                 return()
             }
@@ -80,6 +91,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             transformed <- as.matrix(prep$transformed)
             if (any(! is.finite(transformed)) || any(transformed < 0) ||
                     any(rowSums(transformed) <= 0)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "The selected transformation did not produce valid Bray-Curtis SIMPER inputs.",
                     "Choose a transformation that leaves finite, non-negative values and a positive total for every sample."))
@@ -101,16 +113,26 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "This is separate from the visible Presence/absence transformation; SIMPER used abundance-based Bray-Curtis."))
 
             descriptive <- private$.runDescriptive(prep)
-            if (is.null(descriptive))
+            if (is.null(descriptive)) {
+                private$.discardKeyedRows()
                 return()
+            }
             private$.state$descriptive <- descriptive
             private$.populateDescriptive(descriptive)
 
             assessmentShown <- FALSE
             if (isTRUE(self$options$simperAssess))
                 assessmentShown <- private$.runAssessment(prep, descriptive$displayRows)
+            if (! assessmentShown)
+                miso_clear_table(self$results$assessment)
 
             private$.setTableNotes(prep)
+            if (! isTRUE(self$options$simperDetails)) {
+                miso_clear_table(self$results$variability)
+                miso_clear_table(self$results$means)
+            }
+            if (! isTRUE(self$options$simperHeatmap))
+                miso_clear_table(self$results$heatmapValues)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(assessmentShown)
         },
@@ -147,18 +169,22 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateOptionalDetailRows = function(descriptive) {
+            variabilityRows <- list()
+            meansRows <- list()
             for (index in seq_along(descriptive$fullRows)) {
                 values <- descriptive$fullRows[[index]]
                 values$contrastIndex <- NULL
                 values$firstGroup <- NULL
                 values$secondGroup <- NULL
-                self$results$variability$addRow(
-                    rowKey=as.character(index),
+                variabilityRows[[index]] <- list(
+                    key=as.character(index),
                     values=values[c("contrast", "feature", "average", "sd", "ratio")])
-                self$results$means$addRow(
-                    rowKey=as.character(index),
+                meansRows[[index]] <- list(
+                    key=as.character(index),
                     values=values[c("contrast", "feature", "meanFirst", "meanSecond")])
             }
+            miso_reconcile_table_rows(self$results$variability, variabilityRows)
+            miso_reconcile_table_rows(self$results$means, meansRows)
         },
 
         .populateOptionalHeatmap = function() {
@@ -168,9 +194,9 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$heatmap$setState(heatmapData)
             if (is.null(heatmapData))
                 return()
-            for (row in seq_len(nrow(heatmapData)))
-                self$results$heatmapValues$addRow(
-                    rowKey=as.character(row),
+            heatmapRows <- lapply(seq_len(nrow(heatmapData)), function(row) {
+                list(
+                    key=as.character(row),
                     values=list(
                         contrast=as.character(heatmapData$contrast[[row]]),
                         feature=as.character(heatmapData$feature[[row]]),
@@ -180,18 +206,20 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             miso_num_or_na(heatmapData$contribution[[row]]),
                         selected=if (isTRUE(heatmapData$missing[[row]]))
                             "No" else "Yes"))
+            })
+            miso_reconcile_table_rows(self$results$heatmapValues, heatmapRows)
         },
 
         .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_table(self$results$contrasts)
-            miso_clear_table(self$results$contributions)
-            miso_clear_table(self$results$variability)
-            miso_clear_table(self$results$means)
-            miso_clear_table(self$results$table)
-            miso_clear_table(self$results$assessment)
-            miso_clear_table(self$results$heatmapValues)
+            miso_clear_table_values(self$results$contrasts)
+            miso_clear_table_values(self$results$contributions)
+            miso_clear_table_values(self$results$variability)
+            miso_clear_table_values(self$results$means)
+            miso_clear_table_values(self$results$table)
+            miso_clear_table_values(self$results$assessment)
+            miso_clear_table_values(self$results$heatmapValues)
             self$results$contributionPlots$clear()
             self$results$contrasts$setNote(key="meaning", note="", init=FALSE)
             self$results$contributions$setNote(key="meaning", note="", init=FALSE)
@@ -213,6 +241,19 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results[[name]]$setVisible(FALSE)
             for (name in c("contrasts", "contributions"))
                 self$results[[name]]$setVisible(TRUE)
+        },
+
+        # Destructive row removal for keyed result tables on rerun paths that
+        # do not repopulate them: guidance, rejections, and failed descriptive
+        # or assessment runs must not leave stale or blank rows behind.
+        .discardKeyedRows = function() {
+            miso_clear_table(self$results$contrasts)
+            miso_clear_table(self$results$contributions)
+            miso_clear_table(self$results$variability)
+            miso_clear_table(self$results$means)
+            miso_clear_table(self$results$table)
+            miso_clear_table(self$results$assessment)
+            miso_clear_table(self$results$heatmapValues)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -372,38 +413,47 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
 
         .populateDescriptive = function(descriptive) {
-            for (index in seq_along(descriptive$contrastRows))
-                self$results$contrasts$addRow(
-                    rowKey=as.character(index),
-                    values=descriptive$contrastRows[[index]])
+            contrastRows <- lapply(seq_along(descriptive$contrastRows), function(index)
+                list(
+                    key=as.character(index),
+                    values=descriptive$contrastRows[[index]]))
+            miso_reconcile_table_rows(self$results$contrasts, contrastRows)
 
+            tableRows <- list()
+            variabilityRows <- list()
+            meansRows <- list()
             for (index in seq_along(descriptive$fullRows)) {
                 values <- descriptive$fullRows[[index]]
                 values$contrastIndex <- NULL
                 values$firstGroup <- NULL
                 values$secondGroup <- NULL
-                self$results$table$addRow(
-                    rowKey=as.character(index),
-                    values=values)
+                tableRows[[index]] <- list(key=as.character(index), values=values)
                 if (isTRUE(self$options$simperDetails)) {
-                    self$results$variability$addRow(
-                        rowKey=as.character(index),
+                    variabilityRows[[index]] <- list(
+                        key=as.character(index),
                         values=values[c(
                             "contrast", "feature", "average", "sd", "ratio")])
-                    self$results$means$addRow(
-                        rowKey=as.character(index),
+                    meansRows[[index]] <- list(
+                        key=as.character(index),
                         values=values[c(
                             "contrast", "feature", "meanFirst", "meanSecond")])
                 }
             }
-
-            for (index in seq_along(descriptive$displayRows)) {
-                values <- descriptive$displayRows[[index]]
-                self$results$contributions$addRow(
-                    rowKey=as.character(index),
-                    values=values[c(
-                        "contrast", "feature", "contribution", "cumulative")])
+            miso_reconcile_table_rows(self$results$table, tableRows)
+            if (length(variabilityRows) > 0L) {
+                miso_reconcile_table_rows(self$results$variability, variabilityRows)
+                miso_reconcile_table_rows(self$results$means, meansRows)
             }
+
+            contributionRows <- lapply(
+                seq_along(descriptive$displayRows), function(index) {
+                    values <- descriptive$displayRows[[index]]
+                    list(
+                        key=as.character(index),
+                        values=values[c(
+                            "contrast", "feature", "contribution", "cumulative")])
+                })
+            miso_reconcile_table_rows(self$results$contributions, contributionRows)
 
             private$.state$plotData <- do.call(
                 rbind,
@@ -506,6 +556,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             row <- 1L
+            assessmentRows <- list()
             for (values in displayRows) {
                 result <- adjusted[[values$contrastIndex]]
                 if (is.null(dim(result)) || ! values$feature %in% rownames(result))
@@ -514,8 +565,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 padj <- miso_num_or_na(result[values$feature, "padj"])
                 if (! is.finite(p))
                     next
-                self$results$assessment$addRow(
-                    rowKey=as.character(row),
+                assessmentRows[[length(assessmentRows) + 1L]] <- list(
+                    key=as.character(length(assessmentRows) + 1L),
                     values=list(
                         contrast=values$contrast,
                         feature=values$feature,
@@ -523,6 +574,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         padj=padj))
                 row <- row + 1L
             }
+            miso_reconcile_table_rows(self$results$assessment, assessmentRows)
 
             if (length(missingContrasts) > 0L)
                 private$.state$warnings <- c(

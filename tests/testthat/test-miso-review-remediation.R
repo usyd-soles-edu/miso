@@ -498,6 +498,115 @@ test_that("same-object reruns recompute after the filtered row set changes", {
         miso_expect_rerun_tracks_data(probe, miso_row_edit)
 })
 
+# --- P1 results-review remediation milestone 2: keyed row reconciliation ---
+#
+# Structural reruns (changed data signature or model inputs) may only rebuild
+# rows whose ordered key sequence actually changed. When every key survives a
+# rerun, miso_reconcile_table_rows() must refresh values through setRow so the
+# existing Cell objects stay referenced, and miso_clear_table_values() must
+# blank stale values without removing the keyed rows available for
+# reconciliation.
+
+miso_reconciliation_data <- function() {
+    data.frame(
+        sp1=c(1, 2, 1, 7, 8, 7, 3, 4, 3),
+        sp2=c(2, 1, 2, 8, 7, 8, 4, 3, 4),
+        sp3=c(1, 1, 2, 6, 7, 6, 3, 3, 2),
+        group=factor(rep(c("A", "B", "C"), each=3L)))
+}
+
+miso_reconciliation_analysis <- function(data) {
+    analysis <- permdispClass$new(options=permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123),
+        data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    analysis
+}
+
+miso_keyed_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+miso_reconciliation_row_values <- function(table, i) {
+    as.list(table$asDF[i, , drop=FALSE])
+}
+
+test_that("miso_reconcile_table_rows refreshes unchanged keys through the same cells", {
+    analysis <- miso_reconciliation_analysis(miso_reconciliation_data())
+    table <- analysis$results$distances
+    keys <- as.character(unlist(table$rowKeys))
+    cells <- miso_keyed_cells(table)
+    before <- table$asDF
+
+    rows <- lapply(seq_along(keys), function(i) {
+        values <- miso_reconciliation_row_values(table, i)
+        values$n <- values$n + 1L
+        values$distance <- values$distance + 1
+        list(key=keys[[i]], values=values)
+    })
+    miso_reconcile_table_rows(table, rows)
+
+    expect_identical(as.character(unlist(table$rowKeys)), keys)
+    expect_true(identical(miso_keyed_cells(table), cells))
+    expect_equal(table$asDF$n, before$n + 1L, tolerance=0)
+    expect_equal(table$asDF$distance, before$distance + 1, tolerance=0)
+})
+
+test_that("miso_reconcile_table_rows rebuilds when the ordered keys change", {
+    analysis <- miso_reconciliation_analysis(miso_reconciliation_data())
+    table <- analysis$results$distances
+    keys <- as.character(unlist(table$rowKeys))
+    cells <- miso_keyed_cells(table)
+    before <- table$asDF
+
+    kept <- seq_len(length(keys) - 1L)
+    rows <- lapply(kept, function(i)
+        list(key=keys[[i]], values=miso_reconciliation_row_values(table, i)))
+    miso_reconcile_table_rows(table, rows)
+
+    expect_identical(as.character(unlist(table$rowKeys)), keys[kept])
+    expect_false(identical(miso_keyed_cells(table), cells))
+    expect_identical(table$asDF$group, before$group[kept])
+})
+
+test_that("miso_reconcile_table_rows falls back to a keyed rebuild on duplicate keys", {
+    analysis <- miso_reconciliation_analysis(miso_reconciliation_data())
+    table <- analysis$results$distances
+    cells <- miso_keyed_cells(table)
+
+    rows <- list(
+        list(key="dup", values=miso_reconciliation_row_values(table, 1L)),
+        list(key="dup", values=miso_reconciliation_row_values(table, 2L)))
+    miso_reconcile_table_rows(table, rows)
+
+    expect_identical(as.character(unlist(table$rowKeys)), c("dup", "dup"))
+    expect_false(identical(miso_keyed_cells(table), cells))
+    expect_length(miso_keyed_cells(table), 2L)
+})
+
+test_that("miso_reconcile_table_rows clears the table for an empty target", {
+    analysis <- miso_reconciliation_analysis(miso_reconciliation_data())
+    table <- analysis$results$distances
+    miso_reconcile_table_rows(table, list())
+    expect_length(table$rowKeys, 0L)
+    expect_equal(nrow(table$asDF), 0L)
+})
+
+test_that("miso_clear_table_values blanks values while keeping rows and cells", {
+    analysis <- miso_reconciliation_analysis(miso_reconciliation_data())
+    table <- analysis$results$distances
+    keys <- as.character(unlist(table$rowKeys))
+    cells <- miso_keyed_cells(table)
+
+    miso_clear_table_values(table)
+    expect_identical(as.character(unlist(table$rowKeys)), keys)
+    expect_true(identical(miso_keyed_cells(table), cells))
+    expect_true(all(is.na(table$asDF$n)))
+    expect_true(all(is.na(table$asDF$distance)))
+    expect_true(all(vapply(seq_along(keys), function(i)
+        identical(table$columns[[1L]]$getCell(i)$value, ""), logical(1))))
+})
+
 test_that("table notes retain interpretation-critical method choices", {
     data <- data.frame(sp1=c(1,2,1,7,8,7,3,4,3), sp2=c(2,1,2,8,7,8,4,3,4), sp3=c(1,1,2,6,7,6,3,3,2), group=factor(rep(c("A", "B", "C"), each=3)), block=factor(rep(1:3, times=3)))
     anosimResult <- anosim(data=data, vars=c("sp1", "sp2", "sp3"), factor="group",

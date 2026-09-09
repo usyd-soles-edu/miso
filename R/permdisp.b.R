@@ -37,6 +37,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(
                     paste(
                         "PERMDISP tests whether groups differ in multivariate spread.",
@@ -48,12 +49,14 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             if (! hasVars) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "PERMDISP is waiting for Feature variables.",
                     "Add one or more numeric response columns, such as species abundances."))
                 return()
             }
             if (! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "PERMDISP is waiting for a Grouping variable.",
                     "Add one categorical variable containing at least two groups."))
@@ -63,15 +66,22 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state$cl <- miso_parallel(self$options$useParallel)
             on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
 
-            prep <- miso_prepare_resemblance(
-                data=self$data,
-                vars=self$options$vars,
-                factor=self$options$factor,
-                transform=self$options$transform,
-                distance=self$options$distance,
-                seed=self$options$seed,
-                distBinary=self$options$distBinary)
+            prep <- tryCatch(
+                miso_prepare_resemblance(
+                    data=self$data,
+                    vars=self$options$vars,
+                    factor=self$options$factor,
+                    transform=self$options$transform,
+                    distance=self$options$distance,
+                    seed=self$options$seed,
+                    distBinary=self$options$distBinary),
+                error=function(e) e)
+            if (inherits(prep, "error")) {
+                private$.discardKeyedRows()
+                stop(prep)
+            }
             if (isTRUE(prep$error)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(prep$message)
                 return()
             }
@@ -84,8 +94,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$restriction$warning)
 
             outcome <- private$.runDispersion(prep)
-            if (! isTRUE(outcome$success))
+            if (! isTRUE(outcome$success)) {
+                private$.discardKeyedRows()
                 return()
+            }
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(outcome$pairwiseShown)
         },
@@ -129,9 +141,9 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            miso_clear_table(self$results$distances)
-            miso_clear_table(self$results$anova)
-            miso_clear_table(self$results$pairwise)
+            miso_clear_table_values(self$results$distances)
+            miso_clear_table_values(self$results$anova)
+            miso_clear_table_values(self$results$pairwise)
             miso_clear_table(self$results$ordinationScores)
             ordinationScores <- self$results$ordinationScores
             ordinationScores$.__enclos_env__$private$.rowNames <- character()
@@ -156,6 +168,15 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results[[name]]$setVisible(FALSE)
             for (name in c("anova", "distances"))
                 self$results[[name]]$setVisible(TRUE)
+        },
+
+        # Destructive row removal for keyed result tables on rerun paths that
+        # do not repopulate them: guidance, rejections, and failed dispersion
+        # fits must not leave stale or blank rows behind.
+        .discardKeyedRows = function() {
+            miso_clear_table(self$results$distances)
+            miso_clear_table(self$results$anova)
+            miso_clear_table(self$results$pairwise)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -264,22 +285,23 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             atab <- as.data.frame(perm$tab)
             rn <- rownames(atab)
+            anovaRows <- list()
             for (i in seq_len(nrow(atab))) {
                 source <- trimws(rn[[i]])
                 notApplicable <- source %in% c("Residual", "Residuals")
-                values <- list(
-                    source=source,
-                    df=miso_num_or_na(atab[i, "Df"]),
-                    sumsqs=miso_num_or_na(atab[i, "Sum Sq"]),
-                    meansq=miso_num_or_na(atab[i, "Mean Sq"]),
-                    f=if (notApplicable) "" else miso_num_or_na(atab[i, "F"]),
-                    p=if (notApplicable) "" else miso_num_or_na(atab[i, "Pr(>F)"]))
-                self$results$anova$addRow(
-                    rowKey=as.character(i),
-                    values=values)
+                anovaRows[[i]] <- list(
+                    key=as.character(i),
+                    values=list(
+                        source=source,
+                        df=miso_num_or_na(atab[i, "Df"]),
+                        sumsqs=miso_num_or_na(atab[i, "Sum Sq"]),
+                        meansq=miso_num_or_na(atab[i, "Mean Sq"]),
+                        f=if (notApplicable) "" else miso_num_or_na(atab[i, "F"]),
+                        p=if (notApplicable) "" else miso_num_or_na(atab[i, "Pr(>F)"])))
                 if (! notApplicable && is.na(private$.state$pValue))
                     private$.state$pValue <- miso_num_or_na(atab[i, "Pr(>F)"])
             }
+            miso_reconcile_table_rows(self$results$anova, anovaRows)
             seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
             self$results$anova$setNote(
                 key="structuralCells",
@@ -309,6 +331,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             pairwiseShown <- FALSE
             if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) >= 3L)
                 pairwiseShown <- private$.runPairwise(fit, restriction)
+            if (! pairwiseShown)
+                miso_clear_table(self$results$pairwise)
 
             list(success=TRUE, pairwiseShown=pairwiseShown)
         },
@@ -348,6 +372,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 stats::p.adjust(pperm, method=self$options$dispAdjust)
             failed <- character()
             shown <- 0L
+            pairwiseRows <- list()
             for (i in seq_along(pperm)) {
                 label <- if (length(labels) >= i && nzchar(labels[[i]]))
                     labels[[i]]
@@ -359,8 +384,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     next
                 }
                 shown <- shown + 1L
-                self$results$pairwise$addRow(
-                    rowKey=as.character(shown),
+                pairwiseRows[[shown]] <- list(
+                    key=as.character(shown),
                     values=list(
                         contrast=gsub("-", " vs ", label, fixed=TRUE),
                         statistic=miso_num_or_na(tstat[[i]]),
@@ -376,6 +401,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "."))
             if (shown == 0L)
                 return(FALSE)
+            miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
             self$results$pairwise$setNote(
                 key="scope",
@@ -397,10 +423,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDistanceSummary = function(summaries) {
-            for (i in seq_len(nrow(summaries))) {
+            distanceRows <- lapply(seq_len(nrow(summaries)), function(i) {
                 values <- summaries[i, , drop=FALSE]
-                self$results$distances$addRow(
-                    rowKey=as.character(i),
+                list(
+                    key=as.character(i),
                     values=list(
                         group=values$group,
                         n=values$n,
@@ -412,7 +438,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         sd=miso_num_or_na(values$sd),
                         min=miso_num_or_na(values$min),
                         max=miso_num_or_na(values$max)))
-            }
+            })
+            miso_reconcile_table_rows(self$results$distances, distanceRows)
             self$results$distances$setNote(
                 key="method",
                 note=sprintf(

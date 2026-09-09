@@ -235,13 +235,19 @@ miso_clear_table <- function(table) {
         table$.__enclos_env__$private$.rowNames <- character()
 }
 
+# Typed blank values for one row of a result table: blanks never replace the
+# Cell objects, only their values.
+miso_blank_table_values <- function(table) {
+    setNames(lapply(table$columns, function(column) {
+        if (column$type %in% c("integer", "number")) NA_real_ else ""
+    }), vapply(table$columns, `[[`, character(1), "name"))
+}
+
 # Fixed-shape result tables keep their schema rows for the whole analysis
 # lifecycle. Clearing writes typed blanks into those rows instead of replacing
 # the Cell objects, so display-only reruns cannot collapse the report.
 miso_clear_fixed_table <- function(table, rows) {
-    values <- setNames(lapply(table$columns, function(column) {
-        if (column$type %in% c("integer", "number")) NA_real_ else ""
-    }), vapply(table$columns, `[[`, character(1), "name"))
+    values <- miso_blank_table_values(table)
     if (length(table$rowKeys) == 0L)
         for (rowNo in seq_len(rows))
             table$addRow(rowKey=as.character(rowNo), values=values)
@@ -263,9 +269,7 @@ miso_set_fixed_row <- function(table, rowNo, values) {
         }
     }
     if (length(table$rowKeys) < rowNo) {
-        blank <- setNames(lapply(table$columns, function(column) {
-            if (column$type %in% c("integer", "number")) NA_real_ else ""
-        }), vapply(table$columns, `[[`, character(1), "name"))
+        blank <- miso_blank_table_values(table)
         for (key in seq.int(length(table$rowKeys) + 1L, rowNo))
             table$addRow(rowKey=as.character(key), values=blank)
     }
@@ -300,6 +304,39 @@ miso_add_or_set_row <- function(table, rowKey, values) {
     else
         table$addRow(rowKey=as.character(rowKey), values=values)
     invisible(NULL)
+}
+
+# Value-blanking clear for keyed result tables: rewrites blank values into the
+# existing rows so stale content cannot survive a rerun, while the row keys
+# and Cell objects stay in place for in-place reconciliation.
+miso_clear_table_values <- function(table) {
+    values <- miso_blank_table_values(table)
+    for (rowNo in seq_len(length(table$rowKeys)))
+        table$setRow(rowNo=rowNo, values=values)
+    invisible(NULL)
+}
+
+# Ordered keyed reconciliation for variable-cardinality result tables. jamovi
+# reruns the same analysis object after data edits, so a table whose ordered
+# row-key sequence is unchanged must refresh its values through setRow, which
+# keeps the existing Cell objects, rather than deleteRows plus addRow, which
+# replaces every Cell and makes the report collapse. Any change to the ordered
+# key sequence, a duplicate target key, or an empty target falls back to the
+# keyed rebuild in miso_clear_table(), retaining the structural rebuild
+# behaviour.
+miso_reconcile_table_rows <- function(table, rows) {
+    keys <- vapply(rows, function(row) as.character(row$key), character(1))
+    if (length(rows) > 0L && anyDuplicated(keys) == 0L &&
+            identical(as.character(unlist(table$rowKeys, use.names=FALSE)),
+                keys)) {
+        for (i in seq_along(rows))
+            table$setRow(rowNo=i, values=rows[[i]]$values)
+        return(invisible(TRUE))
+    }
+    miso_clear_table(table)
+    for (i in seq_along(rows))
+        table$addRow(rowKey=keys[[i]], values=rows[[i]]$values)
+    invisible(TRUE)
 }
 
 miso_set_seed <- function(prep) {

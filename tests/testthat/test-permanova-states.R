@@ -1151,3 +1151,48 @@ test_that("PERMANOVA keeps interpretation settings in surviving table notes", {
     expect_true(result$table$visible)
     expect_match(miso_table_note(result$table, "method"), "Transformation|restriction|Permutation")
 })
+
+miso_permanova_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+test_that("value-only data edits refresh term rows and keep their cells", {
+    data <- permanova_state_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        permPairwise=TRUE, permN=19, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    suppressMessages(suppressWarnings(analysis$run()))
+    keys <- analysis$results$table$rowKeys
+    cells <- miso_permanova_cells(analysis$results$table)
+    pairwiseKeys <- analysis$results$pairwise$rowKeys
+    pairwiseCells <- miso_permanova_cells(analysis$results$pairwise)
+    before <- analysis$results$table$asDF
+
+    # Same samples, groups, and model terms; only feature values change, so
+    # the data signature changes but every row key survives the rerun.
+    edited <- permanova_state_data()
+    edited$sp1 <- c(2, 3, 2, 6, 9, 6, 4, 3, 2)
+    edited$sp2 <- c(3, 2, 3, 7, 8, 7, 3, 5, 3)
+    private <- analysis$.__enclos_env__$private
+    private$.data$sp1 <- edited$sp1
+    private$.data$sp2 <- edited$sp2
+    suppressMessages(suppressWarnings(analysis$run()))
+
+    expect_identical(analysis$results$table$rowKeys, keys)
+    expect_true(identical(miso_permanova_cells(analysis$results$table), cells))
+    expect_identical(analysis$results$pairwise$rowKeys, pairwiseKeys)
+    expect_true(identical(
+        miso_permanova_cells(analysis$results$pairwise), pairwiseCells))
+    expect_false(isTRUE(all.equal(before, analysis$results$table$asDF)))
+
+    fresh <- permanovaClass$new(options=permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        permPairwise=TRUE, permN=19, seed=123), data=edited)
+    suppressMessages(suppressWarnings(fresh$run()))
+    expect_equal(
+        analysis$results$table$asDF, fresh$results$table$asDF, tolerance=1e-12)
+    expect_equal(
+        analysis$results$pairwise$asDF, fresh$results$pairwise$asDF,
+        tolerance=1e-12)
+})

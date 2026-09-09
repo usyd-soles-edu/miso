@@ -31,6 +31,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(
                     paste(
                         "ANOSIM compares ranked between-group and within-group dissimilarities.",
@@ -42,34 +43,44 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             if (! hasVars) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "ANOSIM is waiting for Feature variables.",
                     "Add one or more numeric response columns, such as species abundances."))
                 return()
             }
             if (! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "ANOSIM is waiting for a Grouping variable.",
                     "Add one categorical variable containing at least two groups."))
                 return()
             }
 
-            prep <- miso_prepare_resemblance(
-                data=self$data,
-                vars=self$options$vars,
-                factor=self$options$factor,
-                transform=self$options$transform,
-                distance=self$options$distance,
-                seed=self$options$seed,
-                strata=self$options$strata,
-                distBinary=self$options$distBinary)
+            prep <- tryCatch(
+                miso_prepare_resemblance(
+                    data=self$data,
+                    vars=self$options$vars,
+                    factor=self$options$factor,
+                    transform=self$options$transform,
+                    distance=self$options$distance,
+                    seed=self$options$seed,
+                    strata=self$options$strata,
+                    distBinary=self$options$distBinary),
+                error=function(e) e)
+            if (inherits(prep, "error")) {
+                private$.discardKeyedRows()
+                stop(prep)
+            }
             if (isTRUE(prep$error)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(prep$message)
                 return()
             }
 
             private$.state$restriction <- private$.restrictionState(prep)
             if (! is.null(private$.state$restriction$error)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(private$.state$restriction$error)
                 return()
             }
@@ -86,12 +97,16 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Parallel processing was requested but unavailable;",
                         "the analysis ran serially."))
 
-            if (! private$.runGlobal(prep))
+            if (! private$.runGlobal(prep)) {
+                private$.discardKeyedRows()
                 return()
+            }
 
             pairwiseShown <- FALSE
             if (isTRUE(self$options$anosimPairwise) && nlevels(prep$group) >= 3L)
                 pairwiseShown <- private$.runPairwise(prep)
+            if (! pairwiseShown)
+                miso_clear_table(self$results$pairwise)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(pairwiseShown)
         },
@@ -109,10 +124,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             miso_clear_fixed_table(self$results$global, 1L)
-            miso_clear_table(self$results$pairwise)
-            miso_clear_table(self$results$rankSummary)
-            rankSummary <- self$results$rankSummary
-            rankSummary$.__enclos_env__$private$.rowNames <- character()
+            miso_clear_table_values(self$results$pairwise)
+            miso_clear_table_values(self$results$rankSummary)
             self$results$global$setNote(key="meaning", note="")
             self$results$pairwise$setNote(key="scope", note="")
             self$results$rankPlotDescription$setContent("")
@@ -126,6 +139,14 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results[[name]]$setVisible(FALSE)
             for (name in c("global"))
                 self$results[[name]]$setVisible(TRUE)
+        },
+
+        # Destructive row removal for keyed result tables on rerun paths that
+        # do not repopulate them: guidance, rejections, and failed global fits
+        # must not leave stale or blank rows behind.
+        .discardKeyedRows = function() {
+            miso_clear_table(self$results$pairwise)
+            miso_clear_table(self$results$rankSummary)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -314,6 +335,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     as.integer(self$options$anosimN)
 
             private$.state$rankPlotData <- private$.prepareRankPlotData(fit)
+            if (is.null(private$.state$rankPlotData))
+                miso_clear_table(self$results$rankSummary)
             self$results$rankPlot$setState(private$.state$rankPlotData)
             private$.populateRankDiagnostic()
 
@@ -404,13 +427,13 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(diagnostic))
                 return()
             categories <- levels(diagnostic$all$category)
-            for (i in seq_along(categories)) {
+            rankRows <- lapply(seq_along(categories), function(i) {
                 category <- categories[[i]]
                 values <- diagnostic$all$rank[
                     diagnostic$all$category == category &
                     is.finite(diagnostic$all$rank)]
-                self$results$rankSummary$addRow(
-                    rowKey=as.character(i),
+                list(
+                    key=as.character(i),
                     values=list(
                         category=category,
                         pairs=length(values),
@@ -419,7 +442,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             values, .25, names=FALSE)),
                         q3=unname(stats::quantile(
                             values, .75, names=FALSE))))
-            }
+            })
+            miso_reconcile_table_rows(self$results$rankSummary, rankRows)
             disclosure <- .misoPlotDisclosure(
                 diagnostic$displayed,
                 diagnostic$total,
@@ -575,16 +599,17 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pvals
             else
                 stats::p.adjust(pvals, method=self$options$anosimAdjust)
-            for (i in seq_along(successful)) {
+            pairwiseRows <- lapply(seq_along(successful), function(i) {
                 row <- successful[[i]]
-                self$results$pairwise$addRow(
-                    rowKey=as.character(i),
+                list(
+                    key=as.character(i),
                     values=list(
                         contrast=row$contrast,
                         r=row$r,
                         p=row$p,
                         padj=adjusted[[i]]))
-            }
+            })
+            miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
             self$results$pairwise$setNote(
                 key="scope",
                 note=sprintf(
