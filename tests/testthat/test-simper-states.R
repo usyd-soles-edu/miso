@@ -177,8 +177,8 @@ test_that("SIMPER transform reference scenario requests the optional mean tables
     scenario <- scenarios[scenarios$scenario_id == "simper-small-transform", ]
     expect_equal(nrow(scenario), 1L)
     expect_match(scenario$model_or_options, "details=true", fixed=TRUE)
-    expect_match(scenario$result_slot, "Contribution variability", fixed=TRUE)
-    expect_match(scenario$result_slot, "Group means", fixed=TRUE)
+    expect_match(scenario$result_slot, "Contribution Variability", fixed=TRUE)
+    expect_match(scenario$result_slot, "Group Means", fixed=TRUE)
 
     generator <- paste(
         readLines(test_path("..", "manual", "generate-reference-results.R")),
