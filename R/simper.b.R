@@ -640,7 +640,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .plotDescription = function(contrast) {
             miso_html_block(
-                "Shows the leading feature contributions for each contrast.",
+                character(0),
                 ariaLabel=paste("About SIMPER contribution plot for", contrast),
                 title="Contribution plot")
         },
@@ -649,7 +649,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(private$.heatmapData()))
                 return("")
             miso_html_block(
-                "Compares leading feature contributions across contrasts.",
+                character(0),
                 ariaLabel="About the SIMPER contrast heatmap",
                 title="Contrast overview heatmap")
         },

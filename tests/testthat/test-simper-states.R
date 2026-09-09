@@ -695,15 +695,54 @@ test_that("two-group plots omit features only from images and compact rows", {
     description <- gsub(
         "[[:space:]]+", " ",
         as.character(result$contributionPlots$items[[1L]]$description$asString()))
-    expect_match(description,
-        "Shows the leading feature contributions for each contrast", fixed=TRUE)
+    expect_false(grepl(
+        "Shows the leading feature contributions for each contrast",
+        description, fixed=TRUE))
     compact_description <- gsub(
         "[[:space:]]+", " ",
         as.character(
             compact_only$contributionPlots$items[[1L]]$description$asString()))
-    expect_match(compact_description,
-        "Shows the leading feature contributions for each contrast", fixed=TRUE)
+    expect_false(grepl(
+        "Shows the leading feature contributions for each contrast",
+        compact_description, fixed=TRUE))
     expect_identical(result$table$asDF, compact_only$table$asDF)
+})
+
+test_that("successful SIMPER contribution and heatmap descriptions keep titles and labels without generic prose", {
+    data <- simper_many_feature_data(groups=LETTERS[1:2])
+    vars <- names(data)[names(data) != "group"]
+    result <- suppressWarnings(suppressMessages(do.call(simper, list(
+        data=data,
+        vars=vars,
+        factor="group",
+        simperHeatmap=TRUE))))
+
+    expect_true(result$contributionPlots$visible)
+    expect_true(result$heatmapDescription$visible)
+    for (item in result$contributionPlots$items) {
+        description <- gsub(
+            "[[:space:]]+", " ",
+            as.character(item$description$asString()))
+        expect_false(grepl(
+            "Shows the leading feature contributions for each contrast",
+            description, fixed=TRUE), info=item$title)
+        expect_match(
+            description,
+            paste("About SIMPER contribution plot for", item$title),
+            fixed=TRUE, info=item$title)
+        expect_match(description, "Contribution plot", fixed=TRUE,
+            info=item$title)
+    }
+    heatmapDescription <- gsub(
+        "[[:space:]]+", " ",
+        as.character(result$heatmapDescription$asString()))
+    expect_false(grepl(
+        "Compares leading feature contributions across contrasts",
+        heatmapDescription, fixed=TRUE))
+    expect_match(heatmapDescription, "About the SIMPER contrast heatmap",
+        fixed=TRUE)
+    expect_match(heatmapDescription, "Contrast overview heatmap",
+        fixed=TRUE)
 })
 
 test_that("ten contrast plots stay filtered while every detailed table is complete", {
@@ -730,7 +769,7 @@ test_that("ten contrast plots stay filtered while every detailed table is comple
         function(item) gsub(
             "[[:space:]]+", " ", as.character(item$description$asString())),
         character(1))
-    expect_true(all(grepl(
+    expect_false(any(grepl(
         "Shows the leading feature contributions for each contrast",
         descriptions, fixed=TRUE)))
 })
@@ -780,8 +819,9 @@ test_that("SIMPER ggplot builder bounds labels and preserves full table names", 
     description <- as.character(
         analysis$results$contributionPlots$items[[1L]]$description$asString())
     description_text <- gsub("[[:space:]]+", " ", description)
-    expect_match(description_text,
-        "Shows the leading feature contributions for each contrast", fixed=TRUE)
+    expect_false(grepl(
+        "Shows the leading feature contributions for each contrast",
+        description_text, fixed=TRUE))
     expect_lte(nchar(description), 1250L)
     expect_false(grepl(first_feature, description, fixed=TRUE))
 })

@@ -266,7 +266,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             self$results$ordinationDescription$setContent(miso_html_block(
-                "Maps the main dimensions of dissimilarity among samples.",
+                character(0),
                 ariaLabel="About PCoA ordination",
                 title="Principal coordinates ordination"))
         },

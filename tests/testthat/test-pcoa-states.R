@@ -396,8 +396,9 @@ test_that("PCoA analysis hides empty output and clears stale output", {
         identical(result$eigenvalues$getCell(
             rowKey=as.character(i), col="explained")$value, "")
     }, logical(1))))
-    expect_match(miso_squish_result(result$ordinationDescription),
-        "Maps the main dimensions of dissimilarity among samples")
+    expect_false(grepl(
+        "Maps the main dimensions of dissimilarity among samples",
+        miso_squish_result(result$ordinationDescription), fixed=TRUE))
 
     varsOption <- analysis$options$option("vars")
     varsOption$.__enclos_env__$private$.value <- character()
@@ -409,6 +410,37 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     expect_false(result$ordination$visible)
 })
 
+
+test_that("successful PCoA description keeps title, label, and shell without generic prose", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data, pcoa_feature_names(data), factor="group")
+    result <- analysis$results
+    expect_true(result$ordinationDescription$visible)
+    expect_true(result$ordination$visible)
+    description <- miso_squish_result(result$ordinationDescription)
+    expect_false(grepl(
+        "Maps the main dimensions of dissimilarity among samples",
+        description, fixed=TRUE))
+    expect_match(description, "aria-label=\"About PCoA ordination\"",
+        fixed=TRUE)
+    expect_match(description, "Principal coordinates ordination",
+        fixed=TRUE)
+})
+
+test_that("unavailable PCoA ordination keeps its explanation without success prose", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data, "feature_01", distance="euclidean")
+    result <- analysis$results
+    expect_false(result$ordination$visible)
+    expect_true(result$ordinationDescription$visible)
+    description <- miso_squish_result(result$ordinationDescription)
+    expect_match(description, "A two-dimensional plot is unavailable",
+        fixed=TRUE)
+    expect_match(description, "retain the fitted result", fixed=TRUE)
+    expect_false(grepl(
+        "Maps the main dimensions of dissimilarity among samples",
+        description, fixed=TRUE))
+})
 
 test_that("PCoA plot options do not change numerical results", {
     data <- pcoa_small_data()
