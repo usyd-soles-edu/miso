@@ -513,7 +513,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$companionPcoaDescription$setContent(
                 miso_html_block(
                     if (available)
-                        "Visualises sample resemblance and group positions alongside the test."
+                        character(0)
                     else
                         paste(
                             "A two-dimensional companion plot is unavailable.",

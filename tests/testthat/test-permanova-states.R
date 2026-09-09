@@ -597,9 +597,9 @@ test_that("simple companion PCoA automatically displays the primary factor", {
     expect_identical(result$companionPcoaCentroids$asDF$n,
         rep(3L, 3L))
     description <- miso_squish_result(result$companionPcoaDescription)
-    expect_match(description,
+    expect_false(grepl(
         "Visualises sample resemblance and group positions alongside the test",
-        fixed=TRUE)
+        description, fixed=TRUE))
     expect_match(description, 'aria-label="About PERMANOVA companion PCoA"',
         fixed=TRUE)
 })
