@@ -157,6 +157,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.populateOptionalDetailRows(descriptive)
             }
             self$results$variability$setVisible(details && !is.null(descriptive))
+            self$results$means$setVisible(details && !is.null(descriptive))
 
             if (heatmapChanged) {
                 miso_clear_table(self$results$heatmapValues)

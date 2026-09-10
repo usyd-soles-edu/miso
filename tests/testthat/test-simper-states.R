@@ -1198,3 +1198,30 @@ test_that("data edits that drop features rebuild SIMPER rows and stay fresh", {
     expect_equal(
         analysis$results$table$asDF, fresh$results$table$asDF, tolerance=1e-12)
 })
+
+test_that("SIMPER detail toggles show and hide both optional tables", {
+    for (initialDetails in c(FALSE, TRUE)) {
+        options <- simperOptions$new(
+            vars=c("sp1", "sp2", "sp3"), factor="group",
+            simperDetails=initialDetails, seed=123)
+        analysis <- simperClass$new(options=options, data=simper_state_data())
+        suppressWarnings(suppressMessages(analysis$run()))
+        contributions <- analysis$results$contributions$asDF
+        cells <- miso_simper_cells(analysis$results$contributions)
+
+        details <- !initialDetails
+        detailsOption <- options$option("simperDetails")
+        detailsOption$.__enclos_env__$private$.value <- details
+        suppressWarnings(suppressMessages(analysis$run()))
+        fresh <- suppressWarnings(suppressMessages(simper(
+            data=simper_state_data(), vars=c("sp1", "sp2", "sp3"),
+            factor="group", simperDetails=details, seed=123)))
+        for (name in c("variability", "means")) {
+            expect_identical(analysis$results[[name]]$visible, details, info=name)
+            expect_equal(analysis$results[[name]]$asDF, fresh[[name]]$asDF,
+                info=name)
+        }
+        expect_identical(analysis$results$contributions$asDF, contributions)
+        expect_identical(miso_simper_cells(analysis$results$contributions), cells)
+    }
+})
