@@ -451,8 +451,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDistanceDescription = function() {
-            if (is.null(private$.state$distanceDiagnostic) ||
-                    !isTRUE(self$options$showDistancePlot))
+            if (is.null(private$.state$distanceDiagnostic))
                 return()
             self$results$plotDescription$setContent(miso_html_block(
                 "Shows the distribution of distances to centre within each group.",
@@ -463,9 +462,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .populateOrdination = function ()
         {
             ordination <- private$.state$ordination
-            if (!isTRUE(self$options$showOrdinationPlot))
-                return()
-            private$.populateOrdinationScores()
+            if (isTRUE(self$options$showOrdinationPlot))
+                private$.populateOrdinationScores()
+            # Descriptions, including unavailable-result explanations, must
+            # already exist when a display-only rerun enables the plot.
             if (is.null(ordination) || !isTRUE(ordination$available)) {
                 reason <- if (!is.null(ordination$reason))
                     ordination$reason

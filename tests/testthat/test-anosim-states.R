@@ -620,6 +620,29 @@ miso_anosim_cells <- function(table) {
     table$columns[[1L]]$.__enclos_env__$private$.cells
 }
 
+test_that("enabling the rank plot restores its description without changing tables", {
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showRankPlot=FALSE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=anosim_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- analysis$results$global$asDF
+    cells <- miso_anosim_cells(analysis$results$rankSummary)
+    option <- options$option("showRankPlot")
+    option$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    fresh <- suppressWarnings(suppressMessages(anosim(
+        data=anosim_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", showRankPlot=TRUE, anosimN=19, seed=123)))
+    expect_identical(analysis$results$rankPlotDescription$asString(),
+        fresh$rankPlotDescription$asString())
+    expect_match(miso_squish_result(analysis$results$rankPlotDescription),
+        "ranked dissimilarities underlying the ANOSIM statistic")
+    expect_equal(analysis$results$global$asDF, before, tolerance=0)
+    expect_identical(miso_anosim_cells(analysis$results$rankSummary), cells)
+})
+
+
 test_that("value-only data edits refresh ANOSIM tables and keep their cells", {
     data <- anosim_state_data()
     options <- anosimOptions$new(

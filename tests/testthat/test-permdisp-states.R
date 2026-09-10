@@ -929,6 +929,38 @@ miso_permdisp_cells <- function(table) {
     table$columns[[1L]]$.__enclos_env__$private$.cells
 }
 
+test_that("enabling dispersion diagnostics restores descriptions without changing inference", {
+    data <- data.frame(sp1=1:9, sp2=(1:9)*2,
+        group=factor(rep(c("A", "B", "C"), each=3)))
+    options <- permdispOptions$new(vars=c("sp1", "sp2"), factor="group",
+        distance="euclidean", showDistancePlot=FALSE,
+        showOrdinationPlot=FALSE, permN=19, seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- analysis$results$anova$asDF
+    cells <- miso_permdisp_cells(analysis$results$distances)
+    for (name in c("showDistancePlot", "showOrdinationPlot")) {
+        option <- options$option(name)
+        option$.__enclos_env__$private$.value <- TRUE
+    }
+    suppressWarnings(suppressMessages(analysis$run()))
+    fresh <- suppressWarnings(suppressMessages(permdisp(
+        data=data, vars=c("sp1", "sp2"), factor="group",
+        distance="euclidean", showDistancePlot=TRUE,
+        showOrdinationPlot=TRUE, permN=19, seed=123)))
+    for (name in c("plotDescription", "ordinationDescription"))
+        expect_identical(analysis$results[[name]]$asString(),
+            fresh[[name]]$asString())
+    expect_match(miso_squish_result(analysis$results$ordinationDescription),
+        "fewer than two usable axes")
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_equal(analysis$results$anova$asDF, before, tolerance=0)
+    expect_identical(miso_permdisp_cells(analysis$results$distances), cells)
+    expect_equal(analysis$results$ordinationScores$asDF,
+        fresh$ordinationScores$asDF)
+})
+
+
 test_that("value-only data edits refresh dispersion tables and keep their cells", {
     data <- permdisp_state_data()
     options <- permdispOptions$new(

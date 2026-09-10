@@ -458,11 +458,12 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         groupCount)
                 else
                     character()
-                self$results$rankPlotDescription$setContent(miso_html_block(
-                    "Shows the ranked dissimilarities underlying the ANOSIM statistic.",
-                    ariaLabel="About ANOSIM rank distributions",
-                    title="Ranked-dissimilarity plot"))
             }
+            # Cache description content even while its display is disabled.
+            self$results$rankPlotDescription$setContent(miso_html_block(
+                "Shows the ranked dissimilarities underlying the ANOSIM statistic.",
+                ariaLabel="About ANOSIM rank distributions",
+                title="Ranked-dissimilarity plot"))
         },
 
         .buildRankPlot = function(diagnostic = private$.state$rankPlotData) {
