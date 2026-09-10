@@ -1320,7 +1320,10 @@ test_that("nMDS migration scenarios use current result names", {
         stringsAsFactors=FALSE,
         check.names=FALSE)
     scenarios <- scenarios[scenarios$analysis == "nMDS", ]
-    # Result-slot titles and order follow jamovi/nmds.r.yaml.
+    # Slot titles are the jamovi/nmds.r.yaml result titles; the ordering
+    # is the scenarios.csv runtime output order, not the yaml
+    # declaration order (the yaml places Site Scores before the
+    # diagnostics slots).
     expectedOutputs <- paste(
         "nMDS Ordination",
         "Stress and Convergence Diagnostics",
