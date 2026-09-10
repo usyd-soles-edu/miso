@@ -708,41 +708,18 @@ test_that("two-group plots omit features only from images and compact rows", {
     expect_identical(result$table$asDF, compact_only$table$asDF)
 })
 
-test_that("successful SIMPER contribution and heatmap descriptions keep titles and labels without generic prose", {
-    data <- simper_many_feature_data(groups=LETTERS[1:2])
-    vars <- names(data)[names(data) != "group"]
-    result <- suppressWarnings(suppressMessages(do.call(simper, list(
-        data=data,
-        vars=vars,
-        factor="group",
-        simperHeatmap=TRUE))))
-
+test_that("successful SIMPER hides duplicate descriptions and retains native plots", {
+    result <- suppressWarnings(suppressMessages(simper(
+        data=simper_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", simperHeatmap=TRUE)))
     expect_true(result$contributionPlots$visible)
-    expect_true(result$heatmapDescription$visible)
+    expect_true(result$heatmap$visible)
+    expect_false(result$heatmapDescription$visible)
     for (item in result$contributionPlots$items) {
-        description <- gsub(
-            "[[:space:]]+", " ",
-            as.character(item$description$asString()))
-        expect_false(grepl(
-            "Shows the leading feature contributions for each contrast",
-            description, fixed=TRUE), info=item$title)
-        expect_match(
-            description,
-            paste("About SIMPER contribution plot for", item$title),
-            fixed=TRUE, info=item$title)
-        expect_match(description, "Contribution plot", fixed=TRUE,
-            info=item$title)
+        expect_false(item$description$visible)
+        expect_true(nzchar(item$title))
+        expect_false(is.null(item$plot$state))
     }
-    heatmapDescription <- gsub(
-        "[[:space:]]+", " ",
-        as.character(result$heatmapDescription$asString()))
-    expect_false(grepl(
-        "Compares leading feature contributions across contrasts",
-        heatmapDescription, fixed=TRUE))
-    expect_match(heatmapDescription, "About the SIMPER contrast heatmap",
-        fixed=TRUE)
-    expect_match(heatmapDescription, "Contrast overview heatmap",
-        fixed=TRUE)
 })
 
 test_that("ten contrast plots stay filtered while every detailed table is complete", {
@@ -951,7 +928,7 @@ test_that("two groups default to one contrast plot and optional heatmap is bound
     expect_false(base$heatmapDescription$visible)
     expect_false(base$heatmapValues$visible)
     expect_true(with_heatmap$heatmap$visible)
-    expect_true(with_heatmap$heatmapDescription$visible)
+    expect_false(with_heatmap$heatmapDescription$visible)
     expect_true(with_heatmap$heatmapValues$visible)
     expect_lte(with_heatmap$heatmap$width, 600L)
     expect_lte(with_heatmap$heatmap$height, 650L)
@@ -1082,7 +1059,7 @@ test_that("contribution plots and heatmap render from serialized Image state", {
             cumulative=state$simperCum)
         expect_identical(
             plotFromState$labels$subtitle,
-            "Top 3 or 100% cumulative; threshold-crossing feature included",
+            "Top 3 or 100% cumulative; crossing feature included",
             info=image$key)
     }
 
@@ -1121,12 +1098,12 @@ test_that("structural display filtering rebuilds contribution rows while array i
     expect_length(analysis$results$contributionPlots$items, 3L)
 })
 
-test_that("SIMPER keeps method settings in surviving table notes", {
+test_that("SIMPER omits routine method settings from untransformed table notes", {
     result <- suppressWarnings(suppressMessages(simper(
         data=simper_state_data(), vars=c("sp1", "sp2", "sp3"),
         factor="group", simperN=19, seed=123)))
     expect_true(result$contributions$visible)
-    expect_match(miso_table_note(result$contributions, "meaning"), "contribution|dissimilarity")
+    expect_identical(miso_table_note(result$contrasts, "meaning"), "")
 })
 
 miso_simper_cells <- function(table) {
@@ -1223,5 +1200,110 @@ test_that("SIMPER detail toggles show and hide both optional tables", {
         }
         expect_identical(analysis$results$contributions$asDF, contributions)
         expect_identical(miso_simper_cells(analysis$results$contributions), cells)
+    }
+})
+
+test_that("SIMPER publication notes follow transformation and actual filtering", {
+    data <- simper_state_data()
+    options <- simperOptions$new(vars=c("sp1", "sp2", "sp3"), factor="group",
+        simperTop=50, simperCum=100, simperDetails=TRUE, simperHeatmap=TRUE)
+    analysis <- simperClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    result <- analysis$results
+    for (name in c("contrasts", "means", "contributions"))
+        expect_identical(miso_table_note(result[[name]], "meaning"), "")
+    expect_identical(miso_table_note(result$variability, "meaning"),
+        "SD describes variation in contributions across between-group sample pairs.")
+    expect_false(result$heatmapDescription$visible)
+    for (item in result$contributionPlots$items) {
+        expect_false(item$description$visible)
+        expect_false(item$plot$state$isFiltered)
+        plot <- analysis$.__enclos_env__$private$.buildContributionPlot(
+            item$plot$state$rows, item$title, isFiltered=item$plot$state$isFiltered)
+        expect_null(plot$labels$subtitle)
+    }
+    changedOption <- options$option("simperHeatmap")
+    changedOption$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+    changedOption <- options$option("simperHeatmap")
+    changedOption$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(result$heatmapDescription$visible)
+    expect_true(result$heatmap$visible)
+    changedOption <- options$option("transform")
+    changedOption$.__enclos_env__$private$.value <- "sqrt"
+    changedOption <- options$option("simperTop")
+    changedOption$.__enclos_env__$private$.value <- 1
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_match(miso_table_note(result$means, "meaning"), "Square root", fixed=TRUE)
+    expect_match(miso_table_note(result$contributions, "meaning"), "not renormalised", fixed=TRUE)
+    expect_true(all(vapply(result$contributionPlots$items,
+        function(item) item$plot$state$isFiltered, logical(1))))
+    changedOption <- options$option("transform")
+    changedOption$.__enclos_env__$private$.value <- "none"
+    changedOption <- options$option("simperTop")
+    changedOption$.__enclos_env__$private$.value <- 50
+    suppressWarnings(suppressMessages(analysis$run()))
+    for (name in c("contrasts", "means", "contributions")) {
+        expect_null(result[[name]]$.__enclos_env__$private$.notes[["meaning"]])
+        expect_false(grepl("Note.", as.character(result[[name]]$asString()), fixed=TRUE))
+    }
+})
+
+
+test_that("SIMPER caption filtering survives saved state and legacy states", {
+    analysis <- simperClass$new(options=simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", simperTop=1),
+        data=simper_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    private <- analysis$.__enclos_env__$private
+    state <- unserialize(serialize(analysis$results$contributionPlots$items[[1L]]$plot$state, NULL))
+    # A zero-contribution feature can be omitted even when cumulative is 100%.
+    state$rows$cumulative <- 100
+    plot <- private$.buildContributionPlot(state$rows, "A vs B",
+        top=state$simperTop, cumulative=state$simperCum, isFiltered=state$isFiltered)
+    expect_match(plot$labels$subtitle, "crossing feature included", fixed=TRUE)
+    # Legacy images infer omission only when their displayed cumulative total
+    # establishes it; absence of the added flag must remain renderable.
+    state$rows$cumulative <- 80
+    legacy <- private$.buildContributionPlot(state$rows, "A vs B",
+        top=state$simperTop, cumulative=state$simperCum)
+    expect_identical(legacy$labels$subtitle, plot$labels$subtitle)
+    private$.state$descriptive$fullRows[[1L]]$sd <- NA_real_
+    private$.setTableNotes(NULL)
+    expect_match(miso_table_note(analysis$results$variability, "meaning"),
+        "Blank SD or ratio cells indicate unavailable values.", fixed=TRUE)
+})
+
+
+test_that("SIMPER variability notes describe full detail rows even when plots omit features", {
+    analysis <- simperClass$new(options=simperOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", simperTop=1,
+        simperDetails=TRUE), data=simper_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    private <- analysis$.__enclos_env__$private
+    descriptive <- private$.state$descriptive
+    displayed <- vapply(descriptive$displayRows, function(row)
+        paste(row$contrast, row$feature), character(1))
+    omitted <- which(!vapply(descriptive$fullRows, function(row)
+        paste(row$contrast, row$feature) %in% displayed, logical(1)))[[1L]]
+    row <- descriptive$fullRows[[omitted]]
+    descriptive$fullRows[[omitted]]$sd <- NA_real_
+    private$.state$descriptive <- descriptive
+    private$.populateOptionalDetailRows(descriptive)
+    private$.setTableNotes(NULL)
+    variability <- analysis$results$variability$asDF
+    expect_true(any(variability$contrast == row$contrast & variability$feature == row$feature))
+    expect_match(miso_table_note(analysis$results$variability, "meaning"),
+        "Blank SD or ratio cells indicate unavailable values.", fixed=TRUE)
+})
+
+test_that("SIMPER empty default footers leave no exported Note marker", {
+    result <- suppressWarnings(suppressMessages(simper(
+        data=simper_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", simperTop=50, simperCum=100, simperDetails=TRUE)))
+    for (name in c("contrasts", "means", "contributions")) {
+        expect_null(result[[name]]$.__enclos_env__$private$.notes[["meaning"]])
+        expect_false(grepl("Note.", as.character(result[[name]]$asString()), fixed=TRUE))
     }
 })

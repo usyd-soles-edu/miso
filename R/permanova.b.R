@@ -91,47 +91,24 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_reconcile_table_rows(self$results$table, termRows)
 
             permutation <- private$.state$permutation
-            blockDetail <- if (identical(permutation$notice$kind, "table"))
-                permutation$notice$text
-            else if (identical(permutation$notice$kind, "warning"))
-                sprintf(
-                    "Block used: No (Blocking variable '%s' is not used with Free permutations).",
-                    permutation$block)
-            else if (identical(permutation$block, "None"))
-                "Block used: No (no Blocking variable assigned)."
-            else
-                sprintf(
-                    "Block used: %s (Blocking variable: %s).",
-                    if (isTRUE(permutation$blockUsed)) "Yes" else "No",
-                    permutation$block)
-            seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
-            executionLabel <- if (is.null(private$.state$cl))
-                "Serial" else "Parallel"
+            blockDetail <- if (isTRUE(permutation$blockUsed))
+                sprintf(" Blocking variable: %s.", permutation$block)
+            else ""
             sequenceDetail <- if (identical(self$options$permScheme, "series"))
                 " Sequence order: Current data-row order."
-            else
-                ""
+            else ""
             self$results$table$setNote(
                 key="method",
-                note=sprintf(
-                    paste(
-                        "Transformation: %s. Dissimilarity index: %s.",
-                        "Binary dissimilarity: %s. Square-root distances: %s.",
-                        "Additive correction: %s. Test type: %s.",
-                        "Permutation restrictions: %s (%d requested). %s",
-                        "Random seed: %s. Execution: %s.%s"),
-                    private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance),
-                    private$.enabledLabel(self$options$distBinary),
-                    private$.enabledLabel(self$options$distSqrt),
-                    private$.additiveLabel(self$options$distAdd),
-                    private$.testTypeLabel(self$options$permBy),
-                    permutation$effective,
-                    as.integer(self$options$permN),
-                    blockDetail,
-                    seedLabel,
-                    executionLabel,
-                    sequenceDetail),
+                note=paste0(
+                    miso_method_note(
+                        private$.transformLabel(self$options$transform),
+                        private$.distanceLabel(self$options$distance),
+                        self$options$distBinary, self$options$distSqrt,
+                        private$.additiveLabel(self$options$distAdd)),
+                    sprintf(" Test type: %s. Permutation restrictions: %s (%d requested).",
+                        private$.testTypeLabel(self$options$permBy),
+                        permutation$effective, as.integer(self$options$permN)),
+                    blockDetail, sequenceDetail),
                 init=FALSE)
 
             private$.runCompanionPcoa(prep, main$model)
@@ -350,7 +327,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep, model, selection$name, fit, plotData,
                 selection$notice)
 
-            self$results$companionPcoaDescription$setVisible(TRUE)
+            self$results$companionPcoaDescription$setVisible(
+                is.null(plotData) || !isTRUE(plotData$available))
             self$results$companionPcoaSites$setVisible(TRUE)
             self$results$companionPcoaCentroids$setVisible(
                 (isTRUE(self$options$pcoaCentroids) ||
@@ -452,12 +430,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$companionPcoaSites$setVisible(FALSE)
             self$results$companionPcoaCentroids$setVisible(FALSE)
             self$results$companionPcoaDescription$setContent(
-                miso_html_block(c(
-                    paste(
-                        "Shows a two-dimensional representation of the",
-                        "dissimilarities used by PERMANOVA; nearby points",
-                        "generally represent more similar samples."),
-                    message),
+                miso_html_block(message,
                     ariaLabel="About PERMANOVA companion PCoA",
                     title="PERMANOVA companion PCoA"))
             self$results$companionPcoaDescription$setVisible(TRUE)
@@ -808,22 +781,21 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
             retained <- c(prep$extra, prep$covariateNames)
-            retainedText <- if (length(retained) == 0L)
-                "none"
-            else
-                paste(retained, collapse=", ")
+            retainedText <- if (length(retained) == 0L) "" else
+                sprintf(" Adjustment terms: %s.", paste(retained, collapse=", "))
+            permutation <- private$.state$permutation
+            blockDetail <- if (isTRUE(permutation$blockUsed))
+                sprintf(" Blocking variable: %s.", permutation$block) else ""
+            sequenceDetail <- if (identical(self$options$permScheme, "series"))
+                " Sequence order: Current data-row order." else ""
             self$results$pairwise$setNote(
                 key="scope",
-                note=sprintf(
-                    paste(
-                        "Comparisons are between levels of Grouping variable '%s'.",
-                        "Test type: %s. Retained adjustment terms: %s.",
-                        "Permutation restrictions: %s. P-value adjustment: %s."),
-                    prep$primary,
-                    private$.testTypeLabel(self$options$permBy),
-                    retainedText,
-                    private$.state$permutation$effective,
-                    private$.adjustmentLabel(self$options$permAdjust)),
+                note=paste0(sprintf(
+                    "Grouping variable: %s. Test type: %s.%s Permutation restrictions: %s.",
+                    prep$primary, private$.testTypeLabel(self$options$permBy),
+                    retainedText, permutation$effective), blockDetail, sequenceDetail,
+                    sprintf(" P-value adjustment: %s across %d available contrasts.",
+                        private$.adjustmentLabel(self$options$permAdjust), length(pvals))),
                 init=FALSE)
 
             list(rows=length(rows), warnings=warnings)

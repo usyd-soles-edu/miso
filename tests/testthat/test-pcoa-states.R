@@ -382,7 +382,7 @@ test_that("PCoA analysis hides empty output and clears stale output", {
         showCentroids=TRUE, showSpiders=TRUE)
     result <- analysis$results
     expect_false(result$guidance$visible)
-    for (name in c("ordination", "ordinationDescription",
+    for (name in c("ordination",
             "sites", "centroids", "eigenvalues"))
         expect_true(result[[name]]$visible, info=name)
     expect_identical(nrow(result$sites$asDF), nrow(data))
@@ -411,20 +411,14 @@ test_that("PCoA analysis hides empty output and clears stale output", {
 })
 
 
-test_that("successful PCoA description keeps title, label, and shell without generic prose", {
+test_that("successful PCoA hides the empty description and keeps its native figure", {
     data <- pcoa_small_data()
     analysis <- run_pcoa_private(data, pcoa_feature_names(data), factor="group")
     result <- analysis$results
-    expect_true(result$ordinationDescription$visible)
+    expect_false(result$ordinationDescription$visible)
     expect_true(result$ordination$visible)
-    description <- miso_squish_result(result$ordinationDescription)
-    expect_false(grepl(
-        "Maps the main dimensions of dissimilarity among samples",
-        description, fixed=TRUE))
-    expect_match(description, "aria-label=\"About PCoA ordination\"",
-        fixed=TRUE)
-    expect_match(description, "Principal coordinates ordination",
-        fixed=TRUE)
+    expect_identical(trimws(miso_squish_result(
+        result$ordinationDescription)), "character(0)")
 })
 
 test_that("unavailable PCoA ordination keeps its explanation without success prose", {
@@ -639,4 +633,18 @@ test_that("PCoA reports square-root and correction choices in table notes", {
     expect_true(analysis$results$sites$visible)
     expect_match(miso_table_note(analysis$results$sites, "method"), "Square-root")
     expect_match(miso_table_note(analysis$results$eigenvalues, "denominator"), "correction")
+})
+
+test_that("publication output omits routine explanatory prose", {
+    analysis <- run_pcoa_private(pcoa_small_data(),
+        vars=pcoa_feature_names(pcoa_small_data()))
+    expect_false(analysis$results$ordinationDescription$visible)
+})
+
+test_that("PCoA notes identify presence/absence distances", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data, vars=pcoa_feature_names(data),
+        distBinary=TRUE)
+    expect_match(miso_table_note(analysis$results$sites, "method"),
+        "presence/absence", fixed=TRUE)
 })

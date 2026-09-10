@@ -116,8 +116,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (showDistance && !is.null(distance))
                 self$results$plot$setState(distance)
             self$results$plot$setVisible(showDistance && !is.null(distance))
-            self$results$plotDescription$setVisible(showDistance &&
-                !is.null(distance))
+            self$results$plotDescription$setVisible(FALSE)
             ordination <- private$.state$ordination
             tableAvailable <- requestedOrdination && !is.null(ordination) &&
                 isTRUE(ordination$tableAvailable)
@@ -134,7 +133,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$ordinationPlot$setVisible(
                 requestedOrdination && !is.null(ordination) &&
                 isTRUE(ordination$available))
-            self$results$ordinationDescription$setVisible(requestedOrdination)
+            self$results$ordinationDescription$setVisible(requestedOrdination &&
+                nzchar(self$results$ordinationDescription$content))
             self$results$ordinationScores$setVisible(tableAvailable)
         },
 
@@ -194,8 +194,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
             showDistance <- isTRUE(self$options$showDistancePlot)
-            for (name in c("plot", "plotDescription"))
-                self$results[[name]]$setVisible(showDistance)
+            self$results$plot$setVisible(showDistance)
+            self$results$plotDescription$setVisible(FALSE)
 
             requestedOrdination <- isTRUE(self$options$showOrdinationPlot)
             ordinationAvailable <- requestedOrdination &&
@@ -205,7 +205,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 !is.null(private$.state$ordination) &&
                 isTRUE(private$.state$ordination$tableAvailable)
             self$results$ordinationPlot$setVisible(ordinationAvailable)
-            self$results$ordinationDescription$setVisible(requestedOrdination)
+            self$results$ordinationDescription$setVisible(requestedOrdination &&
+                nzchar(self$results$ordinationDescription$content))
             self$results$ordinationScores$setVisible(ordinationTableAvailable)
         },
 
@@ -302,30 +303,18 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.state$pValue <- miso_num_or_na(atab[i, "Pr(>F)"])
             }
             miso_reconcile_table_rows(self$results$anova, anovaRows)
-            seedLabel <- if (is.na(prep$seed)) "Random" else prep$seed
             self$results$anova$setNote(
                 key="structuralCells",
-                note=sprintf(
-                    paste(
-                        "Transformation: %s. Dissimilarity index: %s.",
-                        "Binary dissimilarity: %s. Square-root distances: %s.",
-                        "Additive correction: %s. Centre: %s.",
-                        "Bias adjustment: %s.",
-                        "Requested permutation restriction: %s.",
-                        "Effective restriction: %s. Permutations: %d.",
-                        "Random seed: %s. Blank F and Permutation p cells are",
-                        "not applicable to the Residual row."),
-                    private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance),
-                    private$.enabledLabel(isTRUE(self$options$distBinary)),
-                    private$.enabledLabel(isTRUE(self$options$distSqrt)),
-                    private$.additiveLabel(self$options$distAdd),
+                note=sprintf("%s Centre: %s. Bias adjustment: %s. Effective restriction: %s. Permutations: %d.",
+                    miso_method_note(
+                        private$.transformLabel(self$options$transform),
+                        private$.distanceLabel(self$options$distance),
+                        self$options$distBinary, self$options$distSqrt,
+                        private$.additiveLabel(self$options$distAdd)),
                     private$.centreLabel(self$options$dispType),
-                    private$.enabledLabel(isTRUE(self$options$dispBias)),
-                    private$.state$restriction$requested,
+                    if (isTRUE(self$options$dispBias)) "Applied" else "Not applied",
                     private$.state$restriction$effective,
-                    as.integer(self$options$permN),
-                    seedLabel),
+                    as.integer(perm$tab[1L, "N.Perm"])),
                 init=FALSE)
 
             pairwiseShown <- FALSE
@@ -406,18 +395,11 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$pairwise$setNote(
                 key="scope",
                 note=sprintf(
-                    paste(
-                        "These comparisons test differences in dispersion,",
-                        "not differences in group location, between levels of",
-                        "Grouping variable '%s'.",
-                        "Effective permutation restriction: %s.",
-                        "Permutations: %d.",
-                        "P-value adjustment: %s; the adjustment family covers all",
-                        "pairwise contrasts among the grouping-variable levels."),
-                    self$options$factor,
-                    private$.state$restriction$effective,
-                    as.integer(self$options$permN),
-                    private$.adjustmentLabel(self$options$dispAdjust)),
+                    paste("Dispersion comparisons for %s. Effective restriction: %s.",
+                        "Permutations: %d. P-value adjustment: %s across all %d pairwise contrasts."),
+                    self$options$factor, private$.state$restriction$effective,
+                    as.integer(pt$tab[1L, "N.Perm"]),
+                    private$.adjustmentLabel(self$options$dispAdjust), length(pperm)),
                 init=FALSE)
             TRUE
         },
@@ -442,21 +424,18 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_reconcile_table_rows(self$results$distances, distanceRows)
             self$results$distances$setNote(
                 key="method",
-                note=sprintf(
-                    "Transformation: %s. Dissimilarity index: %s. Centre: %s.",
+                note=miso_method_note(
                     private$.transformLabel(self$options$transform),
                     private$.distanceLabel(self$options$distance),
-                    private$.centreLabel(self$options$dispType)),
+                    self$options$distBinary, self$options$distSqrt,
+                    private$.additiveLabel(self$options$distAdd)),
                 init=FALSE)
         },
 
         .populateDistanceDescription = function() {
             if (is.null(private$.state$distanceDiagnostic))
                 return()
-            self$results$plotDescription$setContent(miso_html_block(
-                "Shows the distribution of distances to centre within each group.",
-                ariaLabel="About distances to group centre",
-                title="Distance-to-centre plot"))
+            self$results$plotDescription$setContent("")
         },
 
         .populateOrdination = function ()
@@ -490,14 +469,14 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             finiteDisclosure <- if (ordination$unplottable > 0L)
                 sprintf(paste("%d of %d fitted sites could not be plotted because", "finite coordinates were unavailable for a site or its",
                     "assigned group centre."), ordination$unplottable, ordination$total)
-            else sprintf("All %d fitted sites had finite site and centre coordinates.", ordination$total)
+            else character()
             capDisclosure <- if (ordination$displayed == ordination$plotEligible)
-                sprintf("All %d plot-eligible sites and connecting segments are shown.", ordination$plotEligible)
+                character()
             else sprintf(paste("%d of %d plot-eligible sites and connecting segments are", "shown; %d are omitted from the image by the deterministic",
                 "display cap but retained in the coordinate table."), ordination$displayed, ordination$plotEligible,
                 ordination$plotEligible - ordination$displayed)
             self$results$ordinationDescription$setContent(miso_html_block(
-                "Shows samples and the group centres used by PERMDISP.",
+                c(mappingDisclosure, finiteDisclosure, capDisclosure),
                 ariaLabel="About PERMDISP ordination",
                 title="PERMDISP ordination"))
         }
@@ -538,16 +517,11 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 if (identical(legacy, "stratified")) {
                     effective <- "free"
                     warning <- paste(
-                        "This saved analysis requested Stratified permutations",
-                        "without a blocking variable. PERMDISP now uses Free",
-                        "permutations, which is equivalent for that design.")
+                        "Saved Stratified permutations without a blocking variable",
+                        "are implemented as Free permutations.")
                 }
                 else if (identical(legacy, "series")) {
                     effective <- "series"
-                    warning <- paste(
-                        "This saved analysis uses Series permutations based on",
-                        "the current data-row order. Reselect Series under",
-                        "Reproducibility and computation to migrate the setting.")
                 }
             }
 

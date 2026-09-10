@@ -103,14 +103,13 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$warnings <- c(
                     private$.state$warnings,
                     sprintf(
-                        "The saved legacy distance request '%s' was ignored; SIMPER used Bray-Curtis.",
+                        "Saved distance '%s' was ignored; SIMPER used Bray-Curtis.",
                         private$.distanceLabel(self$options$distance)))
             if (isTRUE(self$options$distBinary))
                 private$.state$warnings <- c(
                     private$.state$warnings,
                     paste(
-                        "The saved legacy Binary dissimilarity request was ignored.",
-                        "This is separate from the visible Presence/absence transformation; SIMPER used abundance-based Bray-Curtis."))
+                        "The saved binary-distance setting was ignored; Bray-Curtis used the selected transformation."))
 
             descriptive <- private$.runDescriptive(prep)
             if (is.null(descriptive)) {
@@ -165,7 +164,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.populateOptionalHeatmap()
             }
             self$results$heatmap$setVisible(heatmap && !is.null(descriptive))
-            self$results$heatmapDescription$setVisible(heatmap && !is.null(descriptive))
+            self$results$heatmapDescription$setVisible(FALSE)
             self$results$heatmapValues$setVisible(heatmap && !is.null(descriptive))
         },
 
@@ -222,12 +221,12 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_clear_table_values(self$results$assessment)
             miso_clear_table_values(self$results$heatmapValues)
             self$results$contributionPlots$clear()
-            self$results$contrasts$setNote(key="meaning", note="", init=FALSE)
-            self$results$contributions$setNote(key="meaning", note="", init=FALSE)
-            self$results$variability$setNote(key="meaning", note="", init=FALSE)
-            self$results$means$setNote(key="meaning", note="", init=FALSE)
-            self$results$table$setNote(key="meaning", note="", init=FALSE)
-            self$results$assessment$setNote(key="scope", note="", init=FALSE)
+            self$results$contrasts$setNote(key="meaning", note=NULL, init=FALSE)
+            self$results$contributions$setNote(key="meaning", note=NULL, init=FALSE)
+            self$results$variability$setNote(key="meaning", note=NULL, init=FALSE)
+            self$results$means$setNote(key="meaning", note=NULL, init=FALSE)
+            self$results$table$setNote(key="meaning", note=NULL, init=FALSE)
+            self$results$assessment$setNote(key="scope", note=NULL, init=FALSE)
             self$results$heatmapDescription$setContent("")
             self$results$heatmap$setSize(600, 500)
 
@@ -275,8 +274,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap))
-            self$results$heatmapDescription$setVisible(
-                isTRUE(self$options$simperHeatmap))
+            self$results$heatmapDescription$setVisible(FALSE)
             self$results$heatmapValues$setVisible(
                 isTRUE(self$options$simperHeatmap))
             self$results$assessment$setVisible(isTRUE(assessmentShown))
@@ -467,12 +465,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 item$plot$setSize(580, 430)
                 item$description$setContent(
                     private$.plotDescription(contrast))
+                item$description$setVisible(FALSE)
                 rows <- private$.state$plotData[
                     private$.state$plotData$contrast == contrast, , drop=FALSE]
                 item$plot$setState(list(
                     rows=rows,
                     simperTop=self$options$simperTop,
-                    simperCum=self$options$simperCum))
+                    simperCum=self$options$simperCum,
+                    isFiltered=nrow(rows) < descriptive$contrastTotals[[contrast]]))
                 for (row in seq_len(nrow(rows))) {
                     direction <- if (!is.finite(rows$meanFirst[[row]]) ||
                             !is.finite(rows$meanSecond[[row]])) {
@@ -593,32 +593,27 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .setTableNotes = function(prep) {
+            transformation <- if (identical(self$options$transform, "none")) NULL else
+                sprintf("Transformation: %s.", private$.transformLabel(self$options$transform))
+            descriptive <- private$.state$descriptive
+            filtered <- length(descriptive$displayRows) < length(descriptive$fullRows)
+            unavailable <- any(vapply(descriptive$fullRows, function(row)
+                !is.finite(row$sd) || !is.finite(row$ratio), logical(1)))
             self$results$contrasts$setNote(
-                key="meaning",
-                note=paste(
-                    sprintf("Transformation: %s. Effective dissimilarity index: Bray-Curtis.", private$.transformLabel(self$options$transform)),
-                    "Mean dissimilarity is the full average Bray-Curtis quantity decomposed for each contrast.",
-                    "n (first) and n (second) follow the named contrast order."),
-                init=FALSE)
+                key="meaning", note=transformation, init=FALSE)
             self$results$contributions$setNote(
                 key="meaning",
-                note=paste(
-                    sprintf("Transformation: %s. Effective dissimilarity index: Bray-Curtis.", private$.transformLabel(self$options$transform)),
-                    "Percentages use all usable features before display filtering; retained rows are not renormalised."),
-                init=FALSE)
+                note=if (filtered) paste(c(transformation,
+                    "Percentages use all usable features before display filtering and are not renormalised."), collapse=" ")
+                    else transformation, init=FALSE)
             self$results$variability$setNote(
                 key="meaning",
-                note=paste(
-                    "Average is the mean feature contribution to Bray-Curtis dissimilarity.",
-                    "SD describes variation in contributions across sample pairs.",
-                    "Average/SD describes consistency and is not a significance test.",
-                    "Blank cells mean that a finite value was unavailable."),
+                note=paste0(
+                    "SD describes variation in contributions across between-group sample pairs.",
+                    if (unavailable) " Blank SD or ratio cells indicate unavailable values." else ""),
                 init=FALSE)
             self$results$means$setNote(
-                key="meaning",
-                note=paste(
-                    "First and second means follow the named contrast order and use the transformed scale."),
-                init=FALSE)
+                key="meaning", note=transformation, init=FALSE)
             self$results$table$setNote(
                 key="meaning",
                 note=paste(
@@ -632,36 +627,28 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$assessment$setNote(
                     key="scope",
                     note=paste(
-                        "P-values compare observed average contributions with random group-label assignments.",
-                        sprintf(
-                            "%s adjustment was applied separately within each contrast across all finite feature p-values before display filtering.",
+                        "Group-label permutation tests of average contributions.",
+                        if (identical(self$options$simperAdjust, "none")) "P-values are unadjusted." else sprintf(
+                            "%s adjustment across all finite feature p-values within each contrast, before display filtering.",
                             private$.adjustLabel(self$options$simperAdjust))),
                     init=FALSE)
         },
 
-        .plotDescription = function(contrast) {
-            miso_html_block(
-                character(0),
-                ariaLabel=paste("About SIMPER contribution plot for", contrast),
-                title="Contribution plot")
-        },
+        .plotDescription = function(contrast) "",
 
-        .heatmapDescription = function() {
-            if (is.null(private$.heatmapData()))
-                return("")
-            miso_html_block(
-                character(0),
-                ariaLabel="About the SIMPER contrast heatmap",
-                title="Contrast overview heatmap")
-        },
-
-
+        .heatmapDescription = function() "",
 
         .buildContributionPlot = function (rows, contrast, top = self$options$simperTop,
-            cumulative = self$options$simperCum)
+            cumulative = self$options$simperCum, isFiltered = NULL)
         {
             if (is.null(rows) || nrow(rows) == 0L)
                 return(NULL)
+            # Older saved image states have no filtering flag. A cumulative
+            # total below 100 establishes omission without consulting live options.
+            if (is.null(isFiltered))
+                isFiltered <- max(rows$cumulative, na.rm=TRUE) < 100 - 1e-8
+            subtitle <- if (isTRUE(isFiltered)) sprintf(
+                "Top %s or %s%% cumulative; crossing feature included", top, cumulative) else NULL
             rows <- rows[order(rows$contribution, rows$feature), , drop = FALSE]
             rows$feature <- factor(as.character(rows$feature), levels = unique(as.character(rows$feature)))
             featureLabels <- .misoUniqueShortLabels(levels(rows$feature), width = 24L)
@@ -686,8 +673,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 breaks = directions, labels = directions, drop = FALSE, name = "Transformed group mean") + ggplot2::scale_linetype_manual(values = lineTypes,
                 breaks = directions, labels = directions, drop = FALSE, name = "Transformed group mean") + ggplot2::scale_x_continuous(labels = function(x) paste0(x,
                 "%"), expand = ggplot2::expansion(mult = c(0, 0.42))) + ggplot2::scale_y_discrete(labels = featureLabels) +
-                ggplot2::labs(x = "Contribution to average dissimilarity (%)", y = NULL, subtitle = sprintf("Top %s or %s%% cumulative; threshold-crossing feature included",
-                    top, cumulative)) + .misoPlotTheme() + ggplot2::theme(legend.position = "bottom",
+                ggplot2::labs(x = "Contribution to average dissimilarity (%)", y = NULL, subtitle = subtitle) + .misoPlotTheme() + ggplot2::theme(legend.position = "bottom",
                 plot.subtitle = ggplot2::element_text(size = 10, colour = "#444444"))
         }
 ,
@@ -699,7 +685,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 plotData$rows,
                 contrast,
                 top=plotData$simperTop,
-                cumulative=plotData$simperCum)
+                cumulative=plotData$simperCum,
+                isFiltered=plotData$isFiltered)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

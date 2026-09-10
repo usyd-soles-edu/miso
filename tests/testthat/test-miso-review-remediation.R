@@ -347,7 +347,7 @@ test_that("run-generated notes survive restored analyses and display-only update
     permanovaRestored <- restore_analysis(permanovaAnalysis)
     miso_set_option_value(permanovaRestored$options, "showCompanionPcoa", TRUE)
     suppressWarnings(suppressMessages(permanovaRestored$run()))
-    expect_match(note_text(permanovaRestored$results$table), "Transformation")
+    expect_match(note_text(permanovaRestored$results$table), "Bray-Curtis dissimilarities", fixed=TRUE)
     expect_match(note_text(permanovaRestored$results$pairwise), "P-value adjustment")
 
     permdispOptionsValue <- permdispOptions$new(vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123, dispPairwise=TRUE, showDistancePlot=TRUE)
@@ -356,9 +356,9 @@ test_that("run-generated notes survive restored analyses and display-only update
     permdispRestored <- restore_analysis(permdispAnalysis)
     miso_set_option_value(permdispRestored$options, "showDistancePlot", FALSE)
     suppressWarnings(suppressMessages(permdispRestored$run()))
-    expect_match(note_text(permdispRestored$results$anova), "Transformation")
-    expect_match(note_text(permdispRestored$results$distances), "Transformation")
-    expect_match(note_text(permdispRestored$results$pairwise), "dispersion")
+    expect_match(note_text(permdispRestored$results$anova), "Bray-Curtis dissimilarities", fixed=TRUE)
+    expect_match(note_text(permdispRestored$results$distances), "Bray-Curtis dissimilarities", fixed=TRUE)
+    expect_match(note_text(permdispRestored$results$pairwise), "Holm across all 3 pairwise contrasts", fixed=TRUE)
 
     simperOptionsValue <- simperOptions$new(vars=c("sp1", "sp2", "sp3"), factor="group", simperDetails=FALSE, simperAssess=TRUE, simperN=19, seed=123)
     simperAnalysis <- simperClass$new(options=simperOptionsValue, data=data)
@@ -366,9 +366,11 @@ test_that("run-generated notes survive restored analyses and display-only update
     simperRestored <- restore_analysis(simperAnalysis)
     miso_set_option_value(simperRestored$options, "simperDetails", TRUE)
     suppressWarnings(suppressMessages(simperRestored$run()))
-    for (table in list(simperRestored$results$contrasts, simperRestored$results$contributions, simperRestored$results$variability, simperRestored$results$means, simperRestored$results$table))
-        expect_match(note_text(table), "dissimilarity|contribution|transformed", ignore.case=TRUE)
-    expect_match(note_text(simperRestored$results$assessment), "P-values")
+    for (table in list(simperRestored$results$contrasts, simperRestored$results$means))
+        expect_false(grepl("Note.", note_text(table), fixed=TRUE))
+    expect_match(note_text(simperRestored$results$contributions), "not renormalised", fixed=TRUE)
+    expect_match(note_text(simperRestored$results$variability), "between-group sample pairs", fixed=TRUE)
+    expect_match(note_text(simperRestored$results$assessment), "Holm adjustment", fixed=TRUE)
 })
 
 # --- P1 results-review remediation: data-aware structural cache keys ---
@@ -622,5 +624,6 @@ test_that("table notes retain interpretation-critical method choices", {
 
     clusterResult <- cluster(data=data, vars=c("sp1", "sp2", "sp3"),
         transform="sqrt", defineClusters=TRUE, cutMode="number", numberClusters=3)
-    expect_match(miso_table_note(clusterResult$dendrogramStructure, "method"), "Cut rule")
+    expect_match(miso_table_note(clusterResult$dendrogramStructure, "method"), "Square root transformation", fixed=TRUE)
+    expect_match(miso_table_note(clusterResult$membership, "method"), "Cut rule: 3 clusters.", fixed=TRUE)
 })

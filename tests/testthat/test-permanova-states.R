@@ -234,7 +234,7 @@ test_that("PERMANOVA permutation notices follow the restriction truth table", {
         "Blocking variable 'block' is assigned but not used with Free permutations.",
         fixed=TRUE)
     expect_match(miso_table_note(results$freeWithBlock$table, "method"),
-        "Block used: No", fixed=TRUE)
+        "Permutation restrictions: Free", fixed=TRUE)
 
     expect_true(results$withinWithoutBlock$guidance$visible)
     expect_match(miso_squish_result(results$withinWithoutBlock$guidance),
@@ -247,9 +247,9 @@ test_that("PERMANOVA permutation notices follow the restriction truth table", {
     expect_false(results$withinWithBlock$guidance$visible)
     expect_false(results$withinWithBlock$warnings$visible)
     expect_match(miso_table_note(results$withinWithBlock$table, "method"),
-        "Block used: Yes", fixed=TRUE)
+        "Permutation restrictions: Within blocks", fixed=TRUE)
     expect_match(miso_table_note(results$withinWithBlock$table, "method"),
-        "Blocking variable 'block'", fixed=TRUE)
+        "Blocking variable: block", fixed=TRUE)
 })
 
 
@@ -265,9 +265,9 @@ test_that("PERMANOVA table notes disclose non-default distance and series settin
         permN=19,
         seed=123)))
     note <- miso_table_note(result$table, "method")
-    expect_match(note, "Binary dissimilarity: Enabled", fixed=TRUE)
-    expect_match(note, "Square-root distances: Enabled", fixed=TRUE)
-    expect_match(note, "Additive correction: Cailliez", fixed=TRUE)
+    expect_match(note, "presence/absence distances", fixed=TRUE)
+    expect_match(note, "Square-root distances", fixed=TRUE)
+    expect_match(note, "Cailliez correction", fixed=TRUE)
     expect_match(note, "Permutation restrictions: Series", fixed=TRUE)
     expect_match(note, "Sequence order: Current data-row order", fixed=TRUE)
 })
@@ -587,7 +587,7 @@ test_that("simple companion PCoA automatically displays the primary factor", {
 
     expect_true(result$table$visible)
     expect_true(result$companionPcoa$visible)
-    expect_true(result$companionPcoaDescription$visible)
+    expect_false(result$companionPcoaDescription$visible)
     expect_true(result$companionPcoaSites$visible)
     expect_true(result$companionPcoaCentroids$visible)
     expect_identical(unique(result$companionPcoaSites$asDF$group),
@@ -600,8 +600,7 @@ test_that("simple companion PCoA automatically displays the primary factor", {
     expect_false(grepl(
         "Visualises sample resemblance and group positions alongside the test",
         description, fixed=TRUE))
-    expect_match(description, 'aria-label="About PERMANOVA companion PCoA"',
-        fixed=TRUE)
+    expect_identical(result$companionPcoaDescription$content, "")
 })
 
 
@@ -1020,7 +1019,7 @@ test_that("PERMANOVA publishes retained display notices after off-to-on toggle",
     suppressWarnings(suppressMessages(analysis$run()))
     expect_true(analysis$results$table$visible)
     expect_true(analysis$results$warnings$visible)
-    expect_true(analysis$results$companionPcoaDescription$visible)
+    expect_false(analysis$results$companionPcoaDescription$visible)
     notice <- miso_squish_result(analysis$results$warnings)
     expect_match(notice, "collapsing", fixed=TRUE)
     expect_match(notice, "not retained", fixed=TRUE)
@@ -1233,4 +1232,15 @@ test_that("companion toggles hide centroids and replace only companion warnings"
     expect_identical(analysis$results$pairwise$asDF, pairwise)
     expect_identical(
         analysis$results$table$columns[[1L]]$.__enclos_env__$private$.cells, cells)
+})
+
+
+test_that("PERMANOVA publication output omits routine prose", {
+    result <- suppressWarnings(suppressMessages(permanova(
+        data=permanova_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", seed=123, permN=19, showCompanionPcoa=TRUE)))
+    note <- miso_table_note(result$table, "method")
+    expect_false(grepl("Random seed|Execution:|Disabled|Requested permutation restriction|R compares|not applicable to the Residual", note))
+    expect_false(result$companionPcoaDescription$visible)
+    expect_identical(result$companionPcoaDescription$content, "")
 })

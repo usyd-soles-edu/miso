@@ -187,9 +187,9 @@ test_that("successful ANOSIM hides empty guidance warning and pairwise shells", 
     expect_anosim_visibility(
         result,
         visible=c(
-            "global", "rankPlot", "rankPlotDescription",
+            "global", "rankPlot",
             "rankSummary"),
-        hidden=c("guidance", "warnings", "pairwise")
+        hidden=c("guidance", "warnings", "pairwise", "rankPlotDescription")
     )
     expect_equal(nrow(result$global$asDF), 1L)
 })
@@ -358,9 +358,7 @@ test_that("ANOSIM rank plot degrades gracefully above 64 groups", {
 
     expect_s3_class(private$.buildRankPlot(), "ggplot")
     expect_identical(nrow(analysis$results$rankSummary$asDF), 66L)
-    expect_match(
-        miso_squish_result(analysis$results$rankPlotDescription),
-        "ranked dissimilarities underlying the ANOSIM statistic")
+    expect_identical(analysis$results$rankPlotDescription$content, "")
 })
 
 test_that("ANOSIM rank plot handles long colliding labels accessibly", {
@@ -620,7 +618,7 @@ miso_anosim_cells <- function(table) {
     table$columns[[1L]]$.__enclos_env__$private$.cells
 }
 
-test_that("enabling the rank plot restores its description without changing tables", {
+test_that("enabling the rank plot keeps routine prose absent without changing tables", {
     options <- anosimOptions$new(
         vars=c("sp1", "sp2", "sp3"), factor="group",
         showRankPlot=FALSE, anosimN=19, seed=123)
@@ -636,8 +634,8 @@ test_that("enabling the rank plot restores its description without changing tabl
         factor="group", showRankPlot=TRUE, anosimN=19, seed=123)))
     expect_identical(analysis$results$rankPlotDescription$asString(),
         fresh$rankPlotDescription$asString())
-    expect_match(miso_squish_result(analysis$results$rankPlotDescription),
-        "ranked dissimilarities underlying the ANOSIM statistic")
+    expect_identical(analysis$results$rankPlotDescription$content, "")
+    expect_false(analysis$results$rankPlotDescription$visible)
     expect_equal(analysis$results$global$asDF, before, tolerance=0)
     expect_identical(miso_anosim_cells(analysis$results$rankSummary), cells)
 })
@@ -707,4 +705,15 @@ test_that("data edits that remove a group rebuild ANOSIM rows and stay fresh", {
     expect_equal(
         analysis$results$rankSummary$asDF, fresh$results$rankSummary$asDF,
         tolerance=1e-12)
+})
+
+
+test_that("ANOSIM publication output omits routine prose", {
+    result <- suppressWarnings(suppressMessages(anosim(
+        data=anosim_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", seed=123, anosimN=19)))
+    note <- miso_table_note(result$global, "meaning")
+    expect_false(grepl("Random seed|Execution:|Disabled|Requested permutation restriction|R compares|not applicable to the Residual", note))
+    expect_false(result$rankPlotDescription$visible)
+    expect_identical(result$rankPlotDescription$content, "")
 })

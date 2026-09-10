@@ -439,7 +439,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 miso_clear_table(self$results$shepardPairs)
             }
             self$results$shepard$setVisible(showShepard)
-            self$results$shepardDescription$setVisible(showShepard)
+            self$results$shepardDescription$setVisible(FALSE)
             self$results$shepardPairs$setVisible(showShepard)
         },
 
@@ -666,12 +666,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     unique(private$.state$warnings)))
             for (name in c(
                     "ordination",
-                    "ordinationDescription", "stress",
-                    "sites"))
+                    "stress", "sites"))
                 self$results[[name]]$setVisible(TRUE)
+            self$results$ordinationDescription$setVisible(FALSE)
             self$results$warnings$setVisible(hasWarnings)
             self$results$shepard$setVisible(showShepard)
-            self$results$shepardDescription$setVisible(showShepard)
+            self$results$shepardDescription$setVisible(FALSE)
             self$results$shepardPairs$setVisible(showShepard)
             self$results$envfit$setVisible(showEnv)
             self$results$features$setVisible(showFeatures)
@@ -1088,9 +1088,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$envfit$setNote(
                 key="method",
-                note=paste(
-                    "Unadjusted p-values test association with the ordination,",
-                    "not causation or group differences. Axes may rotate or reflect."),
+                note="P-values are from permutation tests of association with the ordination.",
                 init=FALSE)
         },
 
@@ -1167,20 +1165,9 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescriptions = function() {
-            self$results$ordinationDescription$setContent(
-                private$.htmlBlock(
-                    "Maps sample resemblance; closer points have more similar composition.",
-                    ariaLabel="About nMDS ordination",
-                    title="nMDS ordination"))
-            if (isTRUE(self$options$nmdsShepard) &&
-                    private$.state$shepardValid)
-                self$results$shepardDescription$setContent(
-                    private$.htmlBlock(
-                        "Shows how well ordination distances preserve ranked dissimilarities.",
-                        ariaLabel="About the nMDS Shepard diagram",
-                        title="Shepard Diagram"))
+            self$results$ordinationDescription$setContent("")
+            self$results$shepardDescription$setContent("")
         },
-
 
 
         .populateCoreResults = function() {
@@ -1272,17 +1259,13 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$sites$setNote(
                 key="method",
                 init=FALSE,
-                note=sprintf(
-                    "Transformation: %s. Dissimilarity index: %s. Site coordinates may rotate or reflect without changing fitted distances.",
+                note=miso_method_note(
                     private$.transformLabel(self$options$transform),
                     private$.distanceLabel(self$options$distance)))
             self$results$stress$setNote(
                 key="method",
                 init=FALSE,
-                note=sprintf(
-                    "Dimensions: %d. Random starts: %s. Maximum iterations per start: %s.",
-                    k, private$.fitValue(fit, "tries"),
-                    self$options$nmdsMaxit))
+                note=NULL)
             private$.prepareLabelState()
             private$.populateDescriptions()
         },

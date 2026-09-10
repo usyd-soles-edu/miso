@@ -114,21 +114,27 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             private$.populateDendrogramStructure()
             private$.populateMembership()
+            methodNote <- paste("Linkage: Group average.",
+                miso_method_note(
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance)))
             self$results$dendrogramStructure$setNote(
-                key="method",
-                note=sprintf(
-                    "Linkage: Group average. Transformation: %s. Dissimilarity index: %s. Cut rule: %s. Cluster membership is descriptive; it is not a hypothesis test.",
-                    private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance),
-                    private$.state$cutDescription),
-                init=FALSE)
+                key="method", note=methodNote, init=FALSE)
+            cutNote <- if (is.null(private$.state$membership)) {
+                ""
+            } else if (identical(self$options$cutMode, "number")) {
+                paste0(sprintf("Cut rule: %d clusters.",
+                    length(unique(private$.state$membership))),
+                    if (is.null(private$.state$cutLine))
+                        " Tied merge heights prevent a single equivalent height cut."
+                    else
+                        "")
+            } else {
+                sprintf("Cut rule: dissimilarity height %s.",
+                    private$.formatHeight(self$options$cutHeight))
+            }
             self$results$membership$setNote(
-                key="method",
-                note=sprintf(
-                    "Transformation: %s. Dissimilarity index: %s. Cut rule: %s. Cluster labels follow the selected cut rule; merge heights are shown in Dendrogram Structure.",
-                    private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance),
-                    private$.state$cutDescription),
+                key="method", note=trimws(paste(methodNote, cutNote)),
                 init=FALSE)
             private$.populateDescription()
             private$.showSuccessfulResults()
@@ -151,7 +157,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 cutLine=private$.state$cutLine,
                 distanceLabel=private$.distanceLabel(self$options$distance)))
             self$results$dendrogram$setVisible(TRUE)
-            self$results$dendrogramDescription$setVisible(TRUE)
+            self$results$dendrogramDescription$setVisible(FALSE)
         },
 
         .refreshLabelWarnings = function() {
@@ -195,9 +201,10 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setVisible(FALSE)
             for (name in c(
                     "dendrogram",
-                    "dendrogramDescription", "dendrogramStructure"
+                    "dendrogramStructure"
                     ))
                 self$results[[name]]$setVisible(TRUE)
+            self$results$dendrogramDescription$setVisible(FALSE)
             if (!is.null(private$.state$membership)) {
                 self$results$membership$setVisible(TRUE)
             }
@@ -368,10 +375,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescription = function() {
-            self$results$dendrogramDescription$setContent(miso_html_block(
-                "Shows how samples merge into clusters as dissimilarity increases.",
-                ariaLabel="About the cluster dendrogram",
-                title="Group-average cluster dendrogram"))
+            self$results$dendrogramDescription$setContent("")
         },
 
 

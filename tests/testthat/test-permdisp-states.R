@@ -222,9 +222,9 @@ test_that("successful PERMDISP hides guidance warnings and pairwise shells", {
     expect_permdisp_visibility(
         result,
         visible=c(
-            "distances", "anova", "plot", "plotDescription"),
+            "distances", "anova", "plot"),
         hidden=c(
-            "guidance", "warnings", "pairwise", "ordinationPlot",
+            "guidance", "warnings", "pairwise", "plotDescription", "ordinationPlot",
             "ordinationDescription", "ordinationScores")
     )
 })
@@ -267,8 +267,7 @@ test_that("PERMDISP preprocessing warnings accompany valid results", {
     expect_permdisp_visibility(
         result,
         visible=c(
-            "warnings", "distances", "anova", "plot",
-            "plotDescription"),
+            "warnings", "distances", "anova", "plot"),
         hidden=c(
             "guidance", "pairwise", "ordinationPlot",
             "ordinationDescription", "ordinationScores")
@@ -584,7 +583,7 @@ test_that("non-finite fitted sites remain in coordinates and are disclosed", {
     expect_false(grepl("NaN", paste(as.matrix(scores), collapse=" "), fixed=TRUE))
     expect_match(
         description,
-        "Shows samples and the group centres used by PERMDISP",
+        "1 of 9 fitted sites could not be plotted",
         fixed=TRUE)
 })
 
@@ -666,22 +665,12 @@ test_that("plot toggles preserve every numerical PERMDISP result", {
     expect_false(hidden$ordinationDescription$visible)
     expect_false(hidden$ordinationScores$visible)
     expect_true(ordination$plot$visible)
-    expect_true(ordination$plotDescription$visible)
+    expect_false(ordination$plotDescription$visible)
     expect_true(ordination$ordinationPlot$visible)
-    expect_true(ordination$ordinationDescription$visible)
+    expect_false(ordination$ordinationDescription$visible)
     expect_true(ordination$ordinationScores$visible)
-    expect_match(
-        as.character(ordination$plotDescription$asString()),
-        "distribution of distances to centre")
-    expect_match(
-        as.character(ordination$ordinationDescription$asString()),
-        "group centres used by PERMDISP")
-    expect_match(
-        gsub(
-            "\\s+", " ",
-            as.character(ordination$ordinationDescription$asString())),
-        "Shows samples and the group centres used by PERMDISP",
-        fixed=TRUE)
+    expect_identical(ordination$plotDescription$content, "")
+    expect_identical(ordination$ordinationDescription$content, "")
 })
 
 test_that("plot transitions clear stale descriptions and coordinates", {
@@ -839,22 +828,13 @@ test_that("PERMDISP copied test notes carry effective distance fitting and permu
         seed=123)))
     note <- miso_table_note(result$anova, "structuralCells")
 
-    # Distance settings actually used by the fitted resemblance matrix.
-    expect_match(note, "Transformation: None", fixed=TRUE)
-    expect_match(note, "Dissimilarity index: Bray-Curtis", fixed=TRUE)
-    expect_match(note, "Binary dissimilarity: Disabled", fixed=TRUE)
-    expect_match(note, "Square-root distances: Disabled", fixed=TRUE)
-    expect_match(note, "Additive correction: None", fixed=TRUE)
-    # Fitting settings passed to betadisper.
+    # The published note reports essential methods, without disabled switches.
+    expect_match(note, "Bray-Curtis", fixed=TRUE)
     expect_match(note, "Centre: Median", fixed=TRUE)
-    expect_match(note, "Bias adjustment: Disabled", fixed=TRUE)
-    # Effective permutation settings from the normalized restriction state.
-    expect_match(note, "Requested permutation restriction: Free", fixed=TRUE)
+    expect_match(note, "Bias adjustment: Not applied", fixed=TRUE)
     expect_match(note, "Effective restriction: Free", fixed=TRUE)
     expect_match(note, "Permutations: 19", fixed=TRUE)
-    expect_match(note, "Random seed: 123", fixed=TRUE)
-    # The blank-cell applicability caveat is retained.
-    expect_match(note, "not applicable to the Residual row", fixed=TRUE)
+    expect_false(grepl("Random seed|Disabled|Residual row|Requested permutation", note))
 })
 
 test_that("PERMDISP notes report non-default and legacy-restriction settings", {
@@ -870,15 +850,14 @@ test_that("PERMDISP notes report non-default and legacy-restriction settings", {
         permN=19,
         seed=123)))
     note <- miso_table_note(series$anova, "structuralCells")
-    expect_match(note, "Square-root distances: Enabled", fixed=TRUE)
-    expect_match(note, "Additive correction: Cailliez", fixed=TRUE)
+    expect_match(note, "Square-root distances", fixed=TRUE)
+    expect_match(note, "Cailliez correction", fixed=TRUE)
     expect_match(note, "Centre: Centroid", fixed=TRUE)
-    expect_match(note, "Bias adjustment: Enabled", fixed=TRUE)
-    expect_match(note,
-        "Requested permutation restriction: Series (rows in order)",
-        fixed=TRUE)
+    expect_match(note, "Bias adjustment: Applied", fixed=TRUE)
     expect_match(note, "Effective restriction: Series (rows in order)",
         fixed=TRUE)
+    # Nine rows permit eight non-identity cyclic shifts, not 19 requested.
+    expect_match(note, "Permutations: 8.", fixed=TRUE)
 
     # Saved analyses carrying a legacy scheme normalize to the effective
     # restriction instead of reporting the raw default.
@@ -890,12 +869,10 @@ test_that("PERMDISP notes report non-default and legacy-restriction settings", {
         permN=19,
         seed=123)))
     legacyNote <- miso_table_note(legacy$anova, "structuralCells")
-    expect_match(legacyNote,
-        "Requested permutation restriction: Stratified (legacy)",
-        fixed=TRUE)
+    expect_false(grepl("Requested permutation restriction", legacyNote))
     expect_match(legacyNote, "Effective restriction: Free", fixed=TRUE)
     expect_match(miso_squish_result(legacy$warnings),
-        "PERMDISP now uses Free permutations", fixed=TRUE)
+        "are implemented as Free permutations", fixed=TRUE)
 })
 
 test_that("PERMDISP copied pairwise notes state the adjustment and contrast family", {
@@ -909,20 +886,11 @@ test_that("PERMDISP copied pairwise notes state the adjustment and contrast fami
         seed=123)))
     note <- miso_table_note(result$pairwise, "scope")
 
-    # Explicit dispersion family scope is retained.
-    expect_match(note, "differences in dispersion", fixed=TRUE)
-    expect_match(note, "not differences in group location", fixed=TRUE)
-    # Scope names the grouping variable and the effective restriction.
-    expect_match(note, "levels of Grouping variable 'group'", fixed=TRUE)
-    expect_match(note, "Effective permutation restriction: Free", fixed=TRUE)
+    expect_match(note, "Dispersion comparisons for group", fixed=TRUE)
+    expect_match(note, "Effective restriction: Free", fixed=TRUE)
     expect_match(note, "Permutations: 19", fixed=TRUE)
-    # The adjustment method and its contrast family are explicit.
     expect_match(note, "P-value adjustment: Benjamini-Hochberg", fixed=TRUE)
-    expect_match(note,
-        paste(
-            "adjustment family covers all pairwise contrasts",
-            "among the grouping-variable levels"),
-        fixed=TRUE)
+    expect_match(note, "across all 3 pairwise contrasts", fixed=TRUE)
 })
 
 miso_permdisp_cells <- function(table) {
@@ -1023,4 +991,17 @@ test_that("data edits that remove a group rebuild dispersion rows and stay fresh
     expect_equal(
         analysis$results$distances$asDF, fresh$results$distances$asDF,
         tolerance=1e-12)
+})
+
+
+test_that("PERMDISP publication output omits routine prose", {
+    result <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", seed=123, permN=19, showOrdinationPlot=TRUE)))
+    note <- miso_table_note(result$anova, "structuralCells")
+    expect_false(grepl("Random seed|Execution:|Disabled|Requested permutation restriction|R compares|not applicable to the Residual", note))
+    expect_false(result$plotDescription$visible)
+    expect_identical(result$plotDescription$content, "")
+    expect_false(result$ordinationDescription$visible)
+    expect_identical(result$ordinationDescription$content, "")
 })

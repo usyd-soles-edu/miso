@@ -908,7 +908,7 @@ test_that("cluster reports transformation and actual cut rule in table notes", {
         transform="fourthroot", defineClusters=TRUE, cutMode="number",
         numberClusters=3)
     expect_true(result$results$dendrogramStructure$visible)
-    expect_match(miso_table_note(result$results$dendrogramStructure, "method"), "Transformation")
+    expect_match(miso_table_note(result$results$dendrogramStructure, "method"), "transformation")
     expect_match(miso_table_note(result$results$membership, "method"), "Cut rule")
 })
 
@@ -940,4 +940,24 @@ test_that("sample-label reruns refresh shortening warnings without changing clus
         expect_identical(analysis$results$membership$rowKeys, membershipKeys)
         expect_identical(analysis$results$dendrogramStructure$rowKeys, structureKeys)
     }
+})
+
+test_that("publication output omits routine explanatory prose", {
+    analysis <- run_cluster_private(cluster_state_data(),
+        vars=paste0("feature_0", 1:4), defineClusters=TRUE, numberClusters=3)
+    expect_false(analysis$results$dendrogramDescription$visible)
+    expect_false(grepl("horizontal|hypothesis|Cut rule",
+        miso_table_note(analysis$results$dendrogramStructure, "method")))
+    expect_false(grepl("horizontal|Dendrogram Structure|\\.\\.",
+        miso_table_note(analysis$results$membership, "method")))
+})
+
+test_that("number cuts retain a conditional tied-height qualification", {
+    data <- data.frame(x=c(1, 2, 1, 2), y=c(1, 1, 2, 2))
+    analysis <- run_cluster_private(data, vars=c("x", "y"),
+        distance="euclidean", defineClusters=TRUE, cutMode="number",
+        numberClusters=3)
+    expect_null(cluster_private(analysis)$.state$cutLine)
+    expect_match(miso_table_note(analysis$results$membership, "method"),
+        "Tied merge heights", fixed=TRUE)
 })

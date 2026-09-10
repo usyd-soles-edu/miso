@@ -90,13 +90,6 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             private$.state$cl <- miso_parallel(self$options$useParallel)
             on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
-            if (isTRUE(self$options$useParallel) && is.null(private$.state$cl))
-                private$.state$warnings <- c(
-                    private$.state$warnings,
-                    paste(
-                        "Parallel processing was requested but unavailable;",
-                        "the analysis ran serially."))
-
             if (! private$.runGlobal(prep)) {
                 private$.discardKeyedRows()
                 return()
@@ -115,7 +108,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             showRank <- isTRUE(self$options$showRankPlot) &&
                 !is.null(private$.state$rankPlotData)
             self$results$rankPlot$setVisible(showRank)
-            self$results$rankPlotDescription$setVisible(showRank)
+            self$results$rankPlotDescription$setVisible(FALSE)
             self$results$rankSummary$setVisible(
                 !is.null(private$.state$rankPlotData))
         },
@@ -164,8 +157,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
             showRank <- isTRUE(self$options$showRankPlot) && hasRank
-            for (name in c("rankPlot", "rankPlotDescription"))
-                self$results[[name]]$setVisible(showRank)
+            self$results$rankPlot$setVisible(showRank)
+            self$results$rankPlotDescription$setVisible(FALSE)
             self$results$rankSummary$setVisible(hasRank)
         },
 
@@ -199,18 +192,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     warnings <- c(
                         warnings,
                         paste(
-                            "This saved analysis requested Stratified permutations",
-                            "without a blocking variable. ANOSIM now uses Free",
-                            "permutations, which is equivalent for that design."))
+                            "Saved Stratified permutations without a blocking variable",
+                            "are implemented as Free permutations."))
                 }
                 else {
                     effectiveCode <- legacy
-                    warnings <- c(
-                        warnings,
-                        paste(
-                            "This saved analysis uses a legacy permutation setting.",
-                            "Reselect the effective restriction under Study design",
-                            "and permutation restrictions to migrate it."))
                 }
             }
 
@@ -350,10 +336,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$global$setNote(
                 key="meaning",
                 note=sprintf(
-                    "R compares ranked between-group and within-group dissimilarities. Transformation: %s. Dissimilarity index: %s. Requested permutation restriction: %s. Effective restriction: %s. Permutation p uses the effective design%s.",
-                    private$.transformLabel(self$options$transform),
-                    private$.distanceLabel(self$options$distance),
-                    private$.state$restriction$requested,
+                    "%s Effective restriction: %s%s.",
+                    miso_method_note(
+                        private$.transformLabel(self$options$transform),
+                        private$.distanceLabel(self$options$distance),
+                        self$options$distBinary),
                     private$.state$restriction$effective,
                     if (identical(private$.state$restriction$blockUsed, TRUE))
                         sprintf(" within blocks of %s", private$.state$restriction$block)
@@ -459,11 +446,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 else
                     character()
             }
-            # Cache description content even while its display is disabled.
-            self$results$rankPlotDescription$setContent(miso_html_block(
-                "Shows the ranked dissimilarities underlying the ANOSIM statistic.",
-                ariaLabel="About ANOSIM rank distributions",
-                title="Ranked-dissimilarity plot"))
+            self$results$rankPlotDescription$setContent("")
         },
 
         .buildRankPlot = function(diagnostic = private$.state$rankPlotData) {
@@ -614,9 +597,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$pairwise$setNote(
                 key="scope",
                 note=sprintf(
-                    "Contrasts compare ranked group separation under the same effective restriction as Global ANOSIM (%s). P-value adjustment: %s; it applies only to the populated contrasts.",
+                    "Effective restriction: %s%s. P-value adjustment: %s across %d available contrasts.",
                     private$.state$restriction$effective,
-                    private$.adjustmentLabel(self$options$anosimAdjust)),
+                    if (isTRUE(private$.state$restriction$blockUsed))
+                        sprintf(" within blocks of %s", private$.state$restriction$block) else "",
+                    private$.adjustmentLabel(self$options$anosimAdjust), length(pvals)),
                 init=FALSE)
             TRUE
         },

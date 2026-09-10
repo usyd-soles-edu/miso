@@ -137,7 +137,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     isTRUE(self$options$showSpiders))
             self$results$centroids$setVisible(showCentroids)
             self$results$ordination$setVisible(plotAvailable)
-            self$results$ordinationDescription$setVisible(TRUE)
+            self$results$ordinationDescription$setVisible(!plotAvailable)
         },
 
 
@@ -203,12 +203,12 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$sites$setNote(
                 key="method",
-                note=sprintf(
-                    "Transformation: %s. Dissimilarity index: %s. Square-root dissimilarities: %s. Additive correction: %s. Axis signs may reverse without changing the ordination.",
+                note=miso_method_note(
                     private$.transformLabel(self$options$transform),
                     private$.distanceLabel(self$options$distance),
-                    if (isTRUE(self$options$sqrtDist)) "Yes" else "No",
-                    private$.correctionLabel(self$options$correction)),
+                    binary=self$options$distBinary,
+                    sqrtDist=self$options$sqrtDist,
+                    correction=private$.correctionLabel(self$options$correction)),
                 init=FALSE)
         },
 
@@ -247,10 +247,14 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$eigenvalues$setNote(
                 key="denominator",
-                note=sprintf(
-                    "Explained percentages are calculated only for positive axes using the sum of positive eigenvalues. Square-root dissimilarities: %s. Additive correction: %s.",
-                    if (isTRUE(self$options$sqrtDist)) "Yes" else "No",
-                    private$.correctionLabel(self$options$correction)),
+                note=paste(c(
+                    "Percentages use the sum of positive eigenvalues.",
+                    if (isTRUE(self$options$sqrtDist))
+                        "Square-root dissimilarities.",
+                    if (!identical(self$options$correction, "none"))
+                        sprintf("Additive correction: %s.",
+                            private$.correctionLabel(self$options$correction))),
+                    collapse=" "),
                 init=FALSE)
         },
 
@@ -265,10 +269,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     title="Principal coordinates ordination"))
                 return()
             }
-            self$results$ordinationDescription$setContent(miso_html_block(
-                character(0),
-                ariaLabel="About PCoA ordination",
-                title="Principal coordinates ordination"))
+            self$results$ordinationDescription$setContent("")
         },
 
 

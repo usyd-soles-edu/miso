@@ -1159,13 +1159,12 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
         fixed=TRUE))
     expect_true(isTRUE(rendered))
     expect_true(shown$results$shepard$visible)
-    expect_true(shown$results$shepardDescription$visible)
+    expect_false(shown$results$shepardDescription$visible)
     expect_true(shown$results$shepardPairs$visible)
     shownPairs <- shown$results$shepardPairs$asDF
     rownames(shownPairs) <- NULL
     expect_equal(shownPairs, expectedData, tolerance=0)
-    expect_match(description, "ordination distances")
-    expect_match(description, "preserve ranked dissimilarities")
+    expect_identical(description, "character(0)")
     expect_lt(nchar(description), 600L)
     expect_gt(file.info(path)$size, 0)
     expect_identical(shownPrivate$.state$fit, before$fit)
@@ -1445,6 +1444,15 @@ test_that("nMDS reports effective choices in surviving table notes", {
     analysis <- run_nmds_private(nmds_state_data(),
         vars=paste0("feature_0", 1:4), factor="group", nmdsTrymax=5, seed=123)
     expect_true(analysis$results$sites$visible)
-    expect_match(miso_table_note(analysis$results$sites, "method"), "Transformation")
-    expect_match(miso_table_note(analysis$results$stress, "method"), "Dimensions")
+    expect_match(miso_table_note(analysis$results$sites, "method"), "Bray")
+    expect_identical(miso_table_note(analysis$results$stress, "method"), "")
+    expect_false(grepl("Note.", analysis$results$stress$asString(), fixed=TRUE))
+})
+
+test_that("publication output omits routine explanatory prose", {
+    analysis <- run_nmds_private(nmds_state_data(),
+        vars=paste0("feature_0", 1:4), nmdsTrymax=5, seed=123)
+    expect_false(analysis$results$ordinationDescription$visible)
+    expect_identical(miso_table_note(analysis$results$stress, "method"), "")
+    expect_false(grepl("Note.", analysis$results$stress$asString(), fixed=TRUE))
 })

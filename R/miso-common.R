@@ -194,15 +194,9 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     if (is.na(seed) || seed <= 0)
         seed <- NA_integer_
 
-    if (nrow(commMat) > 5000)
-        warnings <- c(warnings, sprintf("Large dataset (%d samples). Distance matrix computation may be slow.", nrow(commMat)))
-
     countMethods <- c("morisita", "horn", "chao", "cao")
     if (distance %in% countMethods && any(abs(commMat - round(commMat)) > .Machine$double.eps^0.5, na.rm=TRUE))
         warnings <- c(warnings, sprintf("'%s' is designed for count data. Non-integer values detected.", distance))
-
-    if (isTRUE(distBinary))
-        warnings <- c(warnings, "Binary (presence/absence) dissimilarity requested: abundance magnitudes ignored.")
 
     covDF <- if (length(covs) > 0) dat[, covs, drop=FALSE] else NULL
 
@@ -360,9 +354,27 @@ miso_html_escape <- function(value) {
     gsub("'", "&#39;", value, fixed=TRUE)
 }
 
+miso_method_note <- function(transformLabel, distanceLabel, binary=FALSE,
+        sqrtDist=FALSE, correction="None") {
+    transformation <- if (tolower(transformLabel) == "none")
+        "Untransformed data"
+    else
+        paste(transformLabel, "transformation")
+    parts <- c(transformation, paste(distanceLabel, "dissimilarities"))
+    if (isTRUE(binary))
+        parts <- c(parts, "presence/absence distances")
+    if (isTRUE(sqrtDist))
+        parts <- c(parts, "Square-root distances")
+    if (!is.null(correction) && tolower(correction) != "none")
+        parts <- c(parts, paste(correction, "correction"))
+    paste0(paste(parts, collapse="; "), ".")
+}
+
 miso_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
     paragraphs <- as.character(paragraphs)
     paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
+    if (length(paragraphs) == 0L)
+        return("")
     escaped <- miso_html_escape(paragraphs)
     escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
     accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {

@@ -380,7 +380,7 @@ test_that("PERMDISP returns test table and plot output", {
 
     expect_match(
         miso_table_note(res$anova, "structuralCells"),
-        "Transformation: None. Dissimilarity index: Bray-Curtis",
+        "Untransformed data; Bray-Curtis dissimilarities.",
         fixed=TRUE)
     expect_true(nrow(res$anova$asDF) >= 2L)
     expect_true(nrow(res$distances$asDF) >= 3L)
@@ -411,7 +411,7 @@ test_that("ANOSIM returns stable numeric results", {
     tab <- res$global$asDF
     expect_match(
         miso_table_note(res$global, "meaning"),
-        "R compares ranked between-group and within-group dissimilarities",
+        "Untransformed data; Bray-Curtis dissimilarities.",
         fixed=TRUE)
     expect_equal(nrow(tab), 1L)
     expect_equal(tab$value[tab$statistic == "Global R"], -0.4444444, tolerance = 1e-6)
@@ -472,8 +472,7 @@ test_that("nMDS returns stress results and plot outputs", {
     ))
 
     stress <- res$stress$asDF
-    expect_match(miso_table_note(res$stress, "method"),
-        "Random starts", fixed=TRUE)
+    expect_false(grepl("Note.", res$stress$asString(), fixed=TRUE))
     expect_true(any(stress$item == "Stress"))
     expect_equal(as.numeric(stress$value[stress$item == "Stress"]), 0, tolerance = 1e-6)
     expect_false(is.null(res$ordination))
@@ -520,11 +519,12 @@ test_that("new transformations run through PERMANOVA", {
     }
 })
 
-test_that("binary dissimilarity toggles presence/absence and warns", {
+test_that("binary dissimilarity is identified in the method note", {
     res <- suppressMessages(permanova(
         data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
         distBinary = TRUE, permN = 19, seed = 123))
-    expect_match(as.character(res$warnings$asString()), "Binary \\(presence/absence\\) dissimilarity requested")
+    expect_match(miso_table_note(res$table, "method"), "presence/absence distances", fixed=TRUE)
+    expect_false(grepl("Binary", as.character(res$warnings$asString()), fixed=TRUE))
     expect_true(nrow(res$table$asDF) >= 1L)
 })
 
