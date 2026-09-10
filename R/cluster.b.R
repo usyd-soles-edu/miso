@@ -78,7 +78,6 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             showLabels <- private$.labelsAreShown(
                 prep$rowsUsed,
                 labelChoice$mode)
-            labelsShortened <- showLabels && any(nchar(labelState$labels) > 24L)
             clusterState <- private$.clusterDefinition(fit)
             membership <- if (isTRUE(clusterState$valid))
                 clusterState$membership
@@ -97,21 +96,13 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 labelMode=labelChoice$mode,
                 labelModeSource=labelChoice$source,
                 showLabels=showLabels,
-                labelsShortened=labelsShortened,
                 membership=membership,
                 cutLine=clusterState$cutLine,
                 cutDescription=clusterState$description,
                 clusterStyleAvailable=clusterCount <= 64L,
-                warnings=unique(c(
-                    prep$warnings,
-                    labelState$warnings,
-                    if (labelsShortened)
-                        paste(
-                            "Long sample labels are shortened only in the dendrogram;",
-                            "full labels are retained in the membership table.")
-                    else
-                        character(),
-                    clusterState$warning)))
+                baseWarnings=unique(c(
+                    prep$warnings, labelState$warnings, clusterState$warning)))
+            private$.refreshLabelWarnings()
 
             self$results$dendrogram$setState(list(
                 fit=private$.state$fit,
@@ -139,7 +130,6 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.distanceLabel(self$options$distance),
                     private$.state$cutDescription),
                 init=FALSE)
-            private$.setWarnings(private$.state$warnings)
             private$.populateDescription()
             private$.showSuccessfulResults()
         },
@@ -152,6 +142,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state$labelModeSource <- labelChoice$source
             private$.state$showLabels <- private$.labelsAreShown(
                 length(private$.state$labels), labelChoice$mode)
+            private$.refreshLabelWarnings()
             self$results$dendrogram$setState(list(
                 fit=private$.state$fit,
                 labels=private$.state$labels,
@@ -161,6 +152,18 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distanceLabel=private$.distanceLabel(self$options$distance)))
             self$results$dendrogram$setVisible(TRUE)
             self$results$dendrogramDescription$setVisible(TRUE)
+        },
+
+        .refreshLabelWarnings = function() {
+            private$.state$labelsShortened <- private$.state$showLabels &&
+                any(nchar(private$.state$labels) > 24L)
+            private$.state$warnings <- unique(c(
+                private$.state$baseWarnings,
+                if (private$.state$labelsShortened)
+                    paste(
+                        "Long sample labels are shortened only in the dendrogram;",
+                        "full labels are retained in the membership table.")))
+            private$.setWarnings(private$.state$warnings)
         },
 
         .clearResults = function() {
@@ -203,8 +206,11 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
-            if (length(warnings) == 0L)
+            if (length(warnings) == 0L) {
+                self$results$warnings$setContent("")
+                self$results$warnings$setVisible(FALSE)
                 return()
+            }
             self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },

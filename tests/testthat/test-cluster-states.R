@@ -911,3 +911,33 @@ test_that("cluster reports transformation and actual cut rule in table notes", {
     expect_match(miso_table_note(result$results$dendrogramStructure, "method"), "Transformation")
     expect_match(miso_table_note(result$results$membership, "method"), "Cut rule")
 })
+
+test_that("sample-label reruns refresh shortening warnings without changing clustering", {
+    analysis <- run_cluster_private(
+        cluster_state_data(18L, long_labels=TRUE),
+        vars=paste0("feature_0", 1:4), labels="sample",
+        sampleLabels="hide", defineClusters=TRUE, numberClusters=3)
+    private <- cluster_private(analysis)
+    fit <- private$.state$fit
+    labels <- private$.state$labels
+    membership <- analysis$results$membership$asDF
+    structure <- analysis$results$dendrogramStructure$asDF
+    membershipKeys <- analysis$results$membership$rowKeys
+    structureKeys <- analysis$results$dendrogramStructure$rowKeys
+    option <- analysis$options$option("sampleLabels")
+
+    for (mode in c("show", "hide", "auto")) {
+        option$.__enclos_env__$private$.value <- mode
+        suppressWarnings(suppressMessages(analysis$run()))
+        shown <- mode != "hide"
+        expect_identical(private$.state$labelsShortened, shown)
+        expect_identical(any(grepl("Long sample labels", private$.state$warnings)), shown)
+        expect_identical(grepl("Long sample labels", miso_squish_result(analysis$results$warnings)), shown)
+        expect_identical(private$.state$fit, fit)
+        expect_identical(private$.state$labels, labels)
+        expect_identical(analysis$results$membership$asDF, membership)
+        expect_identical(analysis$results$dendrogramStructure$asDF, structure)
+        expect_identical(analysis$results$membership$rowKeys, membershipKeys)
+        expect_identical(analysis$results$dendrogramStructure$rowKeys, structureKeys)
+    }
+})
