@@ -164,7 +164,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (! pairwiseShown)
                 miso_clear_table(self$results$pairwise)
             private$.showSuccessfulResults(pairwiseShown)
-            private$.setWarnings(private$.state$warnings)
+            private$.setWarnings(c(
+                private$.state$warnings, private$.state$companion$warnings))
         },
 
         .run = function() {
@@ -183,7 +184,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 warnings=character(), cl=NULL, permutation=NULL,
                 companion=list(
                     requested=isTRUE(self$options$showCompanionPcoa),
-                    prep=NULL, model=NULL, fit=NULL,
+                    prep=NULL, model=NULL, fit=NULL, warnings=character(),
                     plotData=NULL, displayFactor=NULL))
             private$.clearResults()
 
@@ -225,7 +226,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.runCompanionPcoa(companion$prep, companion$model)
                 # Display-only reruns bypass the normal .run() tail. Publish
                 # selection notices here rather than leaving them in state.
-                private$.setWarnings(private$.state$warnings)
+                private$.setWarnings(c(
+                    private$.state$warnings, private$.state$companion$warnings))
                 return()
             }
             miso_clear_table(self$results$companionPcoaSites)
@@ -233,6 +235,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$companionPcoa$setVisible(FALSE)
             self$results$companionPcoaDescription$setVisible(FALSE)
             self$results$companionPcoaSites$setVisible(FALSE)
+            self$results$companionPcoaCentroids$setVisible(FALSE)
+            private$.state$companion$warnings <- character()
+            private$.setWarnings(private$.state$warnings)
         },
 
         .clearResults = function() {
@@ -297,6 +302,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .runCompanionPcoa = function(prep, model) {
+            private$.state$companion$warnings <- character()
             private$.state$companion$prep <- prep
             private$.state$companion$model <- model
             private$.state$companion$fit <- NULL
@@ -524,17 +530,17 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 length(model$covariateNames) > 0L ||
                 isTRUE(self$options$permInteractions)
             if (modelIsComplex)
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$companion$warnings <- c(
+                    private$.state$companion$warnings,
                     paste(
                         "The companion PCoA displays one grouping variable and",
                         "does not represent adjusted effects from the complete model."))
             if (length(selectionNotice) > 0L)
-                private$.state$warnings <- c(
-                    private$.state$warnings, selectionNotice)
+                private$.state$companion$warnings <- c(
+                    private$.state$companion$warnings, selectionNotice)
             if (available && isTRUE(plotData$neutral))
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$companion$warnings <- c(
+                    private$.state$companion$warnings,
                     paste(
                         "Neutral site styling is used because more than 64 groups",
                         "are present; centroids and spiders are omitted from the image."))

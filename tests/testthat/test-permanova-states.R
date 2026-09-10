@@ -1196,3 +1196,41 @@ test_that("value-only data edits refresh term rows and keep their cells", {
         analysis$results$pairwise$asDF, fresh$results$pairwise$asDF,
         tolerance=1e-12)
 })
+
+test_that("companion toggles hide centroids and replace only companion warnings", {
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", strata="block",
+        permN=19, seed=123, permPairwise=TRUE,
+        showCompanionPcoa=TRUE, pcoaCentroids=TRUE,
+        pcoaDisplayFactor="depth")
+    analysis <- permanovaClass$new(options=options, data=permanova_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    table <- analysis$results$table$asDF
+    pairwise <- analysis$results$pairwise$asDF
+    cells <- analysis$results$table$columns[[1L]]$.__enclos_env__$private$.cells
+    expect_true(analysis$results$companionPcoaCentroids$visible)
+    expect_match(miso_squish_result(analysis$results$warnings), "depth", fixed=TRUE)
+
+    displayed <- options$option("pcoaDisplayFactor")
+    displayed$.__enclos_env__$private$.value <- "group"
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(grepl("depth", miso_squish_result(analysis$results$warnings), fixed=TRUE))
+    expect_match(miso_squish_result(analysis$results$warnings),
+        "not used with Free permutations", fixed=TRUE)
+
+    displayed$.__enclos_env__$private$.value <- "depth"
+    suppressWarnings(suppressMessages(analysis$run()))
+    enabled <- options$option("showCompanionPcoa")
+    enabled$.__enclos_env__$private$.value <- FALSE
+    suppressWarnings(suppressMessages(analysis$run()))
+    for (name in c("companionPcoa", "companionPcoaDescription",
+            "companionPcoaSites", "companionPcoaCentroids"))
+        expect_false(analysis$results[[name]]$visible, info=name)
+    expect_false(grepl("depth", miso_squish_result(analysis$results$warnings), fixed=TRUE))
+    expect_match(miso_squish_result(analysis$results$warnings),
+        "not used with Free permutations", fixed=TRUE)
+    expect_identical(analysis$results$table$asDF, table)
+    expect_identical(analysis$results$pairwise$asDF, pairwise)
+    expect_identical(
+        analysis$results$table$columns[[1L]]$.__enclos_env__$private$.cells, cells)
+})
