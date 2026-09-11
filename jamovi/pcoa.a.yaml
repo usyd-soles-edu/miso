@@ -151,7 +151,7 @@ options:
     description: Whether to draw group centroids when a grouping variable is selected.
 
   - name: showSpiders
-    title: Connect sites to centroids
+    title: Site-centroid connections
     type: Bool
     default: false
     description: Whether to connect each site to its group centroid; enabling spiders also draws the centroids.

@@ -152,7 +152,7 @@ options:
     default: true
 
   - name: nmdsOverlay
-    title: Style points by group
+    title: Group point styling
     type: Bool
     default: true
 

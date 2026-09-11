@@ -155,7 +155,7 @@ options:
     default: false
 
   - name: simperAssess
-    title: Assess contributions with permutations
+    title: Permutation contribution assessment
     type: Bool
     default: false
 

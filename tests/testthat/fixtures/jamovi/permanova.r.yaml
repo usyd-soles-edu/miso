@@ -18,7 +18,7 @@ items:
     visible: false
 
   - name: table
-    title: PERMANOVA Table
+    title: PERMANOVA Results
     type: Table
     visible: false
     rows: 0
@@ -153,4 +153,3 @@ items:
         title: Adjusted p
         type: number
         format: zto,pvalue
-

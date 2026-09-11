@@ -67,7 +67,7 @@ test_that("PERMANOVA narrative results use bounded HTML", {
 test_that("PERMANOVA outputs use native titles and notes", {
     results <- yaml::read_yaml(miso_fixture_path("jamovi", "permanova.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
-    expect_identical(by_name$table$title, "PERMANOVA Table")
+    expect_identical(by_name$table$title, "PERMANOVA Results")
     expect_identical(by_name$companionPcoa$title, "Companion PCoA")
     expect_identical(by_name$pairwise$title, "Pairwise PERMANOVA")
     expect_false(any(grepl("Purpose$|^(summary|settings|note|interpretation)$",

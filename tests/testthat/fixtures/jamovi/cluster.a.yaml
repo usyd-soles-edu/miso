@@ -137,12 +137,12 @@ options:
     description: Compatibility value for analyses saved before sample label modes were introduced.
 
   - name: defineClusters
-    title: Define clusters
+    title: Cluster definition
     type: Bool
     default: false
 
   - name: cutMode
-    title: Define clusters by
+    title: Definition method
     type: List
     options:
       - title: Number of clusters

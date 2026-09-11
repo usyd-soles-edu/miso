@@ -440,20 +440,6 @@ miso_warning_block <- function(paragraphs, title="Data handling warning",
         '\n</div>')
 }
 
-miso_populate_purposes <- function(results, purposes) {
-    for (name in names(purposes)) {
-        purpose <- purposes[[name]]
-        if (length(purpose) != 2L)
-            stop("each result purpose requires a label and one sentence",
-                call.=FALSE)
-        results[[name]]$setContent(miso_html_block(
-            purpose[[2L]],
-            ariaLabel=paste("About", purpose[[1L]]),
-            title=purpose[[1L]]))
-    }
-    invisible(NULL)
-}
-
 miso_display_term <- function(term, prep) {
     labels <- c(.f1=prep$primary)
     if (length(prep$extra) > 0) {

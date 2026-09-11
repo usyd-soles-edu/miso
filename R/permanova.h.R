@@ -314,34 +314,34 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$add(jmvcore::Table$new(
                 options=options,
                 name="table",
-                title="PERMANOVA Table",
+                title="PERMANOVA Results",
                 visible=FALSE,
                 rows=0,
                 columns=list(
                     list(
-                        `name`="source", 
-                        `title`="Source", 
+                        `name`="source",
+                        `title`="Source",
                         `type`="text"),
                     list(
-                        `name`="df", 
-                        `title`="df", 
+                        `name`="df",
+                        `title`="df",
                         `type`="integer"),
                     list(
-                        `name`="sumsqs", 
-                        `title`="Sum Sq", 
+                        `name`="sumsqs",
+                        `title`="Sum Sq",
                         `type`="number"),
                     list(
-                        `name`="r2", 
-                        `title`="R\u00B2", 
+                        `name`="r2",
+                        `title`="R\u00B2",
                         `type`="number"),
                     list(
-                        `name`="f", 
-                        `title`="Pseudo-F", 
+                        `name`="f",
+                        `title`="Pseudo-F",
                         `type`="number"),
                     list(
-                        `name`="p", 
-                        `title`="Permutation p", 
-                        `type`="number", 
+                        `name`="p",
+                        `title`="Permutation p",
+                        `type`="number",
                         `format`="zto,pvalue")),
                 clearWith=list(
                     "vars",
@@ -406,26 +406,26 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="site", 
-                        `title`="Site", 
+                        `name`="site",
+                        `title`="Site",
                         `type`="text"),
                     list(
-                        `name`="sourceRow", 
-                        `title`="Source row", 
+                        `name`="sourceRow",
+                        `title`="Source row",
                         `type`="integer"),
                     list(
-                        `name`="group", 
-                        `title`="Group", 
+                        `name`="group",
+                        `title`="Group",
                         `type`="text"),
                     list(
-                        `name`="PCoA1", 
-                        `title`="PCoA1", 
-                        `type`="number", 
+                        `name`="PCoA1",
+                        `title`="PCoA1",
+                        `type`="number",
                         `format`="zto"),
                     list(
-                        `name`="PCoA2", 
-                        `title`="PCoA2", 
-                        `type`="number", 
+                        `name`="PCoA2",
+                        `title`="PCoA2",
+                        `type`="number",
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -448,22 +448,22 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="group", 
-                        `title`="Group", 
+                        `name`="group",
+                        `title`="Group",
                         `type`="text"),
                     list(
-                        `name`="n", 
-                        `title`="n", 
+                        `name`="n",
+                        `title`="n",
                         `type`="integer"),
                     list(
-                        `name`="PCoA1", 
-                        `title`="PCoA1", 
-                        `type`="number", 
+                        `name`="PCoA1",
+                        `title`="PCoA1",
+                        `type`="number",
                         `format`="zto"),
                     list(
-                        `name`="PCoA2", 
-                        `title`="PCoA2", 
-                        `type`="number", 
+                        `name`="PCoA2",
+                        `title`="PCoA2",
+                        `type`="number",
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -486,22 +486,22 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="f", 
-                        `title`="Pseudo-F", 
+                        `name`="f",
+                        `title`="Pseudo-F",
                         `type`="number"),
                     list(
-                        `name`="p", 
-                        `title`="Permutation p", 
-                        `type`="number", 
+                        `name`="p",
+                        `title`="Permutation p",
+                        `type`="number",
                         `format`="zto,pvalue"),
                     list(
-                        `name`="padj", 
-                        `title`="Adjusted p", 
-                        `type`="number", 
+                        `name`="padj",
+                        `title`="Adjusted p",
+                        `type`="number",
                         `format`="zto,pvalue"))))}))
 
 permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -527,8 +527,8 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' PERMANOVA
 #'
-#' Tests whether multivariate composition is associated with one or more 
-#' predictors using PERMANOVA through vegan::adonis2. Supports restricted 
+#' Tests whether multivariate composition is associated with one or more
+#' predictors using PERMANOVA through vegan::adonis2. Supports restricted
 #' permutations, pairwise comparisons, and a descriptive companion PCoA.
 #' @section References:
 #' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
@@ -662,4 +662,3 @@ permanova <- function(
 
     analysis$results
 }
-
