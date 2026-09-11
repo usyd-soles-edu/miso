@@ -17,12 +17,12 @@ as a species abundance, measurement, taxon, or biomarker. Grouping and design
 variables may be categorical; integer-coded categorical variables are accepted
 when set to nominal or ordinal in jamovi.
 
-- Missing values, empty rows, and features with no variation can reduce the
-  data used. Read data-handling warnings when they appear.
+- Missing values, empty rows, and all-zero feature columns can reduce the data
+  used. Read data-handling warnings when they appear.
 - Transformations and dissimilarity indices change the question being asked.
   Choose them for the measurement scale and scientific design.
 - Permutation p-values depend on the permutation scheme, number of
-  permutations, and random seed. Relevant result notes report these settings.
+  permutations, and random seed. Record these settings when reporting results.
 - An ordination represents distance structure. It is not, by itself, a test of
   statistical significance.
 
@@ -66,7 +66,7 @@ Read **PERMANOVA Results** as an analysis-of-variance table: **Pseudo-F**
 compares separation among model terms with within-group variation, **R²** is
 the variation associated with a term, and **Permutation p** is the evidence
 against the null model. The result note identifies the distance,
-transformation, permutation scheme, seed, test type, and blocking status.
+transformation, permutation restriction, test type, and blocking status.
 Optional pairwise results appear only when requested. The companion PCoA is a
 visual aid to the fitted resemblance structure, not another test.
 
@@ -106,7 +106,7 @@ without an appropriate inferential analysis.
 **Cluster analysis** builds a hierarchical dendrogram from the chosen
 dissimilarity matrix (`vegan::vegdist` and `stats::hclust`). It is descriptive:
 use it to explore similarity structure, not to claim a tested group effect.
-Choose a linkage method and optional sample labels. Turn on **Cluster
+MISO uses group-average linkage. You can choose optional sample labels. Turn on **Cluster
 definition** to add a cut by number of clusters or dissimilarity height; MISO
 then reports cluster membership. The plot and dendrogram structure remain
 available without a definition.
