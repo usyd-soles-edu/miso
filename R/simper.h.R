@@ -224,20 +224,20 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="nFirst", 
-                        `title`="n (first)", 
+                        `name`="nFirst",
+                        `title`="n (first)",
                         `type`="integer"),
                     list(
-                        `name`="nSecond", 
-                        `title`="n (second)", 
+                        `name`="nSecond",
+                        `title`="n (second)",
                         `type`="integer"),
                     list(
-                        `name`="overall", 
-                        `title`="Mean dissimilarity", 
+                        `name`="overall",
+                        `title`="Mean dissimilarity",
                         `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
@@ -247,20 +247,20 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="feature", 
-                        `title`="Feature", 
+                        `name`="feature",
+                        `title`="Feature",
                         `type`="text"),
                     list(
-                        `name`="contribution", 
-                        `title`="Contribution (%)", 
+                        `name`="contribution",
+                        `title`="Contribution (%)",
                         `type`="number"),
                     list(
-                        `name`="cumulative", 
-                        `title`="Cumulative (%)", 
+                        `name`="cumulative",
+                        `title`="Cumulative (%)",
                         `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
@@ -271,24 +271,24 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="feature", 
-                        `title`="Feature", 
+                        `name`="feature",
+                        `title`="Feature",
                         `type`="text"),
                     list(
-                        `name`="average", 
-                        `title`="Average", 
+                        `name`="average",
+                        `title`="Average",
                         `type`="number"),
                     list(
-                        `name`="sd", 
-                        `title`="SD", 
+                        `name`="sd",
+                        `title`="SD",
                         `type`="number"),
                     list(
-                        `name`="ratio", 
-                        `title`="Average/SD", 
+                        `name`="ratio",
+                        `title`="Average/SD",
                         `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
@@ -299,20 +299,20 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="feature", 
-                        `title`="Feature", 
+                        `name`="feature",
+                        `title`="Feature",
                         `type`="text"),
                     list(
-                        `name`="meanFirst", 
-                        `title`="First mean", 
+                        `name`="meanFirst",
+                        `title`="First mean",
                         `type`="number"),
                     list(
-                        `name`="meanSecond", 
-                        `title`="Second mean", 
+                        `name`="meanSecond",
+                        `title`="Second mean",
                         `type`="number"))))
             self$add(jmvcore::Table$new(
                 options=options,
@@ -322,40 +322,40 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="feature", 
-                        `title`="Feature", 
+                        `name`="feature",
+                        `title`="Feature",
                         `type`="text"),
                     list(
-                        `name`="average", 
-                        `title`="Average contribution", 
+                        `name`="average",
+                        `title`="Average contribution",
                         `type`="number"),
                     list(
-                        `name`="sd", 
-                        `title`="Contribution SD", 
+                        `name`="sd",
+                        `title`="Contribution SD",
                         `type`="number"),
                     list(
-                        `name`="ratio", 
-                        `title`="Average divided by SD", 
+                        `name`="ratio",
+                        `title`="Average divided by SD",
                         `type`="number"),
                     list(
-                        `name`="meanFirst", 
-                        `title`="Mean in first group", 
+                        `name`="meanFirst",
+                        `title`="Mean in first group",
                         `type`="number"),
                     list(
-                        `name`="meanSecond", 
-                        `title`="Mean in second group", 
+                        `name`="meanSecond",
+                        `title`="Mean in second group",
                         `type`="number"),
                     list(
-                        `name`="contribution", 
-                        `title`="Contribution (%)", 
+                        `name`="contribution",
+                        `title`="Contribution (%)",
                         `type`="number"),
                     list(
-                        `name`="cumulative", 
-                        `title`="Cumulative contribution (%)", 
+                        `name`="cumulative",
+                        `title`="Cumulative contribution (%)",
                         `type`="number"))))
             self$add(jmvcore::Array$new(
                 options=options,
@@ -393,40 +393,40 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                                 rows=0,
                                 columns=list(
                                     list(
-                                        `name`="feature", 
-                                        `title`="Feature", 
+                                        `name`="feature",
+                                        `title`="Feature",
                                         `type`="text"),
                                     list(
-                                        `name`="average", 
-                                        `title`="Average contribution", 
+                                        `name`="average",
+                                        `title`="Average contribution",
                                         `type`="number"),
                                     list(
-                                        `name`="contribution", 
-                                        `title`="Contribution (%)", 
+                                        `name`="contribution",
+                                        `title`="Contribution (%)",
                                         `type`="number"),
                                     list(
-                                        `name`="cumulative", 
-                                        `title`="Cumulative (%)", 
+                                        `name`="cumulative",
+                                        `title`="Cumulative (%)",
                                         `type`="number"),
                                     list(
-                                        `name`="firstGroup", 
-                                        `title`="First group", 
+                                        `name`="firstGroup",
+                                        `title`="First group",
                                         `type`="text"),
                                     list(
-                                        `name`="meanFirst", 
-                                        `title`="First mean", 
+                                        `name`="meanFirst",
+                                        `title`="First mean",
                                         `type`="number"),
                                     list(
-                                        `name`="secondGroup", 
-                                        `title`="Second group", 
+                                        `name`="secondGroup",
+                                        `title`="Second group",
                                         `type`="text"),
                                     list(
-                                        `name`="meanSecond", 
-                                        `title`="Second mean", 
+                                        `name`="meanSecond",
+                                        `title`="Second mean",
                                         `type`="number"),
                                     list(
-                                        `name`="direction", 
-                                        `title`="Direction", 
+                                        `name`="direction",
+                                        `title`="Direction",
                                         `type`="text"))))}))$new(options=options)))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -452,20 +452,20 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="feature", 
-                        `title`="Feature", 
+                        `name`="feature",
+                        `title`="Feature",
                         `type`="text"),
                     list(
-                        `name`="contribution", 
-                        `title`="Contribution (%)", 
+                        `name`="contribution",
+                        `title`="Contribution (%)",
                         `type`="number"),
                     list(
-                        `name`="selected", 
-                        `title`="Selected for this contrast", 
+                        `name`="selected",
+                        `title`="Selected for this contrast",
                         `type`="text"))))
             self$add(jmvcore::Table$new(
                 options=options,
@@ -475,22 +475,22 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="feature", 
-                        `title`="Feature", 
+                        `name`="feature",
+                        `title`="Feature",
                         `type`="text"),
                     list(
-                        `name`="p", 
-                        `title`="Permutation p", 
-                        `type`="number", 
+                        `name`="p",
+                        `title`="Permutation p",
+                        `type`="number",
                         `format`="zto,pvalue"),
                     list(
-                        `name`="padj", 
-                        `title`="Adjusted p", 
-                        `type`="number", 
+                        `name`="padj",
+                        `title`="Adjusted p",
+                        `type`="number",
                         `format`="zto,pvalue"))))}))
 
 simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -516,8 +516,8 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' SIMPER
 #'
-#' Describes how individual features contribute to average Bray-Curtis 
-#' dissimilarity between groups using vegan::simper. Optional permutation 
+#' Describes how individual features contribute to average Bray-Curtis
+#' dissimilarity between groups using vegan::simper. Optional permutation
 #' results are exploratory rather than an overall group test.
 #' @section References:
 #' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
@@ -613,4 +613,3 @@ simper <- function(
 
     analysis$results
 }
-

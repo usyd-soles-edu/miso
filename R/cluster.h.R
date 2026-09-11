@@ -243,32 +243,32 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="recordType", 
-                        `title`="Record", 
+                        `name`="recordType",
+                        `title`="Record",
                         `type`="text"),
                     list(
-                        `name`="displayOrder", 
-                        `title`="Display order", 
+                        `name`="displayOrder",
+                        `title`="Display order",
                         `type`="integer"),
                     list(
-                        `name`="sample", 
-                        `title`="Sample", 
+                        `name`="sample",
+                        `title`="Sample",
                         `type`="text"),
                     list(
-                        `name`="mergeStep", 
-                        `title`="Merge step", 
+                        `name`="mergeStep",
+                        `title`="Merge step",
                         `type`="integer"),
                     list(
-                        `name`="leftChild", 
-                        `title`="Left child", 
+                        `name`="leftChild",
+                        `title`="Left child",
                         `type`="text"),
                     list(
-                        `name`="rightChild", 
-                        `title`="Right child", 
+                        `name`="rightChild",
+                        `title`="Right child",
                         `type`="text"),
                     list(
-                        `name`="height", 
-                        `title`="Height", 
+                        `name`="height",
+                        `title`="Height",
                         `type`="number")),
                 clearWith=list(
                     "vars",
@@ -287,12 +287,12 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="sample", 
-                        `title`="Sample", 
+                        `name`="sample",
+                        `title`="Sample",
                         `type`="text"),
                     list(
-                        `name`="cluster", 
-                        `title`="Cluster", 
+                        `name`="cluster",
+                        `title`="Cluster",
                         `type`="integer")),
                 clearWith=list(
                     "vars",
@@ -327,8 +327,8 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' Cluster analysis
 #'
-#' Groups samples by hierarchical clustering of dissimilarities calculated 
-#' with vegan::vegdist and stats::hclust. The dendrogram and optional cluster 
+#' Groups samples by hierarchical clustering of dissimilarities calculated
+#' with vegan::vegdist and stats::hclust. The dendrogram and optional cluster
 #' memberships are descriptive.
 #' @section References:
 #' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
@@ -407,4 +407,3 @@ cluster <- function(
 
     analysis$results
 }
-

@@ -74,8 +74,8 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$contrasts)}
 }
 \description{
-Describes how individual features contribute to average Bray-Curtis 
-dissimilarity between groups using vegan::simper. Optional permutation 
+Describes how individual features contribute to average Bray-Curtis
+dissimilarity between groups using vegan::simper. Optional permutation
 results are exploratory rather than an overall group test.
 }
 \section{References}{
@@ -84,4 +84,3 @@ Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5
 
 Clarke, K. R. (1993). Non-parametric multivariate analyses of changes in community structure. Australian Journal of Ecology, 18(1), 117-143. https://doi.org/10.1111/j.1442-9993.1993.tb00438.x
 }
-

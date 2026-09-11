@@ -85,12 +85,11 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$sites)}
 }
 \description{
-Produces a non-metric multidimensional scaling ordination through 
-vegan::metaMDS. Reports stress and convergence and can add group, feature, 
+Produces a non-metric multidimensional scaling ordination through
+vegan::metaMDS. Reports stress and convergence and can add group, feature,
 environmental, and Shepard diagnostics.
 }
 \section{References}{
 
 Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
 }
-

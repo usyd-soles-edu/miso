@@ -72,13 +72,12 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$sites)}
 }
 \description{
-Performs descriptive principal coordinates analysis (PCoA) of pairwise 
-dissimilarities among sites. The ordination visualises resemblance 
-structure and does not test group differences. When called from R, it 
+Performs descriptive principal coordinates analysis (PCoA) of pairwise
+dissimilarities among sites. The ordination visualises resemblance
+structure and does not test group differences. When called from R, it
 returns the jamovi analysis results object.
 }
 \section{References}{
 
 Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
 }
-

@@ -236,21 +236,21 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=1,
                 columns=list(
                     list(
-                        `name`="statistic", 
-                        `title`="Statistic", 
+                        `name`="statistic",
+                        `title`="Statistic",
                         `type`="text"),
                     list(
-                        `name`="value", 
-                        `title`="R", 
+                        `name`="value",
+                        `title`="R",
                         `type`="number"),
                     list(
-                        `name`="p", 
-                        `title`="Permutation p", 
-                        `type`="number", 
+                        `name`="p",
+                        `title`="Permutation p",
+                        `type`="number",
                         `format`="zto,pvalue"),
                     list(
-                        `name`="permutations", 
-                        `title`="Effective permutations", 
+                        `name`="permutations",
+                        `title`="Effective permutations",
                         `type`="integer"))))
             self$add(jmvcore::Table$new(
                 options=options,
@@ -260,22 +260,22 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="contrast", 
-                        `title`="Contrast", 
+                        `name`="contrast",
+                        `title`="Contrast",
                         `type`="text"),
                     list(
-                        `name`="r", 
-                        `title`="R", 
+                        `name`="r",
+                        `title`="R",
                         `type`="number"),
                     list(
-                        `name`="p", 
-                        `title`="Permutation p", 
-                        `type`="number", 
+                        `name`="p",
+                        `title`="Permutation p",
+                        `type`="number",
                         `format`="zto,pvalue"),
                     list(
-                        `name`="padj", 
-                        `title`="Adjusted p", 
-                        `type`="number", 
+                        `name`="padj",
+                        `title`="Adjusted p",
+                        `type`="number",
                         `format`="zto,pvalue"))))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -318,24 +318,24 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
-                        `name`="category", 
-                        `title`="Pair category", 
+                        `name`="category",
+                        `title`="Pair category",
                         `type`="text"),
                     list(
-                        `name`="pairs", 
-                        `title`="Pairs", 
+                        `name`="pairs",
+                        `title`="Pairs",
                         `type`="integer"),
                     list(
-                        `name`="median", 
-                        `title`="Median rank", 
+                        `name`="median",
+                        `title`="Median rank",
                         `type`="number"),
                     list(
-                        `name`="q1", 
-                        `title`="Q1 rank", 
+                        `name`="q1",
+                        `title`="Q1 rank",
                         `type`="number"),
                     list(
-                        `name`="q3", 
-                        `title`="Q3 rank", 
+                        `name`="q3",
+                        `title`="Q3 rank",
                         `type`="number"))))}))
 
 anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -361,8 +361,8 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' ANOSIM
 #'
-#' Tests whether within-group samples are more similar than between-group 
-#' samples using rank-based ANOSIM through vegan::anosim. Includes optional 
+#' Tests whether within-group samples are more similar than between-group
+#' samples using rank-based ANOSIM through vegan::anosim. Includes optional
 #' pairwise comparisons and rank diagnostics.
 #' @section References:
 #' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
@@ -459,4 +459,3 @@ anosim <- function(
 
     analysis$results
 }
-

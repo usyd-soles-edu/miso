@@ -87,8 +87,8 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$anova)}
 }
 \description{
-Tests whether groups differ in multivariate dispersion using 
-vegan::betadisper and permutation tests. Includes distance-to-centre 
+Tests whether groups differ in multivariate dispersion using
+vegan::betadisper and permutation tests. Includes distance-to-centre
 summaries, diagnostics, and an optional ordination.
 }
 \section{References}{
@@ -97,4 +97,3 @@ Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5
 
 Anderson, M. J. (2006). Distance-based tests for homogeneity of multivariate dispersions. Biometrics, 62(1), 245-253. https://doi.org/10.1111/j.1541-0420.2005.00440.x
 }
-

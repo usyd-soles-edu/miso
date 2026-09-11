@@ -60,12 +60,11 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$dendrogramStructure)}
 }
 \description{
-Groups samples by hierarchical clustering of dissimilarities calculated 
-with vegan::vegdist and stats::hclust. The dendrogram and optional cluster 
+Groups samples by hierarchical clustering of dissimilarities calculated
+with vegan::vegdist and stats::hclust. The dendrogram and optional cluster
 memberships are descriptive.
 }
 \section{References}{
 
 Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
 }
-

@@ -102,8 +102,8 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$table)}
 }
 \description{
-Tests whether multivariate composition is associated with one or more 
-predictors using PERMANOVA through vegan::adonis2. Supports restricted 
+Tests whether multivariate composition is associated with one or more
+predictors using PERMANOVA through vegan::adonis2. Supports restricted
 permutations, pairwise comparisons, and a descriptive companion PCoA.
 }
 \section{References}{
@@ -112,4 +112,3 @@ Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5
 
 Anderson, M. J. (2001). A new method for non-parametric multivariate analysis of variance. Austral Ecology, 26(1), 32-46. https://doi.org/10.1111/j.1442-9993.2001.01070.pp.x
 }
-

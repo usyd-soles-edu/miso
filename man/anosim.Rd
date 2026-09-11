@@ -72,8 +72,8 @@ Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.f
 \code{as.data.frame(results$global)}
 }
 \description{
-Tests whether within-group samples are more similar than between-group 
-samples using rank-based ANOSIM through vegan::anosim. Includes optional 
+Tests whether within-group samples are more similar than between-group
+samples using rank-based ANOSIM through vegan::anosim. Includes optional
 pairwise comparisons and rank diagnostics.
 }
 \section{References}{
@@ -82,4 +82,3 @@ Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5
 
 Clarke, K. R. (1993). Non-parametric multivariate analyses of changes in community structure. Australian Journal of Ecology, 18(1), 117-143. https://doi.org/10.1111/j.1442-9993.1993.tb00438.x
 }
-

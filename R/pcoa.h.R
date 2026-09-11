@@ -223,26 +223,26 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="site", 
-                        `title`="Site", 
+                        `name`="site",
+                        `title`="Site",
                         `type`="text"),
                     list(
-                        `name`="sourceRow", 
-                        `title`="Source row", 
+                        `name`="sourceRow",
+                        `title`="Source row",
                         `type`="integer"),
                     list(
-                        `name`="group", 
-                        `title`="Group", 
+                        `name`="group",
+                        `title`="Group",
                         `type`="text"),
                     list(
-                        `name`="PCoA1", 
-                        `title`="PCoA1", 
-                        `type`="number", 
+                        `name`="PCoA1",
+                        `title`="PCoA1",
+                        `type`="number",
                         `format`="zto"),
                     list(
-                        `name`="PCoA2", 
-                        `title`="PCoA2", 
-                        `type`="number", 
+                        `name`="PCoA2",
+                        `title`="PCoA2",
+                        `type`="number",
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -260,22 +260,22 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="group", 
-                        `title`="Group", 
+                        `name`="group",
+                        `title`="Group",
                         `type`="text"),
                     list(
-                        `name`="n", 
-                        `title`="n", 
+                        `name`="n",
+                        `title`="n",
                         `type`="integer"),
                     list(
-                        `name`="PCoA1", 
-                        `title`="PCoA1", 
-                        `type`="number", 
+                        `name`="PCoA1",
+                        `title`="PCoA1",
+                        `type`="number",
                         `format`="zto"),
                     list(
-                        `name`="PCoA2", 
-                        `title`="PCoA2", 
-                        `type`="number", 
+                        `name`="PCoA2",
+                        `title`="PCoA2",
+                        `type`="number",
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -293,22 +293,22 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 visible=FALSE,
                 columns=list(
                     list(
-                        `name`="axis", 
-                        `title`="Axis", 
+                        `name`="axis",
+                        `title`="Axis",
                         `type`="text"),
                     list(
-                        `name`="eigenvalue", 
-                        `title`="Eigenvalue", 
-                        `type`="number", 
+                        `name`="eigenvalue",
+                        `title`="Eigenvalue",
+                        `type`="number",
                         `format`="zto"),
                     list(
-                        `name`="sign", 
-                        `title`="Sign", 
+                        `name`="sign",
+                        `title`="Sign",
                         `type`="text"),
                     list(
-                        `name`="explained", 
-                        `title`="Explained (%)", 
-                        `type`="number", 
+                        `name`="explained",
+                        `title`="Explained (%)",
+                        `type`="number",
                         `format`="zto")),
                 clearWith=list(
                     "vars",
@@ -342,9 +342,9 @@ pcoaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
 #' PCoA
 #'
-#' Performs descriptive principal coordinates analysis (PCoA) of pairwise 
-#' dissimilarities among sites. The ordination visualises resemblance 
-#' structure and does not test group differences. When called from R, it 
+#' Performs descriptive principal coordinates analysis (PCoA) of pairwise
+#' dissimilarities among sites. The ordination visualises resemblance
+#' structure and does not test group differences. When called from R, it
 #' returns the jamovi analysis results object.
 #' @section References:
 #' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
@@ -436,4 +436,3 @@ pcoa <- function(
 
     analysis$results
 }
-
