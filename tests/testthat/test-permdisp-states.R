@@ -25,7 +25,7 @@ permdisp_populate_test_ordination <- function(ordination) {
     analysis <- permdispClass$new(
         options=options, data=permdisp_state_data())
     private <- analysis$.__enclos_env__$private
-    private$.resetResults()
+    private$.clearResults()
     private$.state <- list(
         ordination=ordination,
         distanceDiagnostic=NULL)
@@ -37,8 +37,12 @@ permdisp_populate_test_ordination <- function(ordination) {
 expect_permdisp_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("anova", "distances")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_permdisp_yaml_node <- function(node, name) {
@@ -55,12 +59,12 @@ find_permdisp_yaml_node <- function(node, name) {
 }
 
 test_that("PERMDISP schema follows the required-first option hierarchy", {
-    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "permdisp.a.yaml"))$options
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "permdisp.u.yaml"))
+    options <- yaml::read_yaml(miso_fixture_path("jamovi", "permdisp.a.yaml"))$options
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "permdisp.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
 
-    expect_identical(by_name$vars$title, "Feature variables (required)")
-    expect_identical(by_name$factor$title, "Grouping variable (required)")
+    expect_identical(by_name$vars$title, "Feature Variables")
+    expect_identical(by_name$factor$title, "Grouping Variable")
     expect_identical(by_name$permRestriction$default, "free")
     expect_identical(
         vapply(by_name$permRestriction$options, `[[`, character(1), "name"),
@@ -81,9 +85,17 @@ test_that("PERMDISP schema follows the required-first option hierarchy", {
     expect_true(is.null(find_permdisp_yaml_node(ui, "permScheme")))
 })
 
+test_that("PERMDISP UI nests adjustment under pairwise comparisons", {
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "permdisp.u.yaml"))
+    pairwise <- find_permdisp_yaml_node(ui, "dispPairwise")
+    expect_identical(pairwise$style, "list")
+    expect_identical(pairwise$children[[1L]]$name, "dispAdjust")
+    expect_identical(pairwise$children[[1L]]$enable, "(dispPairwise)")
+})
+
 test_that("PERMDISP UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(tofu_fixture_path("jamovi", "js", "permdisp.js")),
+        readLines(miso_fixture_path("jamovi", "js", "permdisp.js")),
         collapse="\n")
 
     expect_match(
@@ -96,13 +108,12 @@ test_that("PERMDISP UI dependencies and progressive disclosure are explicit", {
 
 test_that("PERMDISP result schema hides every empty shell", {
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "permdisp.r.yaml"))$items
+        miso_fixture_path("jamovi", "permdisp.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
-    expect_identical(by_name$note$type, "Html")
     expect_identical(
         vapply(by_name$distances$columns, `[[`, character(1), "name"),
         c(
@@ -122,9 +133,7 @@ test_that("PERMDISP result schema hides every empty shell", {
         vapply(by_name$ordinationScores$columns, `[[`, character(1), "name"),
         c("point", "pointType", "group", "plotKey", "axis1", "axis2"))
     expect_identical(by_name$anova$columns[[6L]]$title, "Permutation p")
-    expect_identical(by_name$pairwise$title, "")
-    expect_identical(by_name$pairwisePurpose$title,
-        "Pairwise Dispersion Comparisons")
+    expect_identical(by_name$pairwise$title, "Pairwise Dispersion Comparisons")
 })
 
 test_that("new PERMDISP shows only complete getting-started guidance", {
@@ -143,9 +152,9 @@ test_that("new PERMDISP shows only complete getting-started guidance", {
         result,
         visible="guidance",
         hidden=c(
-            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "warnings", "distances", "anova", "pairwise", "plot",
             "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores", "note", "settings")
+            "ordinationScores")
     )
 })
 
@@ -160,9 +169,9 @@ test_that("incomplete PERMDISP inputs show one actionable correction", {
         features_only,
         visible="guidance",
         hidden=c(
-            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "warnings", "distances", "anova", "pairwise", "plot",
             "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores", "note", "settings")
+            "ordinationScores")
     )
 
     group_only <- permdisp(
@@ -175,9 +184,9 @@ test_that("incomplete PERMDISP inputs show one actionable correction", {
         group_only,
         visible="guidance",
         hidden=c(
-            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "warnings", "distances", "anova", "pairwise", "plot",
             "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores", "note", "settings")
+            "ordinationScores")
     )
 })
 
@@ -195,9 +204,9 @@ test_that("PERMDISP preparation failure hides every result shell", {
         result,
         visible="guidance",
         hidden=c(
-            "summary", "warnings", "distances", "anova", "pairwise", "plot",
+            "warnings", "distances", "anova", "pairwise", "plot",
             "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores", "note", "settings")
+            "ordinationScores")
     )
 })
 
@@ -213,48 +222,13 @@ test_that("successful PERMDISP hides guidance warnings and pairwise shells", {
     expect_permdisp_visibility(
         result,
         visible=c(
-            "summary", "distances", "anova", "plot", "plotDescription",
-            "note", "settings"),
+            "distances", "anova", "plot"),
         hidden=c(
-            "guidance", "warnings", "pairwise", "ordinationPlot",
+            "guidance", "warnings", "pairwise", "plotDescription", "ordinationPlot",
             "ordinationDescription", "ordinationScores")
     )
 })
 
-test_that("PERMDISP valid invalid valid transitions clear stale results", {
-    data <- permdisp_state_data()
-    options <- permdispOptions$new(
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permN=19,
-        seed=123)
-    analysis <- permdispClass$new(options=options, data=data)
-
-    suppressWarnings(suppressMessages(analysis$run()))
-    expect_true(analysis$results$anova$visible)
-    expect_gt(length(analysis$results$anova$rowKeys), 0L)
-
-    factor_option <- options$option("factor")
-    factor_option$.__enclos_env__$private$.value <- NULL
-    analysis$run()
-    expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$anova$visible)
-    expect_false(analysis$results$plot$visible)
-    expect_false(analysis$results$plotDescription$visible)
-    expect_false(analysis$results$ordinationPlot$visible)
-    expect_false(analysis$results$ordinationDescription$visible)
-    expect_false(analysis$results$ordinationScores$visible)
-    expect_equal(length(analysis$results$summary$rowKeys), 0L)
-    expect_equal(length(analysis$results$distances$rowKeys), 0L)
-    expect_equal(length(analysis$results$anova$rowKeys), 0L)
-    expect_equal(length(analysis$results$pairwise$rowKeys), 0L)
-
-    factor_option$.__enclos_env__$private$.value <- "group"
-    suppressWarnings(suppressMessages(analysis$run()))
-    expect_false(analysis$results$guidance$visible)
-    expect_true(analysis$results$anova$visible)
-    expect_gt(length(analysis$results$anova$rowKeys), 0L)
-})
 
 test_that("PERMDISP pairwise transitions remove stale pairwise rows", {
     data <- permdisp_state_data()
@@ -277,22 +251,6 @@ test_that("PERMDISP pairwise transitions remove stale pairwise rows", {
     expect_equal(length(analysis$results$pairwise$rowKeys), 0L)
 })
 
-test_that("two-group PERMDISP never shows an empty pairwise table", {
-    result <- suppressWarnings(suppressMessages(permdisp(
-        data=permdisp_state_data(two_groups=TRUE),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        dispPairwise=TRUE,
-        permN=19,
-        seed=123
-    )))
-
-    expect_false(result$pairwise$visible)
-    expect_equal(nrow(result$pairwise$asDF), 0L)
-    expect_match(
-        as.character(result$note$asString()),
-        "PERMDISP tests multivariate spread")
-})
 
 test_that("PERMDISP preprocessing warnings accompany valid results", {
     data <- permdisp_state_data()
@@ -309,8 +267,7 @@ test_that("PERMDISP preprocessing warnings accompany valid results", {
     expect_permdisp_visibility(
         result,
         visible=c(
-            "summary", "warnings", "distances", "anova", "plot",
-            "plotDescription", "note", "settings"),
+            "warnings", "distances", "anova", "plot"),
         hidden=c(
             "guidance", "pairwise", "ordinationPlot",
             "ordinationDescription", "ordinationScores")
@@ -336,22 +293,6 @@ test_that("PERMDISP structural cells are blank but export as missing", {
     expect_identical(result$anova$getCell(rowKey=row_key, col="p")$value, "")
 })
 
-test_that("PERMDISP reports requested and effective settings", {
-    result <- suppressWarnings(suppressMessages(permdisp(
-        data=permdisp_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permN=19,
-        seed=123
-    )))
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
-
-    expect_identical(settings[["Requested permutation restriction"]], "Free")
-    expect_identical(settings[["Effective permutation restriction"]], "Free")
-    expect_identical(settings[["Group centre"]], "Median")
-    expect_identical(settings[["Random seed"]], "123")
-    expect_identical(settings[["Pairwise comparisons"]], "Disabled")
-})
 
 test_that("PERMDISP distance summary agrees with vegan distances", {
     data <- permdisp_state_data()
@@ -384,74 +325,7 @@ test_that("PERMDISP distance summary agrees with vegan distances", {
     expect_equal(actual$max, unname(vapply(expected, max, numeric(1))))
 })
 
-test_that("PERMDISP reports advanced and current Series settings", {
-    result <- suppressWarnings(suppressMessages(permdisp(
-        data=permdisp_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        transform="sqrt",
-        distSqrt=TRUE,
-        distAdd="cailliez",
-        dispType="centroid",
-        dispBias=TRUE,
-        permRestriction="series",
-        permN=19,
-        seed=123
-    )))
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
 
-    expect_identical(settings[["Transformation"]], "Square root")
-    expect_identical(settings[["Group centre"]], "Centroid")
-    expect_identical(settings[["Bias adjustment"]], "Enabled")
-    expect_identical(settings[["Binary dissimilarity"]], "Disabled")
-    expect_identical(settings[["Square-root distances"]], "Enabled")
-    expect_identical(settings[["Additive constant"]], "Cailliez")
-    expect_identical(settings[["Requested permutation restriction"]], "Series (rows in order)")
-    expect_identical(settings[["Effective permutation restriction"]], "Series (rows in order)")
-    expect_identical(settings[["Sequence order"]], "Current data-row order")
-    expect_false(result$warnings$visible)
-
-    binary <- suppressWarnings(suppressMessages(permdisp(
-        data=permdisp_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        distBinary=TRUE,
-        permN=19,
-        seed=123
-    )))
-    binary_settings <- setNames(
-        binary$settings$asDF$value,
-        binary$settings$asDF$setting)
-    expect_identical(binary_settings[["Binary dissimilarity"]], "Enabled")
-})
-
-test_that("legacy no-block Stratified PERMDISP is equivalent to Free", {
-    free <- suppressWarnings(suppressMessages(permdisp(
-        data=permdisp_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permScheme="free",
-        permN=19,
-        seed=123
-    )))
-    legacy <- suppressWarnings(suppressMessages(permdisp(
-        data=permdisp_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permScheme="stratified",
-        permN=19,
-        seed=123
-    )))
-
-    expect_equal(legacy$anova$asDF, free$anova$asDF, tolerance=0)
-    settings <- setNames(legacy$settings$asDF$value, legacy$settings$asDF$setting)
-    expect_identical(settings[["Requested permutation restriction"]], "Stratified (legacy)")
-    expect_identical(settings[["Effective permutation restriction"]], "Free")
-    expect_true(legacy$warnings$visible)
-    expect_match(
-        as.character(legacy$warnings$asString()),
-        "equivalent for that design")
-})
 
 test_that("PERMDISP plot schemas and generated contracts stay synchronized", {
     root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
@@ -460,11 +334,11 @@ test_that("PERMDISP plot schemas and generated contracts stay synchronized", {
     for (name in c("permdisp.a.yaml", "permdisp.u.yaml", "permdisp.r.yaml")) {
         expect_identical(
             readLines(file.path(root, "jamovi", name), warn=FALSE),
-            readLines(tofu_fixture_path("jamovi", name), warn=FALSE))
+            readLines(miso_fixture_path("jamovi", name), warn=FALSE))
     }
     expect_identical(
         readLines(file.path(root, "jamovi", "js", "permdisp.js"), warn=FALSE),
-        readLines(tofu_fixture_path("jamovi", "js", "permdisp.js"), warn=FALSE))
+        readLines(miso_fixture_path("jamovi", "js", "permdisp.js"), warn=FALSE))
     generated <- paste(
         readLines(file.path(root, "R", "permdisp.h.R"), warn=FALSE),
         collapse="\n")
@@ -524,7 +398,7 @@ test_that("distance marks are deterministic capped and RNG-safe", {
     expect_identical(first$summaries$n, rep(300L, 3L))
     expect_true(all(first$summaries$centre == "Centroid"))
     expect_match(
-        .tofuPlotDisclosure(first$displayed, first$total, "site distances"),
+        .misoPlotDisclosure(first$displayed, first$total, "site distances"),
         "300.*omitted")
 })
 
@@ -586,6 +460,10 @@ test_that("distance and ordination builders degrade safely beyond 64 groups", {
 
     expect_s3_class(distancePlot, "ggplot")
     expect_s3_class(ordinationPlot, "ggplot")
+    for (plot in list(distancePlot, ordinationPlot)) {
+        expect_identical(plot$theme$plot.background$fill, "transparent")
+        expect_identical(plot$theme$panel.background$fill, "transparent")
+    }
     expect_silent(ggplot2::ggplot_build(distancePlot))
     expect_silent(ggplot2::ggplot_build(ordinationPlot))
 })
@@ -705,7 +583,7 @@ test_that("non-finite fitted sites remain in coordinates and are disclosed", {
     expect_false(grepl("NaN", paste(as.matrix(scores), collapse=" "), fixed=TRUE))
     expect_match(
         description,
-        "Shows samples and the group centres used by PERMDISP",
+        "1 of 9 fitted sites could not be plotted",
         fixed=TRUE)
 })
 
@@ -787,22 +665,12 @@ test_that("plot toggles preserve every numerical PERMDISP result", {
     expect_false(hidden$ordinationDescription$visible)
     expect_false(hidden$ordinationScores$visible)
     expect_true(ordination$plot$visible)
-    expect_true(ordination$plotDescription$visible)
+    expect_false(ordination$plotDescription$visible)
     expect_true(ordination$ordinationPlot$visible)
-    expect_true(ordination$ordinationDescription$visible)
+    expect_false(ordination$ordinationDescription$visible)
     expect_true(ordination$ordinationScores$visible)
-    expect_match(
-        as.character(ordination$plotDescription$asString()),
-        "distribution of distances to centre")
-    expect_match(
-        as.character(ordination$ordinationDescription$asString()),
-        "group centres used by PERMDISP")
-    expect_match(
-        gsub(
-            "\\s+", " ",
-            as.character(ordination$ordinationDescription$asString())),
-        "Shows samples and the group centres used by PERMDISP",
-        fixed=TRUE)
+    expect_identical(ordination$plotDescription$content, "")
+    expect_identical(ordination$ordinationDescription$content, "")
 })
 
 test_that("plot transitions clear stale descriptions and coordinates", {
@@ -856,4 +724,284 @@ test_that("PERMDISP ggplots render to bounded PNG files", {
 
     expect_gt(file.info(distanceFile)$size, 1000)
     expect_gt(file.info(ordinationFile)$size, 1000)
+})
+
+test_that("distance plot renders from serialized Image state alone", {
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showDistancePlot=TRUE)
+    analysis <- permdispClass$new(options=options, data=permdisp_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$plot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$all, "data.frame")
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$distanceDiagnostic <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=460)
+    analysis$.__enclos_env__$private$.plotDistances(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("ordination plot renders from serialized Image state alone", {
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showOrdinationPlot=TRUE)
+    analysis <- permdispClass$new(options=options, data=permdisp_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$ordinationPlot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_true(state$available)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$ordination <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    analysis$.__enclos_env__$private$.plotOrdination(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+
+test_that("structural sample inputs rebuild coordinate rows while term rows update in place", {
+    data <- permdisp_state_data()
+    data$sp4 <- c(NA_real_, 3, 1, 9, 7, 8, 2, 5, 4)
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3", "sp4"),
+        factor="group",
+        showOrdinationPlot=TRUE,
+        permN=19,
+        seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    distanceKeys <- analysis$results$distances$rowKeys
+    anovaKeys <- analysis$results$anova$rowKeys
+    scoreKeys <- analysis$results$ordinationScores$rowKeys
+    scoreRowsBefore <- nrow(analysis$results$ordinationScores$asDF)
+
+    varsOption <- options$option("vars")
+    varsOption$.__enclos_env__$private$.value <- c("sp1", "sp2", "sp3")
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(analysis$results$ordinationScores$rowKeys, scoreKeys))
+    expect_gt(
+        nrow(analysis$results$ordinationScores$asDF), scoreRowsBefore)
+    # Group-level tables keep their row structure and refresh values only.
+    expect_identical(analysis$results$distances$rowKeys, distanceKeys)
+    expect_identical(analysis$results$anova$rowKeys, anovaKeys)
+    expect_setequal(
+        analysis$results$distances$asDF$group,
+        c("A", "B", "C"))
+})
+
+test_that("PERMDISP keeps method settings in surviving table notes", {
+    result <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", permN=19, seed=123)))
+    expect_true(result$anova$visible)
+    expect_match(miso_table_note(result$anova, "structuralCells"), "Transformation|Dissimilarity|Permutation")
+})
+
+test_that("PERMDISP copied test notes carry effective distance fitting and permutation settings", {
+    result <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        permN=19,
+        seed=123)))
+    note <- miso_table_note(result$anova, "structuralCells")
+
+    # The published note reports essential methods, without disabled switches.
+    expect_match(note, "Bray-Curtis", fixed=TRUE)
+    expect_match(note, "Centre: Median", fixed=TRUE)
+    expect_match(note, "Bias adjustment: Not applied", fixed=TRUE)
+    expect_match(note, "Effective restriction: Free", fixed=TRUE)
+    expect_match(note, "Permutations: 19", fixed=TRUE)
+    expect_false(grepl("Random seed|Disabled|Residual row|Requested permutation", note))
+})
+
+test_that("PERMDISP notes report non-default and legacy-restriction settings", {
+    series <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        distSqrt=TRUE,
+        distAdd="cailliez",
+        dispType="centroid",
+        dispBias=TRUE,
+        permRestriction="series",
+        permN=19,
+        seed=123)))
+    note <- miso_table_note(series$anova, "structuralCells")
+    expect_match(note, "Square-root distances", fixed=TRUE)
+    expect_match(note, "Cailliez correction", fixed=TRUE)
+    expect_match(note, "Centre: Centroid", fixed=TRUE)
+    expect_match(note, "Bias adjustment: Applied", fixed=TRUE)
+    expect_match(note, "Effective restriction: Series (rows in order)",
+        fixed=TRUE)
+    # Nine rows permit eight non-identity cyclic shifts, not 19 requested.
+    expect_match(note, "Permutations: 8.", fixed=TRUE)
+
+    # Saved analyses carrying a legacy scheme normalize to the effective
+    # restriction instead of reporting the raw default.
+    legacy <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        permScheme="stratified",
+        permN=19,
+        seed=123)))
+    legacyNote <- miso_table_note(legacy$anova, "structuralCells")
+    expect_false(grepl("Requested permutation restriction", legacyNote))
+    expect_match(legacyNote, "Effective restriction: Free", fixed=TRUE)
+    expect_match(miso_squish_result(legacy$warnings),
+        "are implemented as Free permutations", fixed=TRUE)
+})
+
+test_that("PERMDISP copied pairwise notes state the adjustment and contrast family", {
+    result <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(),
+        vars=c("sp1", "sp2", "sp3"),
+        factor="group",
+        dispPairwise=TRUE,
+        dispAdjust="BH",
+        permN=19,
+        seed=123)))
+    note <- miso_table_note(result$pairwise, "scope")
+
+    expect_match(note, "Dispersion comparisons for group", fixed=TRUE)
+    expect_match(note, "Effective restriction: Free", fixed=TRUE)
+    expect_match(note, "Permutations: 19", fixed=TRUE)
+    expect_match(note, "P-value adjustment: Benjamini-Hochberg", fixed=TRUE)
+    expect_match(note, "across all 3 pairwise contrasts", fixed=TRUE)
+})
+
+miso_permdisp_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+test_that("enabling dispersion diagnostics restores descriptions without changing inference", {
+    data <- data.frame(sp1=1:9, sp2=(1:9)*2,
+        group=factor(rep(c("A", "B", "C"), each=3)))
+    options <- permdispOptions$new(vars=c("sp1", "sp2"), factor="group",
+        distance="euclidean", showDistancePlot=FALSE,
+        showOrdinationPlot=FALSE, permN=19, seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- analysis$results$anova$asDF
+    cells <- miso_permdisp_cells(analysis$results$distances)
+    for (name in c("showDistancePlot", "showOrdinationPlot")) {
+        option <- options$option(name)
+        option$.__enclos_env__$private$.value <- TRUE
+    }
+    suppressWarnings(suppressMessages(analysis$run()))
+    fresh <- suppressWarnings(suppressMessages(permdisp(
+        data=data, vars=c("sp1", "sp2"), factor="group",
+        distance="euclidean", showDistancePlot=TRUE,
+        showOrdinationPlot=TRUE, permN=19, seed=123)))
+    for (name in c("plotDescription", "ordinationDescription"))
+        expect_identical(analysis$results[[name]]$asString(),
+            fresh[[name]]$asString())
+    expect_match(miso_squish_result(analysis$results$ordinationDescription),
+        "fewer than two usable axes")
+    expect_false(analysis$results$ordinationPlot$visible)
+    expect_equal(analysis$results$anova$asDF, before, tolerance=0)
+    expect_identical(miso_permdisp_cells(analysis$results$distances), cells)
+    expect_equal(analysis$results$ordinationScores$asDF,
+        fresh$ordinationScores$asDF)
+})
+
+
+test_that("value-only data edits refresh dispersion tables and keep their cells", {
+    data <- permdisp_state_data()
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        dispPairwise=TRUE, permN=19, seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    distanceKeys <- analysis$results$distances$rowKeys
+    anovaKeys <- analysis$results$anova$rowKeys
+    pairwiseKeys <- analysis$results$pairwise$rowKeys
+    distanceCells <- miso_permdisp_cells(analysis$results$distances)
+    anovaCells <- miso_permdisp_cells(analysis$results$anova)
+    before <- analysis$results$distances$asDF
+
+    # Same samples and groups; only feature values change, so the data
+    # signature changes but every row key survives the rerun.
+    edited <- permdisp_state_data()
+    edited$sp1 <- c(2, 3, 2, 6, 9, 6, 4, 3, 2)
+    analysis$.__enclos_env__$private$.data$sp1 <- edited$sp1
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_identical(analysis$results$distances$rowKeys, distanceKeys)
+    expect_identical(analysis$results$anova$rowKeys, anovaKeys)
+    expect_identical(analysis$results$pairwise$rowKeys, pairwiseKeys)
+    expect_true(identical(
+        miso_permdisp_cells(analysis$results$distances), distanceCells))
+    expect_true(identical(miso_permdisp_cells(analysis$results$anova), anovaCells))
+    expect_false(isTRUE(all.equal(before, analysis$results$distances$asDF)))
+
+    fresh <- permdispClass$new(options=permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        dispPairwise=TRUE, permN=19, seed=123), data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$distances$asDF, fresh$results$distances$asDF,
+        tolerance=1e-12)
+    expect_equal(
+        analysis$results$anova$asDF, fresh$results$anova$asDF, tolerance=1e-12)
+})
+
+test_that("data edits that remove a group rebuild dispersion rows and stay fresh", {
+    data <- permdisp_state_data()
+    options <- permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123)
+    analysis <- permdispClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    distanceKeys <- analysis$results$distances$rowKeys
+
+    edited <- permdisp_state_data(two_groups=TRUE)
+    analysis$.__enclos_env__$private$.data <- edited
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(identical(analysis$results$distances$rowKeys, distanceKeys))
+    expect_identical(analysis$results$distances$asDF$group, c("A", "B"))
+
+    fresh <- permdispClass$new(options=permdispOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123),
+        data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$distances$asDF, fresh$results$distances$asDF,
+        tolerance=1e-12)
+})
+
+
+test_that("PERMDISP publication output omits routine prose", {
+    result <- suppressWarnings(suppressMessages(permdisp(
+        data=permdisp_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", seed=123, permN=19, showOrdinationPlot=TRUE)))
+    note <- miso_table_note(result$anova, "structuralCells")
+    expect_false(grepl("Random seed|Execution:|Disabled|Requested permutation restriction|R compares|not applicable to the Residual", note))
+    expect_false(result$plotDescription$visible)
+    expect_identical(result$plotDescription$content, "")
+    expect_false(result$ordinationDescription$visible)
+    expect_identical(result$ordinationDescription$content, "")
 })

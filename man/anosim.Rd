@@ -57,23 +57,28 @@ anosim(
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$global} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
   \code{results$rankPlotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$rankPlot} \tab \tab \tab \tab \tab an image \cr
   \code{results$rankSummary} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$global$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$global)}
 }
 \description{
-ANOSIM
+Tests whether within-group samples are more similar than between-group
+samples using rank-based ANOSIM through vegan::anosim. Includes optional
+pairwise comparisons and rank diagnostics.
+}
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+
+Clarke, K. R. (1993). Non-parametric multivariate analyses of changes in community structure. Australian Journal of Ecology, 18(1), 117-143. https://doi.org/10.1111/j.1442-9993.1993.tb00438.x
 }

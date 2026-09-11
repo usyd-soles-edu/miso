@@ -1,0 +1,155 @@
+---
+title: "MISO manual"
+subtitle: "Multivariate Inference, Similarity and Ordination for jamovi"
+description: "A practical guide to the MISO jamovi module."
+---
+
+MISO brings seven multivariate analyses, implemented primarily through the
+[`vegan`](https://vegandevs.github.io/vegan/) R package, into
+[jamovi](https://www.jamovi.org). It is intended for ecological and biological
+data, but the methods can also be useful wherever a set of numeric variables
+describes samples, sites, people, or observations.
+
+## Before you begin
+
+Each row is a sample or observation. Use one numeric column per feature, such
+as a species abundance, measurement, taxon, or biomarker. Grouping and design
+variables may be categorical; integer-coded categorical variables are accepted
+when set to nominal or ordinal in jamovi.
+
+- Missing values, empty rows, and all-zero feature columns can reduce the data
+  used. Read data-handling warnings when they appear.
+- Transformations and dissimilarity indices change the question being asked.
+  Choose them for the measurement scale and scientific design.
+- Permutation p-values depend on the permutation scheme, number of
+  permutations, and random seed. Record these settings when reporting results.
+- An ordination represents distance structure. It is not, by itself, a test of
+  statistical significance.
+
+Choose **Analyses → MISO**, select an analysis, then assign the visible
+variable targets. Result tables stay in place while an analysis is incomplete
+and populate once the required inputs are valid.
+
+## Common controls
+
+### Feature variables
+
+Assign the numeric variables that define multivariate similarity. Values must
+be meaningful for the selected transformation and distance measure. For
+example, abundance data should not contain negative values for methods that
+require non-negative counts.
+
+### Grouping and design variables
+
+Use a **Grouping Variable** for analyses that compare groups. In PERMANOVA,
+additional factors and continuous covariates extend the model, while a
+**Blocking Variable** can restrict permutations within blocks. A plot may only
+use a grouping factor retained in the fitted model; MISO explains when a
+requested display factor cannot be used.
+
+### Transformation, distance, and plots
+
+MISO offers standard transformations and several dissimilarity indices.
+Bray-Curtis is common for non-negative abundance data, whereas Euclidean
+distance is often appropriate after transformations that make it meaningful.
+Plot backgrounds are transparent. Centroids, hulls, ellipses, and
+site-centroid connections change a visual layer, not the fitted result.
+
+## PERMANOVA
+
+**PERMANOVA** tests whether multivariate group locations differ using
+permutations (`vegan::adonis2`). Assign feature variables and one categorical
+grouping variable. You can add factors, covariates, model interactions, and a
+blocking variable.
+
+Read **PERMANOVA Results** as an analysis-of-variance table: **Pseudo-F**
+compares separation among model terms with within-group variation, **R²** is
+the variation associated with a term, and **Permutation p** is the evidence
+against the null model. The result note identifies the distance,
+transformation, permutation restriction, test type, and blocking status.
+Optional pairwise results appear only when requested. The companion PCoA is a
+visual aid to the fitted resemblance structure, not another test.
+
+## ANOSIM
+
+**ANOSIM** compares ranked between-group and within-group dissimilarities
+(`vegan::anosim`). Assign feature variables and a grouping variable. The
+global statistic is closer to 1 when between-group dissimilarities tend to
+exceed within-group dissimilarities; its permutation p-value assesses that
+pattern under the selected scheme. The ranked-dissimilarity plot is diagnostic,
+not a separate significance test.
+
+## PERMDISP
+
+**PERMDISP** tests whether groups differ in multivariate dispersion
+(`vegan::betadisper`). Use it alongside PERMANOVA when group differences could
+be caused by unequal dispersion rather than location. The dispersion table
+reports the permutation test; the distance-to-centre diagnostic shows the
+individual distances behind it. An optional ordination is for inspection.
+
+## nMDS
+
+**nMDS** produces a non-metric multidimensional scaling ordination
+(`vegan::metaMDS`). Assign feature variables and, optionally, a grouping
+variable and environmental variables. Stress summarises how well the plotted
+configuration represents ranked dissimilarities: lower stress is usually
+preferable, but suitability depends on the data and should be judged with the
+Shepard diagram and substantive knowledge.
+
+**Group point styling** applies colour and shape by group. Hulls, ellipses,
+spiders, environmental vectors, and feature scores are overlays that help
+describe the ordination. Do not read apparent separation as a formal test
+without an appropriate inferential analysis.
+
+## Cluster analysis
+
+**Cluster analysis** builds a hierarchical dendrogram from the chosen
+dissimilarity matrix (`vegan::vegdist` and `stats::hclust`). It is descriptive:
+use it to explore similarity structure, not to claim a tested group effect.
+MISO uses group-average linkage. You can choose optional sample labels. Turn on **Cluster
+definition** to add a cut by number of clusters or dissimilarity height; MISO
+then reports cluster membership. The plot and dendrogram structure remain
+available without a definition.
+
+## SIMPER
+
+**SIMPER** decomposes Bray-Curtis dissimilarity into feature contributions
+(`vegan::simper`). Assign feature variables and a grouping variable, then read
+the table as a descriptive ranking of features contributing to group contrasts.
+It is sensitive to dispersion and correlated features, so it is not a
+confirmatory feature-selection method.
+
+Use the cumulative-contribution threshold to focus the table. Contribution
+plots and the optional heatmap are descriptive. **Permutation contribution
+assessment** adds an exploratory assessment using the selected permutations,
+p-value adjustment, and seed; interpret it alongside the study design and
+global multivariate analysis.
+
+## PCoA
+
+**PCoA** displays distance structure with principal coordinates
+(`vegan::wcmdscale`). Assign feature variables and optionally a grouping
+variable. Eigenvalues and explained percentages describe the axes. Negative
+eigenvalues can occur for non-Euclidean distances; use an additive correction,
+if appropriate, and report that decision.
+
+Group centroids and **Site-centroid connections** are optional visual layers.
+They require a grouping variable and do not alter the coordinates or
+eigenvalues. Coordinate and centroid tables make plotted values available for
+checking and reporting.
+
+## Reporting and citation
+
+State the feature set, transformation, dissimilarity index, permutation design,
+number of permutations, random seed, and any multiple-comparison adjustment.
+Report effect sizes as well as p-values, and distinguish exploratory plots from
+formal inferential results. MISO cites `vegan` and the core method references
+in its output: Anderson (2001) for PERMANOVA, Anderson (2006) for PERMDISP,
+and Clarke (1993) for ANOSIM and SIMPER.
+
+## Limitations and support
+
+MISO is a convenient jamovi interface, not a replacement for checking model
+assumptions, study design, and the underlying R methods. For analyses or
+options not offered here, use `vegan` directly. If a result is surprising,
+inspect the warnings, table notes, settings, and data before interpreting it.

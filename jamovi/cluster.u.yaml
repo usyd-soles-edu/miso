@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required)
+        label: Feature Variables
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Sample labels (optional)
+        label: Sample Labels
         children:
           - type: VariablesListBox
             name: labels
@@ -25,7 +25,7 @@ children:
 
   - type: CollapseBox
     name: analysisChoices
-    label: Analysis choices
+    label: Analysis Choices
     collapsed: false
     stretchFactor: 1
     children:

@@ -2,10 +2,12 @@
 name: pcoa
 title: PCoA
 jrs: '1.1'
+refs:
+  - vegan
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
     clearWith: &clearWith
@@ -16,28 +18,6 @@ items:
       - distBinary
       - sqrtDist
       - correction
-      - showCentroids
-      - showSpiders
-
-  - name: summaryPurpose
-    title: Data summary
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: summary
-    title: ''
-    type: Table
-    rows: 0
-    visible: false
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith: *clearWith
 
   - name: warnings
     title: ''
@@ -52,7 +32,7 @@ items:
     clearWith: *clearWith
 
   - name: ordination
-    title: ''
+    title: PCoA Ordination
     type: Image
     width: 600
     height: 500
@@ -60,14 +40,8 @@ items:
     visible: false
     clearWith: *clearWith
 
-  - name: sitesPurpose
-    title: Site coordinates
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: sites
-    title: ''
+    title: Site Coordinates
     type: Table
     rows: 0
     visible: false
@@ -89,16 +63,17 @@ items:
         title: PCoA2
         type: number
         format: zto
-    clearWith: *clearWith
-
-  - name: centroidsPurpose
-    title: Group centroids
-    type: Html
-    visible: false
-    clearWith: *clearWith
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction
 
   - name: centroids
-    title: ''
+    title: Group Centroids
     type: Table
     rows: 0
     visible: false
@@ -119,14 +94,8 @@ items:
         format: zto
     clearWith: *clearWith
 
-  - name: eigenvaluesPurpose
-    title: Eigenvalues
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
   - name: eigenvalues
-    title: ''
+    title: Eigenvalues
     type: Table
     rows: 0
     visible: false
@@ -145,32 +114,11 @@ items:
         title: Explained (%)
         type: number
         format: zto
-    clearWith: *clearWith
-
-  - name: interpretation
-    title: How to read this ordination
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: settingsPurpose
-    title: Settings
-    type: Html
-    visible: false
-    clearWith: *clearWith
-
-  - name: settings
-    title: ''
-    type: Table
-    rows: 0
-    visible: false
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-    clearWith: *clearWith
-
-...
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - sqrtDist
+      - correction

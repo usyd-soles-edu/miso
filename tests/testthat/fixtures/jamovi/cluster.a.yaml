@@ -1,28 +1,35 @@
 ---
 name: cluster
 title: Cluster analysis
-menuGroup: tofu
+menuGroup: miso
 menuTitle: Cluster analysis
 menuSubtitle: Visualise sample similarity
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Groups samples by hierarchical clustering of dissimilarities calculated with vegan::vegdist and stats::hclust. The dendrogram and optional cluster memberships are descriptive.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
 
 options:
   - name: data
     type: Data
 
   - name: vars
-    title: Feature variables (required)
+    title: Feature Variables
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
 
   - name: labels
-    title: Sample labels (optional)
+    title: Sample Labels
     type: Variable
     suggested:
       - nominal
@@ -125,17 +132,17 @@ options:
   - name: showLabels
     title: Legacy sample labels
     type: String
-    default: __tofu_unset__
+    default: __miso_unset__
     hidden: true
     description: Compatibility value for analyses saved before sample label modes were introduced.
 
   - name: defineClusters
-    title: Define clusters
+    title: Cluster definition
     type: Bool
     default: false
 
   - name: cutMode
-    title: Define clusters by
+    title: Definition method
     type: List
     options:
       - title: Number of clusters

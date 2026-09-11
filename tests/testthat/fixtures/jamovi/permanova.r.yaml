@@ -2,43 +2,23 @@
 name: permanova
 title: PERMANOVA
 jrs: '1.1'
+refs:
+  - vegan
+  - anderson2001
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
-
-  - name: summaryPurpose
-    title: Data Summary
-    type: Html
-    visible: false
-
-  - name: summary
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
 
   - name: warnings
     title: ''
     type: Html
     visible: false
 
-  - name: tablePurpose
-    title: PERMANOVA Table
-    type: Html
-    visible: false
-
   - name: table
-    title: ''
+    title: PERMANOVA Results
     type: Table
     visible: false
     rows: 0
@@ -62,9 +42,25 @@ items:
         title: Permutation p
         type: number
         format: zto,pvalue
+    clearWith:
+      - vars
+      - factor
+      - permFactors
+      - covariates
+      - strata
+      - permInteractions
+      - permBy
+      - transform
+      - distance
+      - distBinary
+      - distSqrt
+      - distAdd
+      - permN
+      - seed
+      - useParallel
 
   - name: companionPcoaDescription
-    title: PERMANOVA companion PCoA
+    title: PERMANOVA Companion PCoA
     type: Html
     visible: false
     clearWith: &companionClearWith
@@ -80,13 +76,9 @@ items:
       - distBinary
       - distSqrt
       - distAdd
-      - showCompanionPcoa
-      - pcoaDisplayFactor
-      - pcoaCentroids
-      - pcoaSpiders
 
   - name: companionPcoa
-    title: ''
+    title: Companion PCoA
     type: Image
     width: 600
     height: 500
@@ -94,14 +86,8 @@ items:
     visible: false
     clearWith: *companionClearWith
 
-  - name: companionPcoaSitesPurpose
-    title: Companion PCoA Site Coordinates
-    type: Html
-    visible: false
-    clearWith: *companionClearWith
-
   - name: companionPcoaSites
-    title: ''
+    title: Companion PCoA Site Coordinates
     type: Table
     visible: false
     rows: 0
@@ -125,14 +111,8 @@ items:
         format: zto
     clearWith: *companionClearWith
 
-  - name: companionPcoaCentroidsPurpose
-    title: Companion PCoA Group Centroids
-    type: Html
-    visible: false
-    clearWith: *companionClearWith
-
   - name: companionPcoaCentroids
-    title: ''
+    title: Companion PCoA Group Centroids
     type: Table
     visible: false
     rows: 0
@@ -153,13 +133,8 @@ items:
         format: zto
     clearWith: *companionClearWith
 
-  - name: pairwisePurpose
-    title: Pairwise PERMANOVA
-    type: Html
-    visible: false
-
   - name: pairwise
-    title: ''
+    title: Pairwise PERMANOVA
     type: Table
     visible: false
     rows: 0
@@ -178,28 +153,3 @@ items:
         title: Adjusted p
         type: number
         format: zto,pvalue
-
-  - name: note
-    title: How to read these results
-    type: Html
-    visible: false
-
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-
-  - name: settings
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-
-...

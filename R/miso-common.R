@@ -1,15 +1,44 @@
-tofu_clean_vars <- function(x) {
+# Deterministic full-data signature for structural cache keys. jamovi reruns
+# the same analysis object when its dataset is edited, so a key that covers
+# options only would let same-object data edits serve stale results. The
+# signature canonicalizes column values (and factor levels, separately from
+# their codes) so identical data yields identical raw output while any feature
+# value, group assignment, or filtered-row change yields different bytes.
+miso_data_signature <- function(data) {
+    if (is.null(data))
+        return(serialize(NULL, NULL))
+    columns <- lapply(seq_along(data), function(i) {
+        column <- data[[i]]
+        if (is.factor(column))
+            list(levels=levels(column), values=as.integer(column))
+        else
+            list(values=as.vector(column))
+    })
+    names(columns) <- names(data)
+    serialize(list(rows=nrow(data), columns=columns), NULL)
+}
+
+miso_options_signature <- function(options, excluded=character(), data=NULL) {
+    names <- setdiff(options$names, excluded)
+    values <- lapply(names, function(name) options$option(name)$value)
+    names(values) <- names
+    if (! is.null(data))
+        values$.data <- miso_data_signature(data)
+    serialize(values, NULL)
+}
+
+miso_clean_vars <- function(x) {
     if (is.null(x) || length(x) == 0)
         character()
     else
         x[! is.na(x) & x != ""]
 }
 
-tofu_is_missing_var <- function(x) {
+miso_is_missing_var <- function(x) {
     is.null(x) || length(x) == 0 || all(is.na(x) | x == "")
 }
 
-tofu_transform_community <- function(x, transform) {
+miso_transform_community <- function(x, transform) {
     switch(transform,
         none = x,
         sqrt = sqrt(x),
@@ -29,21 +58,47 @@ tofu_transform_community <- function(x, transform) {
         x)
 }
 
-tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
+miso_normalize_feature_columns <- function(comm) {
+    normalize <- function(column) {
+        if (is.numeric(column))
+            return(as.numeric(column))
+        if (! is.factor(column))
+            return(NULL)
+        levels <- levels(column)
+        codes <- suppressWarnings(as.numeric(levels))
+        if (anyNA(codes) || any(codes != round(codes)))
+            return(NULL)
+        codes[as.integer(column)]
+    }
+
+    normalized <- lapply(comm, normalize)
+    unsupported <- names(comm)[vapply(normalized, is.null, logical(1))]
+    if (length(unsupported) > 0L)
+        jmvcore::reject(
+            c("Feature variables must be numeric; unsupported feature type or measure assignment: {unsupported}."),
+            unsupported=paste(unsupported, collapse=", "))
+
+    out <- as.data.frame(normalized, check.names=FALSE,
+        stringsAsFactors=FALSE)
+    names(out) <- names(comm)
+    out
+}
+
+miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
     warnings <- character()
 
     if (length(vars) == 0)
         return(list(error=TRUE, message="Select one or more feature variables."))
-    if (requireFactor && tofu_is_missing_var(factor))
+    if (requireFactor && miso_is_missing_var(factor))
         return(list(error=TRUE, message="Select a primary grouping factor."))
 
     species <- vars
-    primary <- if (tofu_is_missing_var(factor)) NULL else factor[[1]]
-    extra <- tofu_clean_vars(extraVars)
+    primary <- if (miso_is_missing_var(factor)) NULL else factor[[1]]
+    extra <- miso_clean_vars(extraVars)
     extra <- setdiff(extra, c(primary, species))
-    strata <- tofu_clean_vars(strata)
+    strata <- miso_clean_vars(strata)
     strata <- setdiff(strata, c(species, primary, extra))
-    covs <- tofu_clean_vars(covariates)
+    covs <- miso_clean_vars(covariates)
     covs <- setdiff(covs, c(species, primary, extra, strata))
     selected <- unique(c(species, primary, extra, strata, covs))
     selected <- selected[selected %in% names(data)]
@@ -53,10 +108,7 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         return(list(error=TRUE, message=paste0("Selected variable(s) not found in the data: ", paste(missingCols, collapse=", "))))
 
     dat <- data[, selected, drop=FALSE]
-    comm <- data[, species, drop=FALSE]
-    nonNumeric <- names(comm)[! vapply(comm, is.numeric, logical(1))]
-    if (length(nonNumeric) > 0)
-        return(list(error=TRUE, message=paste0("Feature variables must be numeric. Non-numeric: ", paste(nonNumeric, collapse=", "))))
+    comm <- miso_normalize_feature_columns(data[, species, drop=FALSE])
     if (length(covs) > 0) {
         covRaw <- data[, covs, drop=FALSE]
         covNonNumeric <- names(covRaw)[! vapply(covRaw, is.numeric, logical(1))]
@@ -113,7 +165,7 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
             return(list(error=TRUE, message=sprintf("Primary factor '%s' has fewer than 2 groups after filtering.", primary)))
     }
 
-    transformed <- tryCatch(tofu_transform_community(commMat, transform), error=function(e) e)
+    transformed <- tryCatch(miso_transform_community(commMat, transform), error=function(e) e)
     if (inherits(transformed, "error"))
         return(list(error=TRUE, message=paste0("Transformation failed: ", transformed$message)))
     if (any(! is.finite(transformed)))
@@ -132,20 +184,19 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         error=function(e) e)
     if (inherits(distObj, "error"))
         return(list(error=TRUE, message=paste0("Could not compute dissimilarity matrix: ", distObj$message)))
+    # Preserve source-row identities through distance and ordination results.
+    rowLabels <- rownames(commMat)
+    if (is.null(rowLabels))
+        rowLabels <- as.character(rowIndex)
+    attr(distObj, "Labels") <- as.character(rowLabels)
 
     seed <- as.integer(seed)
     if (is.na(seed) || seed <= 0)
         seed <- NA_integer_
 
-    if (nrow(commMat) > 5000)
-        warnings <- c(warnings, sprintf("Large dataset (%d samples). Distance matrix computation may be slow.", nrow(commMat)))
-
     countMethods <- c("morisita", "horn", "chao", "cao")
     if (distance %in% countMethods && any(abs(commMat - round(commMat)) > .Machine$double.eps^0.5, na.rm=TRUE))
         warnings <- c(warnings, sprintf("'%s' is designed for count data. Non-integer values detected.", distance))
-
-    if (isTRUE(distBinary))
-        warnings <- c(warnings, "Binary (presence/absence) dissimilarity requested: abundance magnitudes ignored.")
 
     covDF <- if (length(covs) > 0) dat[, covs, drop=FALSE] else NULL
 
@@ -172,27 +223,122 @@ tofu_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         seed=seed)
 }
 
-tofu_summary_rows <- function(prep, transform, distance) {
-    list(
-        c("Samples used", as.character(prep$rowsUsed)),
-        c("Feature variables used", as.character(prep$varsUsed)),
-        c("Transformation", transform),
-        c("Dissimilarity index", distance),
-        c("Grouping variable", if (is.null(prep$primary)) "not selected" else prep$primary),
-        c("Seed", ifelse(is.na(prep$seed), "random", as.character(prep$seed)))
-    )
-}
-
-tofu_clear_table <- function(table) {
+miso_clear_table <- function(table) {
     try(table$deleteRows(), silent=TRUE)
+    if (!is.null(table$.__enclos_env__$private$.rowNames))
+        table$.__enclos_env__$private$.rowNames <- character()
 }
 
-tofu_set_seed <- function(prep) {
+# Typed blank values for one row of a result table: blanks never replace the
+# Cell objects, only their values.
+miso_blank_table_values <- function(table) {
+    setNames(lapply(table$columns, function(column) {
+        if (column$type %in% c("integer", "number")) NA_real_ else ""
+    }), vapply(table$columns, `[[`, character(1), "name"))
+}
+
+# Fixed-shape result tables keep their schema rows for the whole analysis
+# lifecycle. Clearing writes typed blanks into those rows instead of replacing
+# the Cell objects, so display-only reruns cannot collapse the report.
+miso_clear_fixed_table <- function(table, rows) {
+    values <- miso_blank_table_values(table)
+    if (length(table$rowKeys) == 0L)
+        for (rowNo in seq_len(rows))
+            table$addRow(rowKey=as.character(rowNo), values=values)
+    if (length(table$rowKeys) != rows)
+        stop("fixed result table has an unexpected row count", call.=FALSE)
+    for (rowNo in seq_len(rows))
+        table$setRow(rowNo=rowNo, values=values)
+    invisible(NULL)
+}
+
+miso_set_fixed_row <- function(table, rowNo, values) {
+    rowNo <- as.integer(rowNo)
+    if (length(rowNo) == 0L || is.na(rowNo)) {
+        rowNo <- 1L
+        if (length(table$rowKeys) > 0L) {
+            current <- table$asDF
+            rowNo <- which(rowSums(as.data.frame(lapply(
+                current, function(column) is.na(column) | column == ""))) == ncol(current))[[1L]]
+        }
+    }
+    if (length(table$rowKeys) < rowNo) {
+        blank <- miso_blank_table_values(table)
+        for (key in seq.int(length(table$rowKeys) + 1L, rowNo))
+            table$addRow(rowKey=as.character(key), values=blank)
+    }
+    table$setRow(rowNo=rowNo, values=values)
+    invisible(NULL)
+}
+
+miso_update_row_where <- function(table, column, value, values) {
+    if (length(table$rowKeys) == 0L)
+        return(invisible(FALSE))
+    data <- table$asDF
+    if (!column %in% names(data))
+        return(invisible(FALSE))
+    rowNo <- match(as.character(value), as.character(data[[column]]))
+    if (is.na(rowNo))
+        return(invisible(FALSE))
+    table$setRow(rowNo=rowNo, values=values)
+    invisible(TRUE)
+}
+
+miso_add_or_set_row <- function(table, rowKey, values) {
+    numericKey <- suppressWarnings(as.integer(rowKey))
+    rowNo <- if (length(numericKey) == 1L &&
+            !is.na(numericKey) && numericKey <= length(table$rowKeys))
+        numericKey
+    else if (length(table$rowKeys) > 0L)
+        match(as.character(rowKey), as.character(unlist(table$rowKeys, use.names=FALSE)))
+    else
+        NA_integer_
+    if (length(rowNo) == 1L && !is.na(rowNo))
+        table$setRow(rowNo=rowNo, values=values)
+    else
+        table$addRow(rowKey=as.character(rowKey), values=values)
+    invisible(NULL)
+}
+
+# Value-blanking clear for keyed result tables: rewrites blank values into the
+# existing rows so stale content cannot survive a rerun, while the row keys
+# and Cell objects stay in place for in-place reconciliation.
+miso_clear_table_values <- function(table) {
+    values <- miso_blank_table_values(table)
+    for (rowNo in seq_len(length(table$rowKeys)))
+        table$setRow(rowNo=rowNo, values=values)
+    invisible(NULL)
+}
+
+# Ordered keyed reconciliation for variable-cardinality result tables. jamovi
+# reruns the same analysis object after data edits, so a table whose ordered
+# row-key sequence is unchanged must refresh its values through setRow, which
+# keeps the existing Cell objects, rather than deleteRows plus addRow, which
+# replaces every Cell and makes the report collapse. Any change to the ordered
+# key sequence, a duplicate target key, or an empty target falls back to the
+# keyed rebuild in miso_clear_table(), retaining the structural rebuild
+# behaviour.
+miso_reconcile_table_rows <- function(table, rows) {
+    keys <- vapply(rows, function(row) as.character(row$key), character(1))
+    if (length(rows) > 0L && anyDuplicated(keys) == 0L &&
+            identical(as.character(unlist(table$rowKeys, use.names=FALSE)),
+                keys)) {
+        for (i in seq_along(rows))
+            table$setRow(rowNo=i, values=rows[[i]]$values)
+        return(invisible(TRUE))
+    }
+    miso_clear_table(table)
+    for (i in seq_along(rows))
+        table$addRow(rowKey=keys[[i]], values=rows[[i]]$values)
+    invisible(TRUE)
+}
+
+miso_set_seed <- function(prep) {
     if (! is.na(prep$seed))
         set.seed(prep$seed)
 }
 
-tofu_num_or_na <- function(x) {
+miso_num_or_na <- function(x) {
     x <- suppressWarnings(as.numeric(x))
     if (length(x) == 0 || is.na(x) || ! is.finite(x))
         NA_real_
@@ -200,7 +346,7 @@ tofu_num_or_na <- function(x) {
         x
 }
 
-tofu_html_escape <- function(value) {
+miso_html_escape <- function(value) {
     value <- gsub("&", "&amp;", as.character(value), fixed=TRUE)
     value <- gsub("<", "&lt;", value, fixed=TRUE)
     value <- gsub(">", "&gt;", value, fixed=TRUE)
@@ -208,17 +354,35 @@ tofu_html_escape <- function(value) {
     gsub("'", "&#39;", value, fixed=TRUE)
 }
 
-tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
+miso_method_note <- function(transformLabel, distanceLabel, binary=FALSE,
+        sqrtDist=FALSE, correction="None") {
+    transformation <- if (tolower(transformLabel) == "none")
+        "Untransformed data"
+    else
+        paste(transformLabel, "transformation")
+    parts <- c(transformation, paste(distanceLabel, "dissimilarities"))
+    if (isTRUE(binary))
+        parts <- c(parts, "presence/absence distances")
+    if (isTRUE(sqrtDist))
+        parts <- c(parts, "Square-root distances")
+    if (!is.null(correction) && tolower(correction) != "none")
+        parts <- c(parts, paste(correction, "correction"))
+    paste0(paste(parts, collapse="; "), ".")
+}
+
+miso_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
     paragraphs <- as.character(paragraphs)
     paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
-    escaped <- tofu_html_escape(paragraphs)
+    if (length(paragraphs) == 0L)
+        return("")
+    escaped <- miso_html_escape(paragraphs)
     escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
     accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {
         ""
     } else {
         paste0(
             ' role="note" aria-label="',
-            tofu_html_escape(as.character(ariaLabel[[1L]])),
+            miso_html_escape(as.character(ariaLabel[[1L]])),
             '"')
     }
     heading <- if (is.null(title) || !nzchar(title)) {
@@ -227,7 +391,7 @@ tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
         paste0(
             '<div role="heading" aria-level="3" ',
             'style="margin: 0 0 0.35em 0; font-weight: 600;">',
-            tofu_html_escape(as.character(title[[1L]])),
+            miso_html_escape(as.character(title[[1L]])),
             '</div>\n')
     }
     paste0(
@@ -244,19 +408,19 @@ tofu_html_block <- function(paragraphs, ariaLabel=NULL, title=NULL) {
         '\n</div>')
 }
 
-tofu_warning_block <- function(paragraphs, title="Data handling warning",
+miso_warning_block <- function(paragraphs, title="Data handling warning",
         ariaLabel=title) {
     paragraphs <- as.character(paragraphs)
     paragraphs <- paragraphs[! is.na(paragraphs) & nzchar(paragraphs)]
-    escaped <- tofu_html_escape(paragraphs)
+    escaped <- miso_html_escape(paragraphs)
     escaped <- gsub("\n", "<br>", escaped, fixed=TRUE)
-    title <- tofu_html_escape(as.character(title[[1L]]))
+    title <- miso_html_escape(as.character(title[[1L]]))
     accessibility <- if (is.null(ariaLabel) || !nzchar(ariaLabel)) {
         ""
     } else {
         paste0(
             ' aria-label="',
-            tofu_html_escape(as.character(ariaLabel[[1L]])),
+            miso_html_escape(as.character(ariaLabel[[1L]])),
             '"')
     }
     paste0(
@@ -276,27 +440,7 @@ tofu_warning_block <- function(paragraphs, title="Data handling warning",
         '\n</div>')
 }
 
-tofu_populate_purposes <- function(results, purposes) {
-    for (name in names(purposes)) {
-        purpose <- purposes[[name]]
-        if (length(purpose) != 2L)
-            stop("each result purpose requires a label and one sentence",
-                call.=FALSE)
-        results[[name]]$setContent(tofu_html_block(
-            purpose[[2L]],
-            ariaLabel=paste("About", purpose[[1L]]),
-            title=purpose[[1L]]))
-    }
-    invisible(NULL)
-}
-
-tofu_populate_summary <- function(results, prep, transform, distance) {
-    rows <- tofu_summary_rows(prep, transform, distance)
-    for (i in seq_along(rows))
-        results$summary$addRow(rowKey=as.character(i), values=list(item=rows[[i]][1], value=rows[[i]][2]))
-}
-
-tofu_display_term <- function(term, prep) {
+miso_display_term <- function(term, prep) {
     labels <- c(.f1=prep$primary)
     if (length(prep$extra) > 0) {
         for (i in seq_along(prep$extra))
@@ -315,25 +459,38 @@ tofu_display_term <- function(term, prep) {
 }
 
 # Parallel cluster lifecycle. enabled=FALSE or cluster creation fails -> NULL (vegan runs serial).
-tofu_parallel <- function(enabled, n=NULL) {
+miso_parallel <- function(enabled, n=NULL) {
     if (! isTRUE(enabled)) return(NULL)
     cores <- if (is.null(n) || n < 2) max(2, parallel::detectCores() - 1L) else as.integer(n)
     cl <- tryCatch(parallel::makeCluster(cores), error=function(e) NULL)
     if (is.null(cl)) return(NULL)
     # adonis2/anosim/permutest dispatch vegan internals (e.g. do_getF) to the
-    # workers; a fresh PSOCK worker has no vegan namespace, so load vegan+permute.
-    ok <- tryCatch({ parallel::clusterEvalQ(cl, { library(vegan); library(permute) }); TRUE }, error=function(e) FALSE)
-    if (! ok) { try(parallel::stopCluster(cl), silent=TRUE); return(NULL) }
+    # workers; load namespaces without attaching either package to the search path.
+    loaded <- tryCatch(parallel::clusterEvalQ(cl, {
+        veganAvailable <- requireNamespace("vegan", quietly=TRUE)
+        permuteAvailable <- requireNamespace("permute", quietly=TRUE)
+        if (! veganAvailable || ! permuteAvailable)
+            stop("required analysis namespaces are unavailable", call.=FALSE)
+        loadNamespace("vegan")
+        loadNamespace("permute")
+        TRUE
+    }), error=function(e) NULL)
+    ok <- ! is.null(loaded) && length(loaded) == length(cl) &&
+        all(vapply(loaded, isTRUE, logical(1)))
+    if (! ok) {
+        try(parallel::stopCluster(cl), silent=TRUE)
+        return(NULL)
+    }
     cl
 }
 
-tofu_parallel_stop <- function(cl) {
+miso_parallel_stop <- function(cl) {
     if (! is.null(cl)) try(parallel::stopCluster(cl), silent=TRUE)
 }
 
-# Build a permute::how() from a tofu scheme preset. strata is the blocking factor
+# Build a permute::how() from the module's scheme preset. strata is the blocking factor
 # VECTOR (not a name); 'free' ignores it. 'series' assumes sample order = sequence order.
-tofu_permutation <- function(permN, scheme=c("free","stratified","series"), strata=NULL) {
+miso_permutation <- function(permN, scheme=c("free","stratified","series"), strata=NULL) {
     scheme <- match.arg(scheme)
     nperm <- as.integer(permN)
     blocks <- if (is.null(strata) || length(strata) == 0) NULL else as.factor(strata)

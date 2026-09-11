@@ -6,12 +6,24 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = pcoaBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .structuralChanged = TRUE,
+        .rowCursors = list(),
 
         .run = function() {
+            structuralKey <- private$.structuralKey()
+            private$.structuralChanged <- !identical(
+                private$.lastStructuralKey, structuralKey)
+            if (!private$.structuralChanged) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.rowCursors <- list()
             private$.state <- list(prep=NULL, pcoa=NULL, plotData=NULL)
-            private$.resetResults()
+            private$.clearResults()
 
-            requestedVars <- tofu_clean_vars(self$options$vars)
+            requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) == 0L) {
                 private$.showGuidance(
                     paste(
@@ -24,7 +36,9 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             analysisData <- self$data
-            prep <- tofu_prepare_resemblance(
+            # Unsupported feature assignments are rejected by the shared
+            # preparation seam after this analysis has cleared stale outputs.
+            prep <- miso_prepare_resemblance(
                 data=analysisData,
                 vars=requestedVars,
                 factor=self$options$factor,
@@ -38,7 +52,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            fit <- .tofuPcoa(
+            fit <- .misoPcoa(
                 prep$dist,
                 correction=self$options$correction,
                 sqrtDist=self$options$sqrtDist,
@@ -50,97 +64,88 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             private$.state$prep <- prep
             private$.state$pcoa <- fit
-            private$.state$plotData <- .tofuPreparePcoaPlot(
+            private$.state$plotData <- .misoPreparePcoaPlot(
                 fit,
                 showCentroids=self$options$showCentroids,
                 showSpiders=self$options$showSpiders)
+            self$results$ordination$setState(private$.state$plotData)
 
-            private$.populateSummary()
-            private$.populatePurposes()
             private$.populateSites()
             private$.populateCentroids()
             private$.populateEigenvalues()
             private$.populateDescription()
-            private$.populateInterpretation()
-            private$.populateSettings()
             private$.setWarnings(c(prep$warnings, fit$warnings,
                 private$.styleWarning()))
             private$.showSuccessfulResults()
         },
 
-        .resetResults = function() {
+        .clearDisplayResults = function() {
+            miso_clear_table(self$results$centroids)
+            self$results$centroids$setVisible(FALSE)
+        },
+
+        .refreshDisplayOnly = function() {
+            if (is.null(private$.state$pcoa)) {
+                private$.clearDisplayResults()
+                return()
+            }
+            plotData <- .misoPreparePcoaPlot(
+                private$.state$pcoa,
+                showCentroids=self$options$showCentroids,
+                showSpiders=self$options$showSpiders)
+            private$.state$plotData <- plotData
+            self$results$ordination$setState(plotData)
+            private$.clearDisplayResults()
+            private$.populateCentroids()
+            private$.showSuccessfulResults()
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$ordinationDescription$setContent("")
-            self$results$interpretation$setContent("")
+            for (name in c("sites", "centroids", "eigenvalues"))
+                miso_clear_table(self$results[[name]])
             for (name in c(
-                    "summaryPurpose", "sitesPurpose", "centroidsPurpose",
-                    "eigenvaluesPurpose", "settingsPurpose"))
-                self$results[[name]]$setContent("")
-            for (name in c("summary", "sites", "centroids", "eigenvalues",
-                    "settings")) {
-                table <- self$results[[name]]
-                tofu_clear_table(table)
-                table$.__enclos_env__$private$.rowNames <- character()
-            }
-            for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "guidance", "warnings",
                     "ordination", "ordinationDescription", "sites",
-                    "sitesPurpose", "centroids", "centroidsPurpose",
-                    "eigenvalues", "eigenvaluesPurpose", "interpretation",
-                    "settings", "settingsPurpose"))
+                    "centroids", "eigenvalues"))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("sites", "eigenvalues"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
         .showSuccessfulResults = function() {
+            self$results$guidance$setVisible(FALSE)
             fit <- private$.state$pcoa
             plotAvailable <- !is.null(private$.state$plotData) &&
                 isTRUE(private$.state$plotData$available)
             for (name in c(
-                    "summary", "summaryPurpose", "sites", "sitesPurpose",
-                    "eigenvalues", "eigenvaluesPurpose", "interpretation",
-                    "settings", "settingsPurpose"))
+                    "sites",
+                    "eigenvalues"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             showCentroids <-
                 !is.null(fit$groups) &&
                 (isTRUE(self$options$showCentroids) ||
                     isTRUE(self$options$showSpiders))
             self$results$centroids$setVisible(showCentroids)
-            self$results$centroidsPurpose$setVisible(showCentroids)
             self$results$ordination$setVisible(plotAvailable)
-            self$results$ordinationDescription$setVisible(TRUE)
+            self$results$ordinationDescription$setVisible(!plotAvailable)
         },
 
-        .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                sitesPurpose=c(
-                    "Site coordinates",
-                    "Lists plotted sample coordinates for identification or reuse."),
-                centroidsPurpose=c(
-                    "Group centroids",
-                    "Lists the plotted mean position of each group."),
-                eigenvaluesPurpose=c(
-                    "Eigenvalues",
-                    "Shows each axis's eigenvalue and explained variation."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
             if (length(warnings) == 0L)
                 return()
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -155,34 +160,26 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .addRow = function(table, values) {
-            key <- as.character(length(table$rowKeys) + 1L)
-            table$addRow(rowKey=key, values=values)
+            name <- table$name
+            current <- private$.rowCursors[[name]]
+            if (is.null(current)) current <- 0L
+            current <- current + 1L
+            private$.rowCursors[[name]] <- current
+            miso_add_or_set_row(table, as.character(current), values)
         },
 
-        .populateSummary = function() {
-            prep <- private$.state$prep
-            fit <- private$.state$pcoa
-            rows <- list(
-                c("Samples used", prep$rowsUsed),
-                c("Feature variables used", prep$varsUsed),
-                c("Rows excluded: missing values", prep$rowsMissingExcluded),
-                c("Rows excluded: all-zero sites", prep$rowsZeroExcluded),
-                c("All-zero feature variables excluded",
-                    prep$featuresZeroExcluded),
-                c("Transformation", private$.transformLabel(
-                    self$options$transform)),
-                c("Dissimilarity index", private$.distanceLabel(
-                    self$options$distance)),
-                c("Binary dissimilarity",
-                    if (isTRUE(self$options$distBinary)) "Yes" else "No"),
-                c("Grouping variable",
-                    if (is.null(prep$primary)) "Not selected" else prep$primary),
-                c("Positive axes", fit$positiveAxisCount),
-                c("Negative eigenvalues", fit$negativeAxisCount))
-            for (row in rows)
-                private$.addRow(self$results$summary,
-                    list(item=row[[1L]], value=as.character(row[[2L]])))
+        .structuralKey = function() {
+            serialize(list(
+                vars=self$options$vars,
+                factor=self$options$factor,
+                transform=self$options$transform,
+                distance=self$options$distance,
+                distBinary=self$options$distBinary,
+                sqrtDist=self$options$sqrtDist,
+                correction=self$options$correction,
+                dataSignature=miso_data_signature(self$data)), NULL)
         },
+
 
         .populateSites = function() {
             prep <- private$.state$prep
@@ -201,9 +198,18 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     site=fit$siteNames[[i]],
                     sourceRow=as.integer(prep$rowIndex[[i]]),
                     group=groups[[i]],
-                    PCoA1=tofu_num_or_na(axis1[[i]]),
-                    PCoA2=tofu_num_or_na(axis2[[i]])))
+                    PCoA1=miso_num_or_na(axis1[[i]]),
+                    PCoA2=miso_num_or_na(axis2[[i]])))
             }
+            self$results$sites$setNote(
+                key="method",
+                note=miso_method_note(
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance),
+                    binary=self$options$distBinary,
+                    sqrtDist=self$options$sqrtDist,
+                    correction=private$.correctionLabel(self$options$correction)),
+                init=FALSE)
         },
 
         .populateCentroids = function() {
@@ -220,8 +226,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.addRow(self$results$centroids, list(
                     group=group,
                     n=fit$groupSizes[[group]],
-                    PCoA1=tofu_num_or_na(fit$centroids[i, 1L]),
-                    PCoA2=tofu_num_or_na(axis2[[i]])))
+                    PCoA1=miso_num_or_na(fit$centroids[i, 1L]),
+                    PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -232,24 +238,30 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     fit$negative[[i]]) "Negative" else "Zero"
                 private$.addRow(self$results$eigenvalues, list(
                     axis=paste0("PCoA", i),
-                    eigenvalue=tofu_num_or_na(fit$eigenvalues[[i]]),
+                    eigenvalue=miso_num_or_na(fit$eigenvalues[[i]]),
                     sign=sign,
                     explained=if (fit$positive[[i]])
-                        tofu_num_or_na(fit$explained[[i]])
+                        miso_num_or_na(fit$explained[[i]])
                     else
                         ""))
             }
             self$results$eigenvalues$setNote(
                 key="denominator",
-                note=paste(
-                    "Explained percentages are calculated only for positive",
-                    "axes using the sum of positive eigenvalues."))
+                note=paste(c(
+                    "Percentages use the sum of positive eigenvalues.",
+                    if (isTRUE(self$options$sqrtDist))
+                        "Square-root dissimilarities.",
+                    if (!identical(self$options$correction, "none"))
+                        sprintf("Additive correction: %s.",
+                            private$.correctionLabel(self$options$correction))),
+                    collapse=" "),
+                init=FALSE)
         },
 
         .populateDescription = function() {
             plotData <- private$.state$plotData
             if (!isTRUE(plotData$available)) {
-                self$results$ordinationDescription$setContent(tofu_html_block(
+                self$results$ordinationDescription$setContent(miso_html_block(
                     paste(
                         "A two-dimensional plot is unavailable.",
                         "Coordinate and eigenvalue tables retain the fitted result."),
@@ -257,51 +269,10 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     title="Principal coordinates ordination"))
                 return()
             }
-            self$results$ordinationDescription$setContent(tofu_html_block(
-                "Maps the main dimensions of dissimilarity among samples.",
-                ariaLabel="About PCoA ordination",
-                title="Principal coordinates ordination"))
+            self$results$ordinationDescription$setContent("")
         },
 
-        .populateInterpretation = function() {
-            self$results$interpretation$setContent(tofu_html_block(paste(
-                "Closer points are more similar.",
-                "Axis labels report the variation represented by each displayed coordinate."),
-                title="How to read this ordination"))
-        },
 
-        .populateSettings = function() {
-            fit <- private$.state$pcoa
-            plotData <- private$.state$plotData
-            centroidRequested <- isTRUE(self$options$showCentroids) ||
-                isTRUE(self$options$showSpiders)
-            rows <- list(
-                c("Square-root distances",
-                    if (fit$sqrtDist) "Yes" else "No"),
-                c("Additive correction",
-                    private$.correctionLabel(fit$correction)),
-                c("Correction constant",
-                    if (is.finite(fit$correctionConstant))
-                        format(fit$correctionConstant, digits=8) else
-                        "Not applicable"),
-                c("Explained-percentage denominator",
-                    format(fit$positiveTotal, digits=8)),
-                c("Group centroids",
-                    private$.overlayStatus(
-                        requested=centroidRequested,
-                        rendered=!is.null(plotData) &&
-                            isTRUE(plotData$showCentroids),
-                        implied=isTRUE(self$options$showSpiders) &&
-                            !isTRUE(self$options$showCentroids))),
-                c("Group spiders",
-                    private$.overlayStatus(
-                        requested=isTRUE(self$options$showSpiders),
-                        rendered=!is.null(plotData) &&
-                            isTRUE(plotData$showSpiders))))
-            for (row in rows)
-                private$.addRow(self$results$settings,
-                    list(setting=row[[1L]], value=as.character(row[[2L]])))
-        },
 
         .overlayStatus = function(requested, rendered, implied=FALSE) {
             if (!isTRUE(requested))
@@ -353,7 +324,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .plotPcoa = function(image, ...) {
-            plot <- .tofuBuildPcoaPlot(private$.state$plotData)
+            plot <- .misoBuildPcoaPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

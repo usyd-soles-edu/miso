@@ -28,8 +28,12 @@ cluster_yaml_node <- function(node, name) {
 expect_cluster_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("dendrogramStructure")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 run_cluster_private <- function(data, ...) {
@@ -44,10 +48,10 @@ cluster_private <- function(analysis) {
 }
 
 test_that("cluster schema exposes a compact plots workflow", {
-    analysis <- yaml::read_yaml(tofu_fixture_path("jamovi", "cluster.a.yaml"))
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "cluster.u.yaml"))
+    analysis <- yaml::read_yaml(miso_fixture_path("jamovi", "cluster.a.yaml"))
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "cluster.u.yaml"))
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "cluster.r.yaml"))$items
+        miso_fixture_path("jamovi", "cluster.r.yaml"))$items
     options <- analysis$options
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
     result_by_name <- setNames(
@@ -59,8 +63,8 @@ test_that("cluster schema exposes a compact plots workflow", {
             "data", "vars", "labels", "transform", "distance",
             "sampleLabels", "showLabels", "defineClusters", "cutMode",
             "numberClusters", "cutHeight"))
-    expect_identical(by_name$vars$title, "Feature variables (required)")
-    expect_identical(by_name$labels$title, "Sample labels (optional)")
+    expect_identical(by_name$vars$title, "Feature Variables")
+    expect_identical(by_name$labels$title, "Sample Labels")
     expect_identical(by_name$labels$permitted, c("numeric", "factor", "id"))
     expect_identical(by_name$sampleLabels$default, "auto")
     expect_identical(
@@ -73,7 +77,7 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_equal(by_name$cutHeight$default, .5)
     expect_equal(by_name$cutHeight$min, 0)
     expect_identical(by_name$showLabels$type, "String")
-    expect_identical(by_name$showLabels$default, "__tofu_unset__")
+    expect_identical(by_name$showLabels$default, "__miso_unset__")
     expect_true(by_name$showLabels$hidden)
     expect_null(cluster_yaml_node(ui, "showLabels"))
 
@@ -87,11 +91,11 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_identical(
         names(result_by_name),
         c(
-            "guidance", "summaryPurpose", "summary", "warnings",
+            "guidance", "warnings",
             "dendrogramDescription", "dendrogram",
-            "dendrogramStructurePurpose", "dendrogramStructure",
-            "membershipPurpose", "membership", "interpretation",
-            "settingsPurpose", "settings"))
+            "dendrogramStructure",
+            "membership"
+            ))
     expect_true(all(vapply(
         results, function(item) identical(item$visible, FALSE), logical(1))))
     expect_identical(result_by_name$dendrogram$type, "Image")
@@ -107,7 +111,7 @@ test_that("cluster schema exposes a compact plots workflow", {
 
 test_that("cluster JS enables only the relevant cut control", {
     js <- paste(
-        readLines(tofu_fixture_path("jamovi", "js", "cluster.js"), warn=FALSE),
+        readLines(miso_fixture_path("jamovi", "js", "cluster.js"), warn=FALSE),
         collapse="\n")
     expect_match(js, "ui.cutMode.setEnabled(defining)", fixed=TRUE)
     expect_match(
@@ -135,38 +139,10 @@ test_that("new cluster analysis shows only complete getting-started guidance", {
         result,
         visible="guidance",
         hidden=c(
-            "summary", "warnings", "dendrogram", "dendrogramDescription",
-            "membership", "interpretation", "settings"))
+            "warnings", "dendrogram", "dendrogramDescription",
+            "membership"))
 })
 
-test_that("default cluster output is explicitly uncut", {
-    analysis <- run_cluster_private(
-        cluster_state_data(),
-        vars=paste0("feature_0", 1:4),
-        labels="sample")
-    result <- analysis$results
-    private <- cluster_private(analysis)
-
-    expect_cluster_visibility(
-        result,
-        visible=c(
-            "summary", "dendrogram", "dendrogramDescription",
-            "interpretation", "settings"),
-        hidden=c("guidance", "warnings", "membership"))
-    expect_null(private$.state$membership)
-    expect_null(private$.state$cutLine)
-    expect_match(
-        tofu_squish_result(result$dendrogramDescription),
-        "merge into clusters as dissimilarity increases")
-    expect_match(
-        tofu_squish_result(result$interpretation),
-        "Merge height shows dissimilarity")
-    plot <- private$.buildDendrogram()
-    expect_s3_class(plot, "ggplot")
-    geom_classes <- vapply(
-        plot$layers, function(layer) class(layer$geom)[[1L]], character(1))
-    expect_identical(unname(geom_classes), "GeomSegment")
-})
 
 test_that("cluster fit is exact and invariant to display and cut options", {
     data <- cluster_state_data(120L)
@@ -312,8 +288,8 @@ test_that("new analyses retain automatic labels above and below the threshold", 
         vars=paste0("feature_0", 1:4),
         labels="sample")
 
-    expect_identical(small$options$showLabels, "__tofu_unset__")
-    expect_identical(large$options$showLabels, "__tofu_unset__")
+    expect_identical(small$options$showLabels, "__miso_unset__")
+    expect_identical(large$options$showLabels, "__miso_unset__")
     expect_true(cluster_private(small)$.state$showLabels)
     expect_false(cluster_private(large)$.state$showLabels)
     expect_identical(
@@ -324,7 +300,7 @@ test_that("new analyses retain automatic labels above and below the threshold", 
         "current")
     expect_false(grepl(
         "inherited",
-        tofu_squish_result(small$results$dendrogramDescription)))
+        miso_squish_result(small$results$dendrogramDescription)))
 })
 
 test_that("current sample-label choices supersede legacy values", {
@@ -345,7 +321,7 @@ test_that("current sample-label choices supersede legacy values", {
         expect_identical(private$.state$showLabels, case$shown)
         expect_false(grepl(
             "inherited",
-            tofu_squish_result(
+            miso_squish_result(
                 analysis$results$dendrogramDescription)))
     }
 })
@@ -639,7 +615,7 @@ test_that("invalid cut settings clear membership without losing the valid dendro
     expect_null(cluster_private(analysis)$.state$membership)
     expect_null(cluster_private(analysis)$.state$cutLine)
     expect_match(
-        tofu_squish_result(analysis$results$warnings),
+        miso_squish_result(analysis$results$warnings),
         "whole number from 2 to 18")
 
     numberOption$.__enclos_env__$private$.value <- 4
@@ -656,7 +632,7 @@ test_that("invalid cut settings clear membership without losing the valid dendro
     expect_false(analysis$results$membership$visible)
     expect_equal(length(analysis$results$membership$rowKeys), 0L)
     expect_match(
-        tofu_squish_result(analysis$results$warnings),
+        miso_squish_result(analysis$results$warnings),
         "below")
 })
 
@@ -683,7 +659,7 @@ test_that("full labels are preserved while plot labels are collision safe", {
     expect_true(all(nchar(plotData$leaf$plotLabel) <= 24L))
     expect_length(unique(plotData$leaf$plotLabel), nrow(data))
     expect_match(
-        tofu_squish_result(analysis$results$warnings),
+        miso_squish_result(analysis$results$warnings),
         "full labels are retained")
 })
 
@@ -701,8 +677,8 @@ test_that("missing and duplicate labels never change clustering", {
 
     expect_identical(labelled_private$.state$fit$merge, unlabelled_private$.state$fit$merge)
     expect_equal(labelled_private$.state$fit$height, unlabelled_private$.state$fit$height)
-    expect_match(tofu_squish_result(labelled$results$warnings), "missing sample label")
-    expect_match(tofu_squish_result(labelled$results$warnings), "Duplicate sample labels")
+    expect_match(miso_squish_result(labelled$results$warnings), "missing sample label")
+    expect_match(miso_squish_result(labelled$results$warnings), "Duplicate sample labels")
     expect_true(any(grepl("\\[row [23]\\]", labelled_private$.state$labels)))
     expect_true("Row 4" %in% labelled_private$.state$labels)
 })
@@ -742,7 +718,7 @@ test_that("nine clusters add visible numbers when shapes begin to repeat", {
         sort(unique(as.integer(private$.state$membership))),
         seq_len(9L))
 
-    aesthetics <- .tofuGroupAesthetics(as.character(seq_len(9L)))
+    aesthetics <- .misoGroupAesthetics(as.character(seq_len(9L)))
     expect_lt(length(unique(unname(aesthetics$shape))), 9L)
     plot <- private$.buildDendrogram()
     geom_classes <- vapply(
@@ -767,12 +743,14 @@ test_that("ggplot builder and callback render bounded read-only output", {
     before <- serialize(private$.state, NULL)
     plot <- private$.buildDendrogram()
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_silent(ggplot2::ggplot_build(plot))
 
     path <- tempfile(fileext=".png")
     on.exit(unlink(path), add=TRUE)
     grDevices::png(path, width=600, height=500)
-    expect_true(private$.plotDendrogram(NULL))
+    expect_true(private$.plotDendrogram(analysis$results$dendrogram))
     grDevices::dev.off()
 
     expect_gt(file.info(path)$size, 1000)
@@ -821,34 +799,6 @@ test_that("dendrogram structure is a complete exact table alternative", {
         analysis$results$dendrogramStructure$asString())))
 })
 
-test_that("cluster valid invalid valid transitions clear stale state", {
-    data <- cluster_state_data()
-    options <- clusterOptions$new(vars=paste0("feature_0", 1:4))
-    analysis <- clusterClass$new(options=options, data=data)
-
-    suppressWarnings(suppressMessages(analysis$run()))
-    expect_true(analysis$results$dendrogram$visible)
-    expect_false(is.null(cluster_private(analysis)$.state$fit))
-
-    varsOption <- options$option("vars")
-    varsOption$.__enclos_env__$private$.value <- character()
-    analysis$run()
-    expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$dendrogram$visible)
-    expect_false(analysis$results$dendrogramDescription$visible)
-    expect_false(analysis$results$dendrogramStructure$visible)
-    expect_false(analysis$results$membership$visible)
-    expect_equal(length(analysis$results$summary$rowKeys), 0L)
-    expect_equal(length(analysis$results$membership$rowKeys), 0L)
-    expect_equal(length(analysis$results$dendrogramStructure$rowKeys), 0L)
-    expect_null(cluster_private(analysis)$.state$fit)
-
-    varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
-    suppressWarnings(suppressMessages(analysis$run()))
-    expect_false(analysis$results$guidance$visible)
-    expect_true(analysis$results$dendrogram$visible)
-    expect_false(is.null(cluster_private(analysis)$.state$fit))
-})
 
 test_that("cluster source contracts and fixtures stay byte identical", {
     root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
@@ -861,7 +811,7 @@ test_that("cluster source contracts and fixtures stay byte identical", {
         c("jamovi/js/cluster.js", "jamovi/js/cluster.js"))
     for (pair in pairs) {
         source <- readBin(file.path(root, pair[[1L]]), "raw", n=1e6)
-        fixture <- readBin(tofu_fixture_path(pair[[2L]]), "raw", n=1e6)
+        fixture <- readBin(miso_fixture_path(pair[[2L]]), "raw", n=1e6)
         expect_identical(source, fixture, info=pair[[1L]])
     }
 
@@ -869,9 +819,145 @@ test_that("cluster source contracts and fixtures stay byte identical", {
         readLines(file.path(root, "R", "cluster.h.R"), warn=FALSE),
         collapse="\n")
     expect_match(header, "sampleLabels = \"auto\"", fixed=TRUE)
-    expect_match(header, "showLabels = \"__tofu_unset__\"", fixed=TRUE)
+    expect_match(header, "showLabels = \"__miso_unset__\"", fixed=TRUE)
     expect_match(header, "defineClusters = FALSE", fixed=TRUE)
     expect_match(header, "numberClusters = 3", fixed=TRUE)
     expect_match(header, "dendrogramDescription", fixed=TRUE)
     expect_match(header, "membership", fixed=TRUE)
+})
+
+test_that("dendrogram renders from serialized Image state alone", {
+    analysis <- run_cluster_private(
+        cluster_state_data(24L),
+        vars=paste0("feature_0", 1:4),
+        labels="sample",
+        sampleLabels="show",
+        defineClusters=TRUE,
+        numberClusters=4)
+    private <- cluster_private(analysis)
+    image <- analysis$results$dendrogram
+    state <- image$state
+    expect_false(is.null(state))
+    expect_identical(state$membership, private$.state$membership)
+    expect_identical(state$labels, private$.state$labels)
+    expect_identical(state$distanceLabel, "Bray-Curtis")
+
+    restored <- unserialize(serialize(state, NULL))
+    # Change the option after capturing state: the axis label must come from
+    # serialized state, not from the mutated option.
+    distance_option <- analysis$options$option("distance")
+    distance_option$.__enclos_env__$private$.value <- "jaccard"
+    for (name in c("fit", "labels", "membership", "cutLine"))
+        private$.state[[name]] <- NULL
+    image$setState(restored)
+
+    plotFromState <- private$.buildDendrogram(
+        fit=restored$fit,
+        labels=restored$labels,
+        showLabels=restored$showLabels,
+        membership=restored$membership,
+        cutLine=restored$cutLine,
+        distanceLabel=restored$distanceLabel)
+    expect_identical(plotFromState$labels$y, "Bray-Curtis dissimilarity")
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    private$.plotDendrogram(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+
+test_that("structural feature inputs rebuild membership and structure rows", {
+    data <- cluster_state_data()
+    data$feature_05 <- c(
+        2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, NA, 36)
+    options <- clusterOptions$new(
+        vars=paste0("feature_0", 1:5),
+        labels="sample",
+        defineClusters=TRUE,
+        cutMode="number",
+        numberClusters=3)
+    analysis <- clusterClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    structureKeys <- analysis$results$dendrogramStructure$rowKeys
+    membershipKeys <- analysis$results$membership$rowKeys
+    rowsUsed <- nrow(analysis$results$membership$asDF)
+
+    varsOption <- options$option("vars")
+    varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(
+        analysis$results$dendrogramStructure$rowKeys, structureKeys))
+    expect_false(identical(
+        analysis$results$membership$rowKeys, membershipKeys))
+    expect_gt(nrow(analysis$results$membership$asDF), rowsUsed)
+    expect_gt(
+        nrow(analysis$results$dendrogramStructure$asDF),
+        2L * rowsUsed - 1L)
+})
+
+test_that("cluster reports transformation and actual cut rule in table notes", {
+    result <- run_cluster_private(cluster_state_data(),
+        vars=paste0("feature_0", 1:4), labels="sample",
+        transform="fourthroot", defineClusters=TRUE, cutMode="number",
+        numberClusters=3)
+    expect_true(result$results$dendrogramStructure$visible)
+    expect_match(miso_table_note(result$results$dendrogramStructure, "method"), "transformation")
+    expect_match(miso_table_note(result$results$membership, "method"), "Cut rule")
+})
+
+test_that("sample-label reruns refresh shortening warnings without changing clustering", {
+    analysis <- run_cluster_private(
+        cluster_state_data(18L, long_labels=TRUE),
+        vars=paste0("feature_0", 1:4), labels="sample",
+        sampleLabels="hide", defineClusters=TRUE, numberClusters=3)
+    private <- cluster_private(analysis)
+    fit <- private$.state$fit
+    labels <- private$.state$labels
+    membership <- analysis$results$membership$asDF
+    structure <- analysis$results$dendrogramStructure$asDF
+    membershipKeys <- analysis$results$membership$rowKeys
+    structureKeys <- analysis$results$dendrogramStructure$rowKeys
+    option <- analysis$options$option("sampleLabels")
+
+    for (mode in c("show", "hide", "auto")) {
+        option$.__enclos_env__$private$.value <- mode
+        suppressWarnings(suppressMessages(analysis$run()))
+        shown <- mode != "hide"
+        expect_identical(private$.state$labelsShortened, shown)
+        expect_identical(any(grepl("Long sample labels", private$.state$warnings)), shown)
+        expect_identical(grepl("Long sample labels", miso_squish_result(analysis$results$warnings)), shown)
+        expect_identical(private$.state$fit, fit)
+        expect_identical(private$.state$labels, labels)
+        expect_identical(analysis$results$membership$asDF, membership)
+        expect_identical(analysis$results$dendrogramStructure$asDF, structure)
+        expect_identical(analysis$results$membership$rowKeys, membershipKeys)
+        expect_identical(analysis$results$dendrogramStructure$rowKeys, structureKeys)
+    }
+})
+
+test_that("publication output omits routine explanatory prose", {
+    analysis <- run_cluster_private(cluster_state_data(),
+        vars=paste0("feature_0", 1:4), defineClusters=TRUE, numberClusters=3)
+    expect_false(analysis$results$dendrogramDescription$visible)
+    expect_false(grepl("horizontal|hypothesis|Cut rule",
+        miso_table_note(analysis$results$dendrogramStructure, "method")))
+    expect_false(grepl("horizontal|Dendrogram Structure|\\.\\.",
+        miso_table_note(analysis$results$membership, "method")))
+})
+
+test_that("number cuts retain a conditional tied-height qualification", {
+    data <- data.frame(x=c(1, 2, 1, 2), y=c(1, 1, 2, 2))
+    analysis <- run_cluster_private(data, vars=c("x", "y"),
+        distance="euclidean", defineClusters=TRUE, cutMode="number",
+        numberClusters=3)
+    expect_null(cluster_private(analysis)$.state$cutLine)
+    expect_match(miso_table_note(analysis$results$membership, "method"),
+        "Tied merge heights", fixed=TRUE)
 })

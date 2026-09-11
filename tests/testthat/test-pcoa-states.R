@@ -1,5 +1,5 @@
 pcoa_small_data <- function() {
-    path <- testthat::test_path("..", "manual", "tofu-small.csv")
+    path <- testthat::test_path("..", "manual", "miso-small.csv")
     utils::read.csv(path, check.names=FALSE)
 }
 
@@ -51,7 +51,7 @@ pcoa_plot_stub <- function(groups) {
 test_that("PCoA core matches direct wcmdscale for every correction path", {
     data <- pcoa_small_data()
     vars <- pcoa_feature_names(data)
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=vars, factor=NULL, transform="none",
         distance="bray", seed=0, requireFactor=FALSE,
         distBinary=FALSE)
@@ -70,7 +70,7 @@ test_that("PCoA core matches direct wcmdscale for every correction path", {
             expectedDistance,
             k=attr(expectedDistance, "Size") - 1L,
             eig=TRUE, add=case$add, x.ret=TRUE)
-        actual <- .tofuPcoa(
+        actual <- .misoPcoa(
             prepared$dist,
             correction=case$correction,
             sqrtDist=case$sqrt)
@@ -123,13 +123,13 @@ test_that("PCoA core preserves identities and computes exact group centres", {
     data <- pcoa_small_data()[1:12, ]
     vars <- pcoa_feature_names(data)
     rownames(data) <- paste0("site_", seq_len(nrow(data)))
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=vars, factor="group", transform="none",
         distance="bray", seed=0, requireFactor=FALSE,
         distBinary=FALSE)
-    actual <- .tofuPcoa(prepared$dist, groups=prepared$group)
+    actual <- .misoPcoa(prepared$dist, groups=prepared$group)
 
-    expect_identical(actual$siteNames, rownames(prepared$transformed))
+    expect_identical(actual$siteNames, as.character(prepared$rowIndex))
     expect_identical(names(actual$groups), actual$siteNames)
     for (group in levels(actual$groups)) {
         expect_equal(
@@ -140,11 +140,11 @@ test_that("PCoA core preserves identities and computes exact group centres", {
             sum(actual$groups == group))
     }
 
-    expect_true(.tofuPcoa(prepared$dist,
+    expect_true(.misoPcoa(prepared$dist,
         groups=prepared$group[-1L])$error)
     badGroups <- as.character(prepared$group)
     badGroups[[1L]] <- NA_character_
-    expect_true(.tofuPcoa(prepared$dist, groups=badGroups)$error)
+    expect_true(.misoPcoa(prepared$dist, groups=badGroups)$error)
 })
 
 test_that("PCoA preserves long, colliding, and duplicate site identities", {
@@ -155,7 +155,7 @@ test_that("PCoA preserves long, colliding, and duplicate site identities", {
         "duplicate site", "duplicate site", "short", "another")
     distance <- stats::dist(matrix)
     attr(distance, "Labels") <- labels
-    result <- .tofuPcoa(distance)
+    result <- .misoPcoa(distance)
     expect_false(result$error)
     expect_identical(result$siteNames, labels)
     expect_identical(rownames(result$points), labels)
@@ -174,49 +174,51 @@ test_that("PCoA analysis retains source rows after filtering", {
 
 test_that("PCoA core reports non-Euclidean and degenerate states honestly", {
     data <- pcoa_small_data()
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=pcoa_feature_names(data), factor=NULL,
         transform="none", distance="bray", seed=0,
         requireFactor=FALSE, distBinary=FALSE)
-    result <- .tofuPcoa(prepared$dist)
+    result <- .misoPcoa(prepared$dist)
     expect_true(any(result$negative))
     expect_true(any(grepl("negative eigenvalue", result$warnings)))
     expect_true(all(is.na(result$explained[result$negative])))
 
     nonFinite <- prepared$dist
     nonFinite[[1L]] <- NA_real_
-    expect_match(.tofuPcoa(nonFinite)$message, "non-finite")
+    expect_match(.misoPcoa(nonFinite)$message, "non-finite")
     negative <- prepared$dist
     negative[[1L]] <- -1
-    expect_match(.tofuPcoa(negative)$message, "non-negative")
+    expect_match(.misoPcoa(negative)$message, "non-negative")
     zero <- stats::as.dist(matrix(0, 4, 4))
-    expect_match(.tofuPcoa(zero)$message, "All dissimilarities are zero")
-    expect_match(.tofuPcoa(matrix(1, 2, 2))$message,
+    expect_match(.misoPcoa(zero)$message, "All dissimilarities are zero")
+    expect_match(.misoPcoa(matrix(1, 2, 2))$message,
         "prepared dissimilarity")
 
-    oneAxis <- .tofuPcoa(stats::dist(matrix(seq_len(5), ncol=1L)))
+    oneAxis <- .misoPcoa(stats::dist(matrix(seq_len(5), ncol=1L)))
     expect_false(oneAxis$error)
     expect_identical(oneAxis$positiveAxisCount, 1L)
-    expect_false(.tofuPreparePcoaPlot(oneAxis)$available)
+    expect_false(.misoPreparePcoaPlot(oneAxis)$available)
 })
 
 test_that("PCoA plot is equal-scaled, accessible, deterministic, and honest", {
     data <- pcoa_small_data()
-    prepared <- tofu_prepare_resemblance(
+    prepared <- miso_prepare_resemblance(
         data=data, vars=pcoa_feature_names(data), factor="group",
         transform="none", distance="bray", seed=0,
         requireFactor=FALSE, distBinary=FALSE)
-    result <- .tofuPcoa(prepared$dist, groups=prepared$group)
+    result <- .misoPcoa(prepared$dist, groups=prepared$group)
 
     set.seed(781)
     before <- .Random.seed
-    plotData <- .tofuPreparePcoaPlot(
+    plotData <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=10L)
-    plot <- .tofuBuildPcoaPlot(plotData)
+    plot <- .misoBuildPcoaPlot(plotData)
     expect_identical(.Random.seed, before)
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(plot$coordinates$ratio, 1)
-    expect_identical(plot$theme, .tofuPlotTheme())
+    expect_identical(plot$theme, .misoPlotTheme())
     expect_identical(plotData$displayed, 10L)
     expect_identical(plotData$total, nrow(result$points))
     expect_identical(plotData$sites$centroid1,
@@ -234,17 +236,17 @@ test_that("PCoA plot is equal-scaled, accessible, deterministic, and honest", {
     expect_true("colour" %in% scaleAesthetics)
     expect_true("shape" %in% scaleAesthetics)
 
-    ungrouped <- .tofuPcoa(prepared$dist)
-    ungroupedData <- .tofuPreparePcoaPlot(
+    ungrouped <- .misoPcoa(prepared$dist)
+    ungroupedData <- .misoPreparePcoaPlot(
         ungrouped, showCentroids=TRUE, showSpiders=TRUE)
     expect_false(ungroupedData$grouped)
     expect_false(ungroupedData$showCentroids)
     expect_false(ungroupedData$showSpiders)
-    expect_s3_class(.tofuBuildPcoaPlot(ungroupedData), "ggplot")
+    expect_s3_class(.misoBuildPcoaPlot(ungroupedData), "ggplot")
 
     set.seed(782)
     beforeCore <- .Random.seed
-    invisible(.tofuPcoa(prepared$dist, groups=prepared$group))
+    invisible(.misoPcoa(prepared$dist, groups=prepared$group))
     expect_identical(.Random.seed, beforeCore)
 })
 
@@ -254,7 +256,7 @@ test_that("PCoA capped selection is exact, balanced, and identity-stable", {
 
     set.seed(783)
     before <- .Random.seed
-    selected <- .tofuPcoaBalancedIndices(
+    selected <- .misoPcoaBalancedIndices(
         groups, maxPoints=12L, identities=identities)
     expect_identical(.Random.seed, before)
     expect_length(selected, 12L)
@@ -267,14 +269,14 @@ test_that("PCoA capped selection is exact, balanced, and identity-stable", {
     expect_identical(attr(selected, "omittedGroups"), character())
 
     reordered <- rev(seq_along(groups))
-    selectedReordered <- .tofuPcoaBalancedIndices(
+    selectedReordered <- .misoPcoaBalancedIndices(
         groups[reordered], maxPoints=12L,
         identities=identities[reordered])
     expect_identical(
         identities[selected],
         identities[reordered][selectedReordered])
 
-    constrained <- .tofuPcoaBalancedIndices(
+    constrained <- .misoPcoaBalancedIndices(
         groups, maxPoints=3L, identities=identities)
     expect_length(constrained, 3L)
     expect_identical(attr(constrained, "displayedGroups"),
@@ -290,9 +292,9 @@ test_that("PCoA cap handles more singleton groups than the point budget", {
 
     set.seed(784)
     before <- .Random.seed
-    first <- .tofuPreparePcoaPlot(
+    first <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=1000L)
-    second <- .tofuPreparePcoaPlot(
+    second <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=1000L)
     expect_identical(.Random.seed, before)
     expect_identical(first, second)
@@ -308,12 +310,12 @@ test_that("PCoA cap handles more singleton groups than the point budget", {
     expect_null(first$centroids)
     expect_false(any(c("centroid1", "centroid2") %in% names(first$sites)))
 
-    description <- paste(.tofuPcoaSamplingDisclosure(first), collapse=" ")
+    description <- paste(.misoPcoaSamplingDisclosure(first), collapse=" ")
     expect_match(description, "1000 of 1001 sites are shown", fixed=TRUE)
     expect_match(description, "1 is omitted from the image", fixed=TRUE)
     expect_match(description, "1 group is omitted from the image", fixed=TRUE)
 
-    plot <- .tofuBuildPcoaPlot(first)
+    plot <- .misoBuildPcoaPlot(first)
     expect_s3_class(plot, "ggplot")
     geomClasses <- vapply(plot$layers,
         function(layer) class(layer$geom)[[1L]], character(1))
@@ -323,7 +325,7 @@ test_that("PCoA cap handles more singleton groups than the point budget", {
 test_that("PCoA capped grouped overlays cover only represented groups", {
     groups <- rep(c("A", "B", "C", "D", "E"), each=3L)
     result <- pcoa_plot_stub(groups)
-    plotData <- .tofuPreparePcoaPlot(
+    plotData <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE, maxPoints=3L)
 
     expect_false(plotData$neutral)
@@ -337,10 +339,10 @@ test_that("PCoA capped grouped overlays cover only represented groups", {
     expect_identical(plotData$sites$centroid2,
         unname(result$centroids[expectedRows, 2L]))
     expect_match(
-        paste(.tofuPcoaSamplingDisclosure(plotData), collapse=" "),
+        paste(.misoPcoaSamplingDisclosure(plotData), collapse=" "),
         "2 groups are omitted from the image", fixed=TRUE)
 
-    plot <- .tofuBuildPcoaPlot(plotData)
+    plot <- .misoBuildPcoaPlot(plotData)
     expect_s3_class(plot, "ggplot")
     geomClasses <- vapply(plot$layers,
         function(layer) class(layer$geom)[[1L]], character(1))
@@ -350,10 +352,10 @@ test_that("PCoA capped grouped overlays cover only represented groups", {
 test_that("PCoA uses neutral styling beyond the supported group palette", {
     values <- cbind(seq_len(65), (seq_len(65)^2) %% 17)
     groups <- factor(paste0("group_", sprintf("%02d", seq_len(65))))
-    result <- .tofuPcoa(stats::dist(values), groups=groups)
-    plotData <- .tofuPreparePcoaPlot(
+    result <- .misoPcoa(stats::dist(values), groups=groups)
+    plotData <- .misoPreparePcoaPlot(
         result, showCentroids=TRUE, showSpiders=TRUE)
-    plot <- .tofuBuildPcoaPlot(plotData)
+    plot <- .misoBuildPcoaPlot(plotData)
     expect_true(plotData$neutral)
     expect_false(plotData$showCentroids)
     expect_false(plotData$showSpiders)
@@ -370,18 +372,18 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     emptyAnalysis <- run_pcoa_private(data, character())
     empty <- emptyAnalysis$results
     expect_true(empty$guidance$visible)
-    for (name in c("summary", "warnings", "ordination",
-            "ordinationDescription", "sites", "centroids", "eigenvalues",
-            "interpretation", "settings"))
+    for (name in c("warnings", "ordination",
+            "ordinationDescription", "centroids"))
         expect_false(empty[[name]]$visible, info=name)
+    for (name in c("sites", "eigenvalues"))
+        expect_true(empty[[name]]$visible, info=name)
 
     analysis <- run_pcoa_private(data, vars, factor="group",
         showCentroids=TRUE, showSpiders=TRUE)
     result <- analysis$results
     expect_false(result$guidance$visible)
-    for (name in c("summary", "ordination", "ordinationDescription",
-            "sites", "centroids", "eigenvalues", "interpretation",
-            "settings"))
+    for (name in c("ordination",
+            "sites", "centroids", "eigenvalues"))
         expect_true(result[[name]]$visible, info=name)
     expect_identical(nrow(result$sites$asDF), nrow(data))
     expect_identical(nrow(result$centroids$asDF),
@@ -394,8 +396,9 @@ test_that("PCoA analysis hides empty output and clears stale output", {
         identical(result$eigenvalues$getCell(
             rowKey=as.character(i), col="explained")$value, "")
     }, logical(1))))
-    expect_match(tofu_squish_result(result$ordinationDescription),
-        "Maps the main dimensions of dissimilarity among samples")
+    expect_false(grepl(
+        "Maps the main dimensions of dissimilarity among samples",
+        miso_squish_result(result$ordinationDescription), fixed=TRUE))
 
     varsOption <- analysis$options$option("vars")
     varsOption$.__enclos_env__$private$.value <- character()
@@ -407,28 +410,30 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     expect_false(result$ordination$visible)
 })
 
-test_that("PCoA one-axis analysis retains tables without a blank image", {
-    data <- data.frame(
-        feature_01=seq_len(6),
-        feature_02=2 * seq_len(6),
-        group=factor(rep(c("A", "B"), each=3L)))
-    result <- pcoa(data=data, vars=c("feature_01", "feature_02"),
-        factor="group", distance="euclidean", showCentroids=TRUE,
-        showSpiders=TRUE)
-    expect_false(result$guidance$visible)
+
+test_that("successful PCoA hides the empty description and keeps its native figure", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data, pcoa_feature_names(data), factor="group")
+    result <- analysis$results
+    expect_false(result$ordinationDescription$visible)
+    expect_true(result$ordination$visible)
+    expect_identical(trimws(miso_squish_result(
+        result$ordinationDescription)), "character(0)")
+})
+
+test_that("unavailable PCoA ordination keeps its explanation without success prose", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data, "feature_01", distance="euclidean")
+    result <- analysis$results
     expect_false(result$ordination$visible)
     expect_true(result$ordinationDescription$visible)
-    expect_true(result$sites$visible)
-    expect_true(result$eigenvalues$visible)
-    expect_true(all(is.na(result$sites$asDF$PCoA2)))
-    expect_match(tofu_squish_result(result$ordinationDescription),
-        "two-dimensional plot is unavailable", ignore.case=TRUE)
-    settings <- stats::setNames(
-        result$settings$asDF$value, result$settings$asDF$setting)
-    expect_identical(unname(settings[["Group centroids"]]),
-        "Requested; omitted because a two-dimensional plot is unavailable")
-    expect_identical(unname(settings[["Group spiders"]]),
-        "Requested; omitted because a two-dimensional plot is unavailable")
+    description <- miso_squish_result(result$ordinationDescription)
+    expect_match(description, "A two-dimensional plot is unavailable",
+        fixed=TRUE)
+    expect_match(description, "retain the fitted result", fixed=TRUE)
+    expect_false(grepl(
+        "Maps the main dimensions of dissimilarity among samples",
+        description, fixed=TRUE))
 })
 
 test_that("PCoA plot options do not change numerical results", {
@@ -448,9 +453,9 @@ test_that("PCoA plot options do not change numerical results", {
 })
 
 test_that("PCoA schema and menu follow the approved student contract", {
-    analysis <- yaml::read_yaml(tofu_fixture_path("jamovi", "pcoa.a.yaml"))
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "pcoa.u.yaml"))
-    results <- yaml::read_yaml(tofu_fixture_path("jamovi", "pcoa.r.yaml"))
+    analysis <- yaml::read_yaml(miso_fixture_path("jamovi", "pcoa.a.yaml"))
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "pcoa.u.yaml"))
+    results <- yaml::read_yaml(miso_fixture_path("jamovi", "pcoa.r.yaml"))
     byName <- setNames(analysis$options,
         vapply(analysis$options, `[[`, character(1), "name"))
     optionOrder <- vapply(analysis$options, `[[`, character(1), "name")
@@ -480,17 +485,16 @@ test_that("PCoA schema and menu follow the approved student contract", {
 
     itemOrder <- vapply(results$items, `[[`, character(1), "name")
     expect_identical(itemOrder,
-        c("guidance", "summaryPurpose", "summary", "warnings",
-            "ordinationDescription", "ordination", "sitesPurpose", "sites",
-            "centroidsPurpose", "centroids", "eigenvaluesPurpose",
-            "eigenvalues", "interpretation", "settingsPurpose",
-            "settings"))
+        c("guidance", "warnings",
+            "ordinationDescription", "ordination", "sites",
+            "centroids",
+            "eigenvalues"))
     image <- results$items[[match("ordination", itemOrder)]]
     expect_identical(image$width, 600L)
     expect_identical(image$height, 500L)
     expect_identical(image$renderFun, ".plotPcoa")
 
-    module <- yaml::read_yaml(tofu_fixture_path("jamovi", "0000.yaml"))
+    module <- yaml::read_yaml(miso_fixture_path("jamovi", "0000.yaml"))
     expect_match(module$description, "using vegan and ggplot2", fixed=TRUE)
     expect_false(grepl("base R", module$description, fixed=TRUE))
     names <- vapply(module$analyses, `[[`, character(1), "name")
@@ -502,7 +506,7 @@ test_that("PCoA schema and menu follow the approved student contract", {
     if (file.exists(namespacePath))
         expect_true("export(pcoa)" %in% readLines(namespacePath, warn=FALSE))
 
-    js <- readLines(tofu_fixture_path("jamovi", "js", "pcoa.js"),
+    js <- readLines(miso_fixture_path("jamovi", "js", "pcoa.js"),
         warn=FALSE)
     expect_match(paste(js, collapse="\n"),
         "showCentroids\\.setEnabled\\(grouped\\)")
@@ -519,7 +523,7 @@ test_that("PCoA grouped and ungrouped plots render to PNG", {
             factor=factorName,
             showCentroids=!is.null(factorName),
             showSpiders=!is.null(factorName))
-        plot <- .tofuBuildPcoaPlot(
+        plot <- .misoBuildPcoaPlot(
             analysis$.__enclos_env__$private$.state$plotData)
         path <- tempfile(fileext=".png")
         on.exit(unlink(path), add=TRUE)
@@ -530,59 +534,7 @@ test_that("PCoA grouped and ungrouped plots render to PNG", {
     }
 })
 
-test_that("PCoA Settings report effective overlay display states", {
-    data <- pcoa_small_data()
-    vars <- pcoa_feature_names(data)
 
-    settings <- function(...) {
-        result <- run_pcoa_private(data, vars, ...)$results$settings$asDF
-        stats::setNames(result$value, result$setting)
-    }
-
-    unrequested <- settings(factor="group", showCentroids=FALSE,
-        showSpiders=FALSE)
-    expect_identical(unname(unrequested[["Group centroids"]]),
-        "Not requested")
-    expect_identical(unname(unrequested[["Group spiders"]]),
-        "Not requested")
-
-    requested <- settings(factor="group", showCentroids=TRUE,
-        showSpiders=FALSE)
-    expect_identical(unname(requested[["Group centroids"]]), "Shown")
-    expect_identical(unname(requested[["Group spiders"]]),
-        "Not requested")
-
-    implied <- settings(factor="group", showCentroids=FALSE,
-        showSpiders=TRUE)
-    expect_identical(unname(implied[["Group centroids"]]),
-        "Shown (required for spiders)")
-    expect_identical(unname(implied[["Group spiders"]]), "Shown")
-
-    ungrouped <- settings(factor=NULL, showCentroids=TRUE,
-        showSpiders=TRUE)
-    expect_identical(unname(ungrouped[["Group centroids"]]),
-        "Requested; unavailable without a grouping variable")
-    expect_identical(unname(ungrouped[["Group spiders"]]),
-        "Requested; unavailable without a grouping variable")
-})
-
-test_that("PCoA Settings disclose inaccessible requested overlays", {
-    values <- cbind(seq_len(65), (seq_len(65)^2) %% 17)
-    data <- data.frame(
-        feature_1=values[, 1L],
-        feature_2=values[, 2L],
-        group=factor(paste0("group_", sprintf("%02d", seq_len(65)))))
-    settings <- run_pcoa_private(
-        data, c("feature_1", "feature_2"), factor="group",
-        distance="euclidean", showCentroids=TRUE,
-        showSpiders=TRUE)$results$settings$asDF
-    settings <- stats::setNames(settings$value, settings$setting)
-
-    expect_identical(unname(settings[["Group centroids"]]),
-        "Requested; omitted because more than 64 groups")
-    expect_identical(unname(settings[["Group spiders"]]),
-        "Requested; omitted because more than 64 groups")
-})
 
 test_that("PCoA exported API has durable user-facing documentation", {
     analysisPath <- testthat::test_path("..", "..", "jamovi", "pcoa.a.yaml")
@@ -612,4 +564,87 @@ test_that("PCoA exported API has durable user-facing documentation", {
     expect_false(any(grepl("^\\\\item\\{[^}]+\\}\\{\\.\\}$", manual)))
     expect_match(paste(manual, collapse="\n"),
         "returns the jamovi analysis results object", ignore.case=TRUE)
+})
+
+test_that("PCoA ordination renders from serialized Image state alone", {
+    data <- pcoa_small_data()
+    vars <- pcoa_feature_names(data)
+    analysis <- run_pcoa_private(
+        data, vars,
+        factor="group",
+        showCentroids=TRUE,
+        showSpiders=TRUE)
+    image <- analysis$results$ordination
+    state <- image$state
+    expect_false(is.null(state))
+    expect_true(state$available)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$plotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=500)
+    analysis$.__enclos_env__$private$.plotPcoa(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+
+test_that("structural sample inputs rebuild site rows while centroid rows update in place", {
+    index <- seq_len(9L)
+    data <- data.frame(
+        feature_01=1 + index %% 4,
+        feature_02=2 + (index * 3) %% 5,
+        feature_03=1 + (index * 2) %% 3,
+        feature_04=4 + (index * 5) %% 7,
+        feature_05=c(2, 4, 6, 8, 10, 12, 14, 16, NA),
+        group=factor(rep(c("A", "B", "C"), each=3L)))
+    options <- pcoaOptions$new(
+        vars=paste0("feature_0", 1:5),
+        factor="group",
+        showCentroids=TRUE)
+    analysis <- pcoaClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
+    siteKeys <- analysis$results$sites$rowKeys
+    centroidKeys <- analysis$results$centroids$rowKeys
+    siteRowsBefore <- nrow(analysis$results$sites$asDF)
+
+    varsOption <- options$option("vars")
+    varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
+    suppressWarnings(suppressMessages(analysis$.__enclos_env__$private$.run()))
+    expect_false(identical(analysis$results$sites$rowKeys, siteKeys))
+    expect_gt(nrow(analysis$results$sites$asDF), siteRowsBefore)
+    # Centroids remain one row per retained group: structure is stable.
+    expect_identical(analysis$results$centroids$rowKeys, centroidKeys)
+    expect_setequal(analysis$results$centroids$asDF$group, c("A", "B", "C"))
+})
+
+test_that("PCoA reports square-root and correction choices in table notes", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data,
+        vars=pcoa_feature_names(data), factor="group", sqrtDist=TRUE,
+        correction="lingoes")
+    expect_true(analysis$results$sites$visible)
+    expect_match(miso_table_note(analysis$results$sites, "method"), "Square-root")
+    expect_match(miso_table_note(analysis$results$eigenvalues, "denominator"), "correction")
+})
+
+test_that("publication output omits routine explanatory prose", {
+    analysis <- run_pcoa_private(pcoa_small_data(),
+        vars=pcoa_feature_names(pcoa_small_data()))
+    expect_false(analysis$results$ordinationDescription$visible)
+})
+
+test_that("PCoA notes identify presence/absence distances", {
+    data <- pcoa_small_data()
+    analysis <- run_pcoa_private(data, vars=pcoa_feature_names(data),
+        distBinary=TRUE)
+    expect_match(miso_table_note(analysis$results$sites, "method"),
+        "presence/absence", fixed=TRUE)
 })

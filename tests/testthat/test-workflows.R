@@ -7,6 +7,25 @@ workflow_data <- function() {
     )
 }
 
+test_that("parallel workers load analysis namespaces without attaching them", {
+    testthat::skip_if_not_installed("vegan")
+    testthat::skip_if_not_installed("permute")
+    cluster <- miso:::miso_parallel(TRUE, n=2L)
+    if (is.null(cluster))
+        testthat::skip("parallel workers are unavailable")
+    on.exit(miso:::miso_parallel_stop(cluster), add=TRUE)
+
+    state <- parallel::clusterEvalQ(cluster, list(
+        veganLoaded="vegan" %in% loadedNamespaces(),
+        permuteLoaded="permute" %in% loadedNamespaces(),
+        veganAttached=any(grepl("^package:vegan$", search())),
+        permuteAttached=any(grepl("^package:permute$", search()))))
+    expect_true(all(vapply(state, `[[`, logical(1), "veganLoaded")))
+    expect_true(all(vapply(state, `[[`, logical(1), "permuteLoaded")))
+    expect_false(any(vapply(state, `[[`, logical(1), "veganAttached")))
+    expect_false(any(vapply(state, `[[`, logical(1), "permuteAttached")))
+})
+
 test_that("missing feature variables provide a clear note", {
     res <- permanova(
         data = data.frame(group = c("A", "B")),
@@ -46,7 +65,99 @@ test_that("missing selected columns are reported by option validation", {
     )
 })
 
-test_that("non-numeric feature variables are rejected by option validation", {
+test_that("integer-coded nominal and ordinal feature variables match numeric outcomes", {
+    numeric_data <- workflow_data()
+    integer_data <- numeric_data
+    integer_data[c("sp1", "sp2", "sp3")] <- lapply(
+        integer_data[c("sp1", "sp2", "sp3")], as.integer)
+
+    run_analysis <- function(name, data) {
+        args <- list(
+            data=data,
+            vars=c("sp1", "sp2", "sp3"),
+            factor="group")
+        if (name == "cluster") args$factor <- NULL
+        if (! name %in% c("pcoa", "cluster")) args$seed <- 123
+        if (name %in% c("permanova", "permdisp")) args$permN <- 19
+        if (name == "anosim") args$anosimN <- 19
+        if (name == "simper") args$simperN <- 19
+        if (name == "nmds") {
+            args$nmdsTrymax <- 2
+            args$nmdsShepard <- FALSE
+        }
+        suppressWarnings(suppressMessages(do.call(get(name), args)))
+    }
+
+    finite_tables <- function(result) {
+        lapply(result$items, function(output) {
+            if (! inherits(output, "Table")) return(NULL)
+            df <- output$asDF
+            lapply(df, function(column) {
+                if (! is.numeric(column)) return(TRUE)
+                all(is.na(column) | is.finite(column))
+            })
+        })
+    }
+
+    for (analysis_name in c("permanova", "anosim", "permdisp", "nmds",
+            "pcoa", "cluster", "simper")) {
+        numeric_result <- run_analysis(analysis_name, numeric_data)
+        integer_result <- run_analysis(analysis_name, integer_data)
+        expect_identical(
+            lapply(numeric_result$items, function(output)
+                if (inherits(output, "Table")) output$asDF else NULL),
+            lapply(integer_result$items, function(output)
+                if (inherits(output, "Table")) output$asDF else NULL),
+            info=analysis_name)
+        expect_true(all(unlist(finite_tables(integer_result))), info=analysis_name)
+    }
+})
+
+test_that("integer-coded factor features normalize before resemblance preparation", {
+    data <- workflow_data()
+    data$sp1 <- factor(data$sp1, levels=sort(unique(data$sp1)))
+    data$sp2 <- ordered(data$sp2, levels=sort(unique(data$sp2)))
+    prepared <- miso_prepare_resemblance(
+        data=data, vars=c("sp1", "sp2", "sp3"), factor="group",
+        transform="none", distance="euclidean")
+    expect_false(prepared$error)
+    expect_true(is.numeric(prepared$comm[, "sp1"]))
+    expect_true(is.numeric(prepared$comm[, "sp2"]))
+    expect_equal(prepared$comm[, "sp1"], as.numeric(as.character(data$sp1)))
+    expect_equal(prepared$comm[, "sp2"], as.numeric(as.character(data$sp2)))
+})
+
+test_that("unsupported text features reject at the analysis top while shells remain visible", {
+    expect_error(
+        miso_prepare_resemblance(
+            data=data.frame(
+                sp1=c(1, 2, 3),
+                sp2=c("low", "high", "low"),
+                group=factor(c("A", "B", "A"))),
+            vars=c("sp1", "sp2"), factor="group",
+            transform="none", distance="euclidean"),
+        "Feature variables must be numeric",
+        fixed=FALSE)
+
+    data <- workflow_data()
+    options <- permanovaOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", permN=9, seed=123)
+    analysis <- permanovaClass$new(options=options, data=data)
+    analysis$results$.update()
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_gt(nrow(analysis$results$table$asDF), 0L)
+    analysis$.__enclos_env__$private$.data$sp2 <- c("low", "high", "low", "high", "low", "high")
+    analysis$.__enclos_env__$private$.lastStructuralKey <- NULL
+    expect_error(
+        analysis$.__enclos_env__$private$.run(),
+        "Feature variables must be numeric",
+        fixed=FALSE)
+    expect_true(analysis$results$table$visible)
+    expect_false(analysis$results$guidance$visible)
+    expect_equal(nrow(analysis$results$table$asDF), 0L)
+})
+
+test_that("non-numeric feature variables are rejected by analysis validation", {
     expect_error(
         permanova(
             data = data.frame(
@@ -57,8 +168,8 @@ test_that("non-numeric feature variables are rejected by option validation", {
             vars = c("sp1", "sp2"),
             factor = "group"
         ),
-        "Argument 'vars' requires a numeric variable ('sp2' is not valid)",
-        fixed = TRUE
+        "numeric",
+        fixed = FALSE
     )
 })
 
@@ -73,7 +184,7 @@ test_that("negative feature values are rejected with a clear note", {
         factor = "group"
     )
 
-    expect_match(tofu_squish_result(res$guidance), "Negative values detected in feature variables: a")
+    expect_match(miso_squish_result(res$guidance), "Negative values detected in feature variables: a")
 })
 
 test_that("missing rows are excluded and warning text is added", {
@@ -88,7 +199,8 @@ test_that("missing rows are excluded and warning text is added", {
     )
 
     expect_match(as.character(res$warnings$asString()), "1 rows excluded due to missing values in selected variables\\.")
-    expect_equal(res$summary$asDF$value[res$summary$asDF$item == "Samples used"], "3")
+    expect_true(res$table$visible)
+    expect_gt(nrow(res$table$asDF), 0L)
 })
 
 test_that("all-zero samples and features are filtered with note and retained feature count", {
@@ -107,7 +219,8 @@ test_that("all-zero samples and features are filtered with note and retained fea
     note <- as.character(res$warnings$asString())
     expect_match(note, "2 all-zero samples excluded\\.")
     expect_match(note, "1 all-zero feature variables excluded\\.")
-    expect_equal(as.character(res$summary$asDF$value[res$summary$asDF$item == "Feature variables used"]), "2")
+    expect_true(res$table$visible)
+    expect_match(paste(res$table$asDF$source, collapse=" "), "group", fixed=TRUE)
 })
 
 test_that("entirely empty datasets return a clear note instead of crashing", {
@@ -122,7 +235,7 @@ test_that("entirely empty datasets return a clear note instead of crashing", {
     )
 
     expect_match(
-        tofu_squish_result(res$guidance),
+        miso_squish_result(res$guidance),
         "No feature variables with non-zero values remain after filtering\\."
     )
 })
@@ -139,7 +252,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        tofu_squish_result(all_zero$guidance),
+        miso_squish_result(all_zero$guidance),
         "No feature variables with non-zero values remain after filtering\\.|Too few samples \\(0\\) for multivariate analysis\\."
     )
 
@@ -154,7 +267,7 @@ test_that("fatal post-filter cases return clear notes", {
     )
 
     expect_match(
-        tofu_squish_result(one_group$guidance),
+        miso_squish_result(one_group$guidance),
         "Primary factor 'group' has fewer than 2 groups after filtering\\."
     )
 })
@@ -176,10 +289,8 @@ test_that("non-syntactic variable names are handled", {
     )
 
     expect_false(res$warnings$visible)
-    expect_equal(
-        as.character(res$summary$asDF$value[res$summary$asDF$item == "Grouping variable"]),
-        "site group"
-    )
+    expect_true(res$table$visible)
+    expect_identical(res$table$asDF$source[[1L]], "site group")
 })
 
 test_that("count-data distance warns when values are non-integer", {
@@ -195,7 +306,7 @@ test_that("count-data distance warns when values are non-integer", {
     )
 
     expect_match(
-        tofu_squish_result(res$warnings),
+        miso_squish_result(res$warnings),
         "'morisita' is designed for count data\\. Non-integer values detected\\."
     )
 })
@@ -215,7 +326,7 @@ test_that("saturated PERMANOVA model reports a failure note instead of crashing"
         )
     )
 
-    expect_match(tofu_squish_result(res$guidance), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
+    expect_match(miso_squish_result(res$guidance), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
     expect_equal(nrow(res$table$asDF), 0L)
 })
 
@@ -232,6 +343,8 @@ test_that("PERMANOVA returns stable numeric results", {
 
     tab <- res$table$asDF
     expect_false(res$warnings$visible)
+    expect_equal(tab$df[tab$source == "group"], 2, tolerance = 0)
+    expect_equal(tab$sumsqs[tab$source == "group"], 0.0593256, tolerance = 1e-7)
     expect_equal(tab$r2[tab$source == "group"], 0.1788435, tolerance = 1e-6)
     expect_equal(tab$f[tab$source == "group"], 0.3266921, tolerance = 1e-6)
     expect_equal(tab$p[tab$source == "group"], 0.7, tolerance = 1e-6)
@@ -249,7 +362,8 @@ test_that("PERMANOVA returns stable numeric results", {
             res$table$getCell(rowKey=rowKey, col="p")$footnotes,
             0L)
     }
-    expect_length(res$table$notes, 0L)
+    expect_match(miso_table_note(res$table, "method"),
+        "Permutation restrictions: Free", fixed=TRUE)
     expect_false(grepl("NaN", res$asString(), fixed=TRUE))
 })
 
@@ -265,8 +379,9 @@ test_that("PERMDISP returns test table and plot output", {
     ))
 
     expect_match(
-        as.character(res$note$asString()),
-        "PERMDISP tests multivariate spread")
+        miso_table_note(res$anova, "structuralCells"),
+        "Untransformed data; Bray-Curtis dissimilarities.",
+        fixed=TRUE)
     expect_true(nrow(res$anova$asDF) >= 2L)
     expect_true(nrow(res$distances$asDF) >= 3L)
     expect_false(is.null(res$plot))
@@ -295,8 +410,9 @@ test_that("ANOSIM returns stable numeric results", {
 
     tab <- res$global$asDF
     expect_match(
-        as.character(res$note$asString()),
-        "R measures rank separation")
+        miso_table_note(res$global, "meaning"),
+        "Untransformed data; Bray-Curtis dissimilarities.",
+        fixed=TRUE)
     expect_equal(nrow(tab), 1L)
     expect_equal(tab$value[tab$statistic == "Global R"], -0.4444444, tolerance = 1e-6)
     expect_equal(tab$p[tab$statistic == "Global R"], 1, tolerance = 1e-6)
@@ -315,8 +431,9 @@ test_that("SIMPER returns stable contribution results and plot output", {
 
     tab <- res$table$asDF
     expect_match(
-        as.character(res$note$asString()),
-        "SIMPER contributions are descriptive")
+        miso_table_note(res$contributions, "meaning"),
+        "Percentages use all usable features before display filtering",
+        fixed=TRUE)
     expect_true(nrow(tab) >= 1L)
     expect_equal(tab$contribution[1], 48.47328, tolerance = 1e-5)
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
@@ -334,8 +451,8 @@ test_that("SIMPER returns stable contribution results and plot output", {
     expect_false(res$means$visible)
     expect_equal(nrow(res$contrasts$asDF), 3L)
     expect_false(res$assessment$visible)
-    settings <- setNames(res$settings$asDF$value, res$settings$asDF$setting)
-    expect_identical(settings[["Permutation assessment"]], "Disabled")
+    expect_false(res$assessment$visible)
+    expect_true(res$contributions$visible)
     expect_length(res$contributionPlots$items, 3L)
     expect_true(all(vapply(
         res$contributionPlots$items,
@@ -355,8 +472,7 @@ test_that("nMDS returns stress results and plot outputs", {
     ))
 
     stress <- res$stress$asDF
-    summary <- setNames(res$summary$asDF$value, res$summary$asDF$item)
-    expect_identical(summary[["Seed"]], "Fixed (123)")
+    expect_false(grepl("Note.", res$stress$asString(), fixed=TRUE))
     expect_true(any(stress$item == "Stress"))
     expect_equal(as.numeric(stress$value[stress$item == "Stress"]), 0, tolerance = 1e-6)
     expect_false(is.null(res$ordination))
@@ -379,8 +495,9 @@ test_that("nMDS can run without an overlay grouping variable", {
         "grouping variable|grouping layer",
         as.character(res$warnings$asString()),
         ignore.case=TRUE))
-    summary <- setNames(res$summary$asDF$value, res$summary$asDF$item)
-    expect_identical(summary[["Grouping assignment"]], "None")
+    expect_true(res$ordination$visible)
+    expect_true(res$sites$visible)
+    expect_identical(names(res$sites$asDF), c("row", "NMDS1", "NMDS2"))
 }
 )
 
@@ -402,11 +519,12 @@ test_that("new transformations run through PERMANOVA", {
     }
 })
 
-test_that("binary dissimilarity toggles presence/absence and warns", {
+test_that("binary dissimilarity is identified in the method note", {
     res <- suppressMessages(permanova(
         data = workflow_data(), vars = c("sp1", "sp2", "sp3"), factor = "group",
         distBinary = TRUE, permN = 19, seed = 123))
-    expect_match(as.character(res$warnings$asString()), "Binary \\(presence/absence\\) dissimilarity requested")
+    expect_match(miso_table_note(res$table, "method"), "presence/absence distances", fixed=TRUE)
+    expect_false(grepl("Binary", as.character(res$warnings$asString()), fixed=TRUE))
     expect_true(nrow(res$table$asDF) >= 1L)
 })
 
@@ -417,7 +535,7 @@ test_that("mahalanobis is rejected when n <= p", {
     res <- suppressMessages(permanova(
         data = wide, vars = paste0("g", 1:8), factor = "group",
         distance = "mahalanobis", permN = 9, seed = 123))
-    expect_match(tofu_squish_result(res$guidance), "mahalanobis requires more samples than features")
+    expect_match(miso_squish_result(res$guidance), "mahalanobis requires more samples than features")
 })
 
 test_that("sqrt.dist and additive constant run in PERMANOVA", {
@@ -537,7 +655,7 @@ test_that("envfit populates the environmental fit table", {
     expect_identical(ef$samples, rep(6L, 2L))
     expect_identical(ef$permutations, rep(99L, 2L))
     expect_match(
-        res$envfit$notes$interpretation$note,
+        miso_table_note(res$envfit, "method"),
         "association|causation|unadjusted",
         ignore.case=TRUE)
 })
@@ -552,7 +670,7 @@ test_that("nMDS ordination ornaments run without error", {
 })
 
 test_that("narrative HTML is readable, wrapping, and escaped", {
-    html <- tofu_html_block(c(
+    html <- miso_html_block(c(
         "A deliberately long guidance sentence.",
         "<script>alert('x')</script> & more"))
 
@@ -566,7 +684,7 @@ test_that("narrative HTML is readable, wrapping, and escaped", {
     expect_match(html, "&lt;script&gt;", fixed=TRUE)
     expect_match(html, "&amp; more", fixed=TRUE)
 
-    purpose <- tofu_html_block(
+    purpose <- miso_html_block(
         "Tests whether multivariate composition is associated with each model term.",
         ariaLabel="About PERMANOVA table",
         title="PERMANOVA table")
@@ -579,7 +697,7 @@ test_that("narrative HTML is readable, wrapping, and escaped", {
     expect_match(purpose, 'aria-level="3"', fixed=TRUE)
     expect_match(purpose, "PERMANOVA table", fixed=TRUE)
 
-    warning <- tofu_warning_block(
+    warning <- miso_warning_block(
         "Two rows with missing values were excluded.",
         title="Data handling warning")
     expect_match(warning, 'role="note"', fixed=TRUE)

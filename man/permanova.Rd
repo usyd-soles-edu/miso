@@ -72,8 +72,9 @@ permanova(
 \item{showCompanionPcoa}{Whether to show a descriptive PCoA based on the
 exact distance settings used by PERMANOVA.}
 
-\item{pcoaDisplayFactor}{For multifactor models, the primary or additional
-categorical model factor used to identify groups in the companion PCoA.}
+\item{pcoaDisplayFactor}{For multifactor models, choose the same primary or
+additional factor already included and retained in the fitted PERMANOVA
+model; other variables are rejected.}
 
 \item{pcoaCentroids}{Whether to draw and tabulate group centroids in the
 companion PCoA.}
@@ -85,24 +86,29 @@ centroid; spiders also show centroids.}
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr
-  \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
   \code{results$companionPcoaDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$companionPcoa} \tab \tab \tab \tab \tab an image \cr
   \code{results$companionPcoaSites} \tab \tab \tab \tab \tab a table \cr
   \code{results$companionPcoaCentroids} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$table$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$table)}
 }
 \description{
-PERMANOVA
+Tests whether multivariate composition is associated with one or more
+predictors using PERMANOVA through vegan::adonis2. Supports restricted
+permutations, pairwise comparisons, and a descriptive companion PCoA.
+}
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+
+Anderson, M. J. (2001). A new method for non-parametric multivariate analysis of variance. Austral Ecology, 26(1), 32-46. https://doi.org/10.1111/j.1442-9993.2001.01070.pp.x
 }

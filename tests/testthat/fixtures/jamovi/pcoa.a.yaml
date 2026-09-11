@@ -1,13 +1,17 @@
 ---
 name: pcoa
 title: PCoA
-menuGroup: tofu
+menuGroup: miso
 menuTitle: PCoA
 menuSubtitle: Visualise distance structure
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Performs descriptive principal coordinates analysis (PCoA) of pairwise dissimilarities among sites. The ordination visualises resemblance structure and does not test group differences. When called from R, it returns the jamovi analysis results object.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
 
 options:
   - name: data
@@ -15,16 +19,19 @@ options:
     description: The data frame containing the feature and grouping variables.
 
   - name: vars
-    title: Feature variables (required)
+    title: Feature Variables
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
     description: Two or more numeric feature variables used to calculate dissimilarities among sites.
 
   - name: factor
-    title: Grouping variable (optional)
+    title: Grouping Variable
     type: Variable
     suggested:
       - nominal
@@ -138,13 +145,13 @@ options:
     description: The additive correction for negative eigenvalues; one of `none`, `lingoes`, or `cailliez`.
 
   - name: showCentroids
-    title: Show group centroids
+    title: Group Centroids
     type: Bool
     default: false
     description: Whether to draw group centroids when a grouping variable is selected.
 
   - name: showSpiders
-    title: Connect sites to centroids
+    title: Site-centroid connections
     type: Bool
     default: false
     description: Whether to connect each site to its group centroid; enabling spiders also draws the centroids.

@@ -1,4 +1,4 @@
-.tofuPcoa <- function(distance, correction="none", sqrtDist=FALSE,
+.misoPcoa <- function(distance, correction="none", sqrtDist=FALSE,
         groups=NULL) {
     failure <- function(message) list(error=TRUE, message=message)
 
@@ -151,7 +151,7 @@
         warnings=warnings)
 }
 
-.tofuPcoaBalancedIndices <- function(groups, maxPoints=1000L,
+.misoPcoaBalancedIndices <- function(groups, maxPoints=1000L,
         identities=seq_along(groups)) {
     total <- length(groups)
     maxPoints <- suppressWarnings(as.integer(maxPoints))
@@ -215,7 +215,7 @@
     selected
 }
 
-.tofuPreparePcoaPlot <- function(result, showCentroids=FALSE,
+.misoPreparePcoaPlot <- function(result, showCentroids=FALSE,
         showSpiders=FALSE, maxPoints=1000L) {
     if (isTRUE(result$error) || ncol(result$points) < 2L)
         return(list(available=FALSE, total=nrow(result$points), displayed=0L))
@@ -233,7 +233,7 @@
         format(result$points[, 2L], digits=17, scientific=TRUE,
             trim=TRUE),
         sep="\r")
-    indices <- .tofuPcoaBalancedIndices(
+    indices <- .misoPcoaBalancedIndices(
         groupValues, maxPoints=maxPoints, identities=identityValues)
     allGroups <- attr(indices, "allGroups", exact=TRUE)
     displayedGroups <- attr(indices, "displayedGroups", exact=TRUE)
@@ -281,8 +281,8 @@
         yLabel=result$axisLabels[[2L]])
 }
 
-.tofuPcoaSamplingDisclosure <- function(plotData) {
-    content <- .tofuPlotDisclosure(
+.misoPcoaSamplingDisclosure <- function(plotData) {
+    content <- .misoPlotDisclosure(
         plotData$displayed, plotData$total, noun="sites")
     if (isTRUE(plotData$grouped) && plotData$omittedGroupCount > 0L) {
         content <- c(content, sprintf(
@@ -299,7 +299,7 @@
     content
 }
 
-.tofuBuildPcoaPlot <- function(plotData) {
+.misoBuildPcoaPlot <- function(plotData) {
     if (is.null(plotData) || !isTRUE(plotData$available))
         return(NULL)
 
@@ -314,7 +314,7 @@
     }
 
     if (isTRUE(plotData$grouped) && !isTRUE(plotData$neutral)) {
-        aesthetics <- .tofuGroupAesthetics(plotData$sites$group)
+        aesthetics <- .misoGroupAesthetics(plotData$sites$group)
         plot <- plot +
             ggplot2::geom_point(
                 data=plotData$sites,
@@ -329,7 +329,7 @@
 
     if (isTRUE(plotData$showCentroids) && !is.null(plotData$centroids)) {
         if (!isTRUE(plotData$neutral)) {
-            aesthetics <- .tofuGroupAesthetics(plotData$centroids$group)
+            aesthetics <- .misoGroupAesthetics(plotData$centroids$group)
             plot <- plot + ggplot2::geom_point(
                 data=plotData$centroids,
                 ggplot2::aes(x=axis1, y=axis2, colour=group),
@@ -344,7 +344,7 @@
     }
 
     if (isTRUE(plotData$grouped) && !isTRUE(plotData$neutral)) {
-        aesthetics <- .tofuGroupAesthetics(plotData$sites$group)
+        aesthetics <- .misoGroupAesthetics(plotData$sites$group)
         plot <- plot +
             ggplot2::scale_colour_manual(values=aesthetics$colour) +
             ggplot2::scale_shape_manual(values=aesthetics$shape)
@@ -354,12 +354,12 @@
         ggplot2::labs(x=plotData$xLabel, y=plotData$yLabel,
             colour="Group", shape="Group") +
         ggplot2::coord_equal() +
-        .tofuPlotTheme()
+        .misoPlotTheme()
 }
 
-.tofuPcoaPlotData <- function(result, showCentroids=FALSE,
+.misoPcoaPlotData <- function(result, showCentroids=FALSE,
         showSpiders=FALSE, maxPoints=1000L) {
-    .tofuPreparePcoaPlot(
+    .misoPreparePcoaPlot(
         result,
         showCentroids=showCentroids,
         showSpiders=showSpiders,
@@ -367,5 +367,5 @@
 }
 
 .buildPcoaPlot <- function(plotData) {
-    .tofuBuildPcoaPlot(plotData)
+    .misoBuildPcoaPlot(plotData)
 }

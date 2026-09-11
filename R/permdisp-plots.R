@@ -1,4 +1,4 @@
-.tofuBalancedIndices <- function(groups, values, maxRaw=600L) {
+.misoBalancedIndices <- function(groups, values, maxRaw=600L) {
     groups <- as.character(groups)
     values <- as.numeric(values)
     if (length(groups) != length(values))
@@ -60,10 +60,10 @@
     all$group <- factor(all$group, levels=groupLevels)
     all$groupIndex <- match(as.character(all$group), groupLevels)
 
-    selected <- .tofuBalancedIndices(
+    selected <- .misoBalancedIndices(
         all$group, all$distance, maxRaw=maxRaw)
     raw <- all[selected, , drop=FALSE]
-    raw$x <- raw$groupIndex + .tofuJitter(
+    raw$x <- raw$groupIndex + .misoJitter(
         nrow(raw), width=.16, seed=104729L)
     rownames(raw) <- NULL
 
@@ -99,11 +99,11 @@
         return(NULL)
     all <- diagnostic$all
     groups <- diagnostic$groups
-    labels <- .tofuUniqueShortLabels(groups, width=24L)
+    labels <- .misoUniqueShortLabels(groups, width=24L)
     counts <- stats::setNames(diagnostic$summaries$n, diagnostic$summaries$group)
     axisLabels <- sprintf("%s\n(n = %d)", labels[groups], counts[groups])
     if (length(groups) <= 64L) {
-        aesthetics <- .tofuGroupAesthetics(groups)
+        aesthetics <- .misoGroupAesthetics(groups)
         colours <- aesthetics$colour[groups]
         shapes <- aesthetics$shape[groups]
     } else {
@@ -131,7 +131,7 @@
         ggplot2::scale_colour_manual(values=colours, guide="none") +
         ggplot2::scale_shape_manual(values=shapes, guide="none") +
         ggplot2::labs(x="Group", y="Distance to group centre") +
-        .tofuPlotTheme()
+        .misoPlotTheme()
 }
 
 .preparePermdispOrdination <- function(fit, rowIndex=NULL, maxRaw=600L) {
@@ -191,7 +191,7 @@
         stringsAsFactors=FALSE)
     groupKeys <- stats::setNames(
         if (length(groupLevels) <= 12L)
-            unname(.tofuUniqueShortLabels(groupLevels, width=24L))
+            unname(.misoUniqueShortLabels(groupLevels, width=24L))
         else
             paste0("G", seq_along(groupLevels)),
         groupLevels)
@@ -211,7 +211,7 @@
         is.finite(sites$centre1) & is.finite(sites$centre2)
     finiteCentres <- is.finite(centres$axis1) & is.finite(centres$axis2)
     eligibleSites <- sites[finiteSites, , drop=FALSE]
-    selected <- .tofuBalancedIndices(
+    selected <- .misoBalancedIndices(
         eligibleSites$group,
         eligibleSites$axis1 + eligibleSites$axis2 / 1000,
         maxRaw=maxRaw)
@@ -251,7 +251,7 @@
         return(NULL)
     groups <- ordination$groups
     if (length(groups) <= 64L) {
-        aesthetics <- .tofuGroupAesthetics(groups)
+        aesthetics <- .misoGroupAesthetics(groups)
         colours <- aesthetics$colour[groups]
         shapes <- aesthetics$shape[groups]
     } else {
@@ -261,7 +261,7 @@
     showLegend <- length(groups) <= 12L
     groupLabels <- stats::setNames(
         if (length(groups) <= 12L)
-            unname(.tofuUniqueShortLabels(groups, width=24L))
+            unname(.misoUniqueShortLabels(groups, width=24L))
         else
             paste0("G", seq_along(groups)),
         groups)
@@ -300,7 +300,7 @@
             y=ordination$axisNames[[2L]],
             colour="Group", shape="Group") +
         ggplot2::coord_equal() +
-        .tofuPlotTheme()
+        .misoPlotTheme()
 
     if (!showLegend && length(groups) <= 64L) {
         centres <- ordination$plotCentres

@@ -6,11 +6,13 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = nmdsBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .structuralChanged = TRUE,
+        .summaryRowNo = 0L,
+        .rowCursors = list(),
 
-        .run = function() {
-            private$.resetResults()
-
-            requestedVars <- tofu_clean_vars(self$options$vars)
+        .prepareNmds = function() {
+            requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) < 2L) {
                 if (length(requestedVars) == 0L) {
                     private$.showGuidance(
@@ -21,7 +23,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Action needed",
                         "Add at least two usable numeric Feature variables.")
                 }
-                return()
+                return(NULL)
             }
 
             requestedK <- suppressWarnings(as.integer(self$options$nmdsK))
@@ -29,7 +31,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("Action needed", sprintf(
                     "Dimensions must be 2 or the retained legacy value 3; received %s.",
                     as.character(self$options$nmdsK)))
-                return()
+                return(NULL)
             }
 
             preparationDistance <- if (
@@ -40,7 +42,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$options$distance
             }
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=requestedVars,
                 transform=self$options$transform,
@@ -48,7 +50,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 seed=self$options$seed,
                 requireFactor=FALSE,
                 distBinary=FALSE)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 if (grepl("Too few samples", prep$message, fixed=TRUE)) {
                     private$.showGuidance("Action needed", sprintf(
                         "A %d-dimensional nMDS needs at least %d usable sites. Check missing feature values and Feature variable assignments.",
@@ -60,14 +62,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 } else {
                     private$.showGuidance("Action needed", prep$message)
                 }
-                return()
+                return(NULL)
             }
 
             if (prep$varsUsed < 2L) {
                 private$.showGuidance(
                     "Action needed",
                     "Add at least two usable numeric Feature variables.")
-                return()
+                return(NULL)
             }
 
             minimumSites <- requestedK + 1L
@@ -75,14 +77,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("Action needed", sprintf(
                     "A %d-dimensional nMDS needs at least %d usable sites. Check missing feature values and Feature variable assignments.",
                     requestedK, minimumSites))
-                return()
+                return(NULL)
             }
 
             checkedDistance <- private$.validateDistance(
                 prep$transformed, self$options$distance)
             if (checkedDistance$error) {
                 private$.showGuidance("Action needed", checkedDistance$message)
-                return()
+                return(NULL)
             }
             prep$dist <- checkedDistance$distance
 
@@ -102,16 +104,19 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$warnings <- c(private$.state$warnings, sprintf(
                     "Only %d sites were retained for %d dimensions; stress may be artificially low or uninformative and is not rated as good or excellent.",
                     prep$rowsUsed, requestedK))
+            prep
+        },
 
+        .fitNmds = function(prep) {
             private$.state$fitArguments <- list(
                 distance=self$options$distance,
-                k=requestedK,
+                k=private$.state$effectiveK,
                 trymax=as.integer(self$options$nmdsTrymax),
                 maxit=as.integer(self$options$nmdsMaxit),
                 wascores=isTRUE(self$options$nmdsSpecies),
                 autotransform=FALSE,
                 trace=FALSE)
-            tofu_set_seed(prep)
+            miso_set_seed(prep)
             fit <- tryCatch(withCallingHandlers(
                 do.call(
                     vegan::metaMDS,
@@ -131,11 +136,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("nMDS could not find a solution", sprintf(
                     "nMDS could not find a solution. Check feature variation and the selected settings. Technical detail: %s",
                     conditionMessage(fit)))
-                return()
+                return(list(success=FALSE))
             }
 
+            k <- private$.state$effectiveK
             sites <- tryCatch(
-                vegan::scores(fit, display="sites", choices=seq_len(requestedK)),
+                vegan::scores(fit, display="sites", choices=seq_len(k)),
                 error=function(e) e)
             if (inherits(sites, "error") || is.null(sites)) {
                 detail <- if (inherits(sites, "error"))
@@ -145,12 +151,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showGuidance("nMDS could not find a solution", sprintf(
                     "nMDS could not find a solution. Check feature variation and the selected settings. Technical detail: %s",
                     detail))
-                return()
+                return(list(success=FALSE))
             }
 
             features <- if (isTRUE(self$options$nmdsSpecies)) {
                 tryCatch(
-                    vegan::scores(fit, display="species", choices=seq_len(requestedK)),
+                    vegan::scores(fit, display="species", choices=seq_len(k)),
                     error=function(e) NULL)
             } else {
                 NULL
@@ -173,6 +179,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     paste(
                         "The retained optimization reached the maximum iterations;",
                         "consider increasing Maximum iterations per start."))
+            list(success=TRUE)
+        },
+
+        .assembleNmdsResults = function(prep) {
             private$.prepareGroup(prep)
             private$.prepareOverlays()
             private$.prepareEnvironmental(prep)
@@ -188,17 +198,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$shepardDisplayed <-
                     nrow(private$.state$shepardDisplayData)
             }
-            if (isTRUE(self$options$nmdsShepard) &&
-                    ! private$.state$shepardValid)
-                private$.state$warnings <- c(
-                    private$.state$warnings,
-                    paste(
-                        "The Shepard diagram was requested but was not shown",
-                        "because finite dissimilarity and ordination-distance",
-                        "values were unavailable."))
-            private$.populateSummary()
-            private$.populatePurposes()
+            private$.prepareShepardWarnings()
+            private$.state$baseWarnings <- unique(private$.state$warnings)
             private$.populateCoreResults()
+            self$results$ordination$setState(private$.nmdsPlotData())
+            self$results$shepard$setState(private$.shepardPlotData())
             showShepard <- isTRUE(self$options$nmdsShepard) &&
                 private$.state$shepardValid
             private$.showSuccessfulResults(
@@ -207,12 +211,34 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 showFeatures=! is.null(private$.state$features))
         },
 
+        .run = function() {
+            structuralKey <- private$.structuralKey()
+            private$.structuralChanged <- !identical(
+                private$.lastStructuralKey, structuralKey)
+            if (!private$.structuralChanged) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.rowCursors <- list()
+            private$.summaryRowNo <- 0L
+            private$.clearResults()
+
+            prep <- private$.prepareNmds()
+            if (is.null(prep))
+                return()
+            fit <- private$.fitNmds(prep)
+            if (!isTRUE(fit$success))
+                return()
+            private$.assembleNmdsResults(prep)
+        },
+
         .htmlEscape = function(value) {
-            tofu_html_escape(value)
+            miso_html_escape(value)
         },
 
         .htmlBlock = function(paragraphs, ariaLabel=NULL, title=NULL) {
-            tofu_html_block(
+            miso_html_block(
                 paragraphs,
                 ariaLabel=ariaLabel,
                 title=title)
@@ -344,7 +370,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .groupAssignmentSummary = function() {
-            requested <- tofu_clean_vars(self$options$factor)
+            requested <- miso_clean_vars(self$options$factor)
             if (length(requested) == 0L)
                 return("None")
             name <- requested[[1L]]
@@ -358,7 +384,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .environmentRequestSummary = function() {
-            requested <- unique(tofu_clean_vars(self$options$nmdsEnv))
+            requested <- unique(miso_clean_vars(self$options$nmdsEnv))
             if (length(requested) == 0L)
                 "None"
             else
@@ -369,55 +395,72 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
     .clearTable = function(table) {
-        tofu_clear_table(table)
+        miso_clear_table(table)
         # jmvcore::Table$deleteRows() does not clear its cached row names.
         table$.__enclos_env__$private$.rowNames <- character()
     },
 
-        .addSummary = function(label, value) {
-            key <- as.character(length(self$results$summary$rowKeys) + 1L)
-            self$results$summary$addRow(
-                rowKey=key,
-                values=list(item=label, value=as.character(value)))
+
+        .structuralKey = function() {
+            serialize(list(
+                vars=self$options$vars,
+                factor=self$options$factor,
+                transform=self$options$transform,
+                distance=self$options$distance,
+                distBinary=self$options$distBinary,
+                seed=self$options$seed,
+                nmdsK=self$options$nmdsK,
+                nmdsTrymax=self$options$nmdsTrymax,
+                nmdsMaxit=self$options$nmdsMaxit,
+                nmdsEnv=self$options$nmdsEnv,
+                nmdsSpecies=self$options$nmdsSpecies,
+                nmdsEnvPerm=self$options$nmdsEnvPerm,
+                dataSignature=miso_data_signature(self$data)), NULL)
         },
 
-        .addSetting = function(label, value) {
-            key <- as.character(length(self$results$settings$rowKeys) + 1L)
-            self$results$settings$addRow(
-                rowKey=key,
-                values=list(setting=label, value=as.character(value)))
+        .refreshDisplayOnly = function() {
+            if (is.null(private$.state$fit))
+                return()
+            private$.prepareOverlays()
+            private$.prepareShepardWarnings()
+            private$.syncWarnings()
+            self$results$ordination$setState(private$.nmdsPlotData())
+            showShepard <- isTRUE(self$options$nmdsShepard) &&
+                isTRUE(private$.state$shepardValid)
+            if (showShepard) {
+                miso_clear_table(self$results$shepardPairs)
+                private$.populateShepardPairs()
+                self$results$shepard$setState(private$.shepardPlotData())
+            } else {
+                miso_clear_table(self$results$shepardPairs)
+            }
+            self$results$shepard$setVisible(showShepard)
+            self$results$shepardDescription$setVisible(FALSE)
+            self$results$shepardPairs$setVisible(showShepard)
         },
 
-        .populateSummary = function() {
-            prep <- private$.state$prep
-            private$.clearTable(self$results$summary)
-            private$.addSummary("Core samples used", prep$rowsUsed)
-            private$.addSummary("Feature variables used", prep$varsUsed)
-            private$.addSummary(
-                "Rows excluded: missing feature values",
-                prep$rowsMissingExcluded)
-            private$.addSummary(
-                "Rows excluded: all-zero feature values",
-                prep$rowsZeroExcluded)
-            private$.addSummary(
-                "All-zero feature variables excluded",
-                prep$featuresZeroExcluded)
-            private$.addSummary(
-                "Transformation",
-                private$.transformLabel(self$options$transform))
-            private$.addSummary(
-                "Dissimilarity index",
-                private$.distanceLabel(self$options$distance))
-            private$.addSummary(
-                "Effective dimensions",
-                private$.state$effectiveK)
-            private$.addSummary(
-                "Grouping assignment",
-                private$.groupAssignmentSummary())
-            private$.addSummary(
-                "Environmental variables requested",
-                private$.environmentRequestSummary())
-            private$.addSummary("Seed", private$.seedLabel(prep))
+        .populateShepardPairs = function() {
+            shepardPairs <- private$.state$shepardDisplayData
+            if (is.null(shepardPairs) || nrow(shepardPairs) == 0L)
+                return()
+            for (i in seq_len(nrow(shepardPairs)))
+                miso_add_or_set_row(
+                    self$results$shepardPairs,
+                    rowKey=as.character(i),
+                    values=list(
+                        dissimilarity=miso_num_or_na(
+                            shepardPairs$dissimilarity[[i]]),
+                        ordinationDistance=miso_num_or_na(
+                            shepardPairs$ordinationDistance[[i]]),
+                        monotonicFit=miso_num_or_na(
+                            shepardPairs$monotonicFit[[i]])))
+        },
+
+        .clearDisplayResults = function() {
+            miso_clear_table(self$results$shepardPairs)
+            self$results$shepard$setVisible(FALSE)
+            self$results$shepardDescription$setVisible(FALSE)
+            self$results$shepardPairs$setVisible(FALSE)
         },
 
         .selectPlotLabels = function(points, labels, maxLabels=12L) {
@@ -561,9 +604,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 warnings=unique(warnings))
         },
 
-        .resetResults = function() {
+        .clearResults = function() {
             private$.state <- list(
-                warnings=character(), fit=NULL, prep=NULL, sites=NULL,
+                warnings=character(), baseWarnings=character(),
+                overlayWarnings=character(), shepardWarnings=character(),
+                fit=NULL, prep=NULL, sites=NULL,
                 features=NULL, group=NULL, groupLabels=NULL,
                 groupMissing=NULL, groupVariable=NULL,
                 assignedGroupLevels=character(), envRows=list(),
@@ -582,31 +627,26 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             self$results$ordinationDescription$setContent("")
             self$results$shepardDescription$setContent("")
-            self$results$note$setContent("")
-            for (name in c(
-                    "summaryPurpose", "sitesPurpose", "stressPurpose",
-                    "shepardPairsPurpose", "envfitPurpose", "featuresPurpose",
-                    "settingsPurpose"))
-                self$results[[name]]$setContent("")
-            private$.clearTable(self$results$summary)
-            private$.clearTable(self$results$stress)
+            miso_clear_fixed_table(self$results$stress, 8L)
             private$.clearTable(self$results$shepardPairs)
             private$.clearTable(self$results$envfit)
             self$results$envfit$setNote(
-                key="interpretation",
-                note="")
+                key="method",
+                note="",
+                init=FALSE)
             private$.clearTable(self$results$sites)
             private$.clearTable(self$results$features)
-            private$.clearTable(self$results$settings)
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
+                    "guidance", "warnings",
                     "ordination", "ordinationDescription", "stress",
-                    "stressPurpose", "shepard", "shepardDescription",
-                    "shepardPairs", "shepardPairsPurpose", "envfit",
-                    "envfitPurpose", "note", "sites", "sitesPurpose",
-                    "features", "featuresPurpose", "settings",
-                    "settingsPurpose"))
+                    "shepard", "shepardDescription",
+                    "shepardPairs", "envfit",
+                    "sites",
+                    "features"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("sites", "stress"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(title, paragraphs) {
@@ -616,54 +656,46 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setVisible(TRUE)
         },
 
-        .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
+        .syncWarnings = function() {
+            private$.state$warnings <- unique(c(
+                private$.state$baseWarnings,
+                private$.state$overlayWarnings,
+                private$.state$shepardWarnings))
             hasWarnings <- length(private$.state$warnings) > 0L
             if (hasWarnings)
-                self$results$warnings$setContent(tofu_warning_block(
-                    unique(private$.state$warnings)))
-            for (name in c(
-                    "summary", "summaryPurpose", "ordination",
-                    "ordinationDescription", "stress", "stressPurpose", "note",
-                    "sites", "sitesPurpose", "settings", "settingsPurpose"))
-                self$results[[name]]$setVisible(TRUE)
+                self$results$warnings$setContent(miso_warning_block(
+                    private$.state$warnings))
             self$results$warnings$setVisible(hasWarnings)
-            self$results$shepard$setVisible(showShepard)
-            self$results$shepardDescription$setVisible(showShepard)
-            self$results$shepardPairs$setVisible(showShepard)
-            self$results$shepardPairsPurpose$setVisible(showShepard)
-            self$results$envfit$setVisible(showEnv)
-            self$results$envfitPurpose$setVisible(showEnv)
-            self$results$features$setVisible(showFeatures)
-            self$results$featuresPurpose$setVisible(showFeatures)
         },
 
-        .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                sitesPurpose=c(
-                    "Site scores",
-                    "Lists plotted sample coordinates for identification or reuse."),
-                stressPurpose=c(
-                    "Stress and convergence diagnostics",
-                    "Reports ordination stress and convergence."),
-                shepardPairsPurpose=c(
-                    "Shepard diagram values",
-                    "Lists the values represented in the Shepard diagram."),
-                envfitPurpose=c(
-                    "Environmental fit",
-                    "Shows associations between environmental variables and the ordination."),
-                featuresPurpose=c(
-                    "Feature scores",
-                    "Shows each feature's weighted-average position in the ordination."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
+        .prepareShepardWarnings = function() {
+            private$.state$shepardWarnings <- character()
+            if (isTRUE(self$options$nmdsShepard) &&
+                    ! private$.state$shepardValid)
+                private$.state$shepardWarnings <- paste(
+                    "The Shepard diagram was requested but was not shown",
+                    "because finite dissimilarity and ordination-distance",
+                    "values were unavailable.")
         },
+
+        .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
+            self$results$guidance$setVisible(FALSE)
+            private$.syncWarnings()
+            for (name in c(
+                    "ordination",
+                    "stress", "sites"))
+                self$results[[name]]$setVisible(TRUE)
+            self$results$ordinationDescription$setVisible(FALSE)
+            self$results$shepard$setVisible(showShepard)
+            self$results$shepardDescription$setVisible(FALSE)
+            self$results$shepardPairs$setVisible(showShepard)
+            self$results$envfit$setVisible(showEnv)
+            self$results$features$setVisible(showFeatures)
+        },
+
 
         .prepareGroup = function(prep) {
-            groupName <- tofu_clean_vars(self$options$factor)
+            groupName <- miso_clean_vars(self$options$factor)
             if (length(groupName) == 0L)
                 return()
             groupName <- groupName[[1L]]
@@ -721,7 +753,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .groupStyles = function(levels, includeMissing=FALSE) {
-            aesthetics <- .tofuGroupAesthetics(levels)
+            aesthetics <- .misoGroupAesthetics(levels)
             styles <- data.frame(
                 group=levels,
                 colour=unname(aesthetics$colour[levels]),
@@ -787,10 +819,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 sprintf("The requested %s was not shown.", subject)
             else
                 sprintf("The requested %s was not shown because %s.", subject, detail)
-            private$.state$warnings <- c(private$.state$warnings, message)
+            private$.state$overlayWarnings <- c(
+                private$.state$overlayWarnings, message)
         },
 
         .prepareOverlays = function() {
+            private$.state$overlayWarnings <- character()
             requested <- private$.overlayRequests()
             overlays <- list(
                 requested=requested,
@@ -821,8 +855,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             if (length(assignedLevels) > 64L) {
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$overlayWarnings <- c(
+                    private$.state$overlayWarnings,
                     sprintf(
                         paste(
                             "Grouping variable '%s' has %d assigned groups;",
@@ -918,8 +952,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         overlays$ellipse[[level]] <- geometry
                     }
                     for (detail in unique(ellipseWarnings))
-                        private$.state$warnings <- c(
-                            private$.state$warnings,
+                        private$.state$overlayWarnings <- c(
+                            private$.state$overlayWarnings,
                             sprintf("Ellipse layer: %s", detail))
                 }
                 overlays$effective[["ellipse"]] <- length(overlays$ellipse) > 0L
@@ -1015,7 +1049,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .prepareEnvironmental = function(prep) {
-            requested <- unique(tofu_clean_vars(self$options$nmdsEnv))
+            requested <- unique(miso_clean_vars(self$options$nmdsEnv))
             if (length(requested) == 0L)
                 return()
 
@@ -1052,28 +1086,28 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             for (i in seq_along(rows)) {
                 row <- rows[[i]]
-                self$results$envfit$addRow(
+                miso_add_or_set_row(
+                    self$results$envfit,
                     rowKey=row$name,
                     values=list(
                         variable=row$name,
-                        r2=tofu_num_or_na(row$r2),
-                        p=tofu_num_or_na(row$p),
+                        r2=miso_num_or_na(row$r2),
+                        p=miso_num_or_na(row$p),
                         samples=row$samples,
                         permutations=row$permutations,
-                        NMDS1=tofu_num_or_na(endpoints[i, 1L]),
-                        NMDS2=tofu_num_or_na(endpoints[i, 2L]),
+                        NMDS1=miso_num_or_na(endpoints[i, 1L]),
+                        NMDS2=miso_num_or_na(endpoints[i, 2L]),
                         NMDS3=if (identical(
                             private$.state$effectiveK, 3L)) {
-                            tofu_num_or_na(endpoints[i, 3L])
+                            miso_num_or_na(endpoints[i, 3L])
                         } else {
                             NA_real_
                         }))
             }
             self$results$envfit$setNote(
-                key="interpretation",
-                note=paste(
-                    "Unadjusted p-values test association with the ordination,",
-                    "not causation or group differences. Axes may rotate or reflect."))
+                key="method",
+                note="P-values are from permutation tests of association with the ordination.",
+                init=FALSE)
         },
 
         .featureNames = function() {
@@ -1149,117 +1183,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescriptions = function() {
-            self$results$ordinationDescription$setContent(
-                private$.htmlBlock(
-                    "Maps sample resemblance; closer points have more similar composition.",
-                    ariaLabel="About nMDS ordination",
-                    title="nMDS ordination"))
-            if (isTRUE(self$options$nmdsShepard) &&
-                    private$.state$shepardValid)
-                self$results$shepardDescription$setContent(
-                    private$.htmlBlock(
-                        "Shows how well ordination distances preserve ranked dissimilarities.",
-                        ariaLabel="About the nMDS Shepard diagram",
-                        title="Shepard diagram"))
+            self$results$ordinationDescription$setContent("")
+            self$results$shepardDescription$setContent("")
         },
 
-        .populateInterpretation = function() {
-            self$results$note$setContent(tofu_html_block(paste(
-                "Closer points are more similar; axis direction is arbitrary, so check stress.",
-                "Feature scores are descriptive."),
-                title="How to read this ordination"))
-        },
-
-        .populateSettings = function() {
-            prep <- private$.state$prep
-            fit <- private$.state$fit
-            k <- private$.state$effectiveK
-            requestedEnv <- unique(tofu_clean_vars(self$options$nmdsEnv))
-            envRows <- private$.state$envRows
-            if (is.null(private$.state$groupLabels)) {
-                grouping <- "None"
-            } else {
-                grouping <- sprintf(
-                    "%s (%d assigned; %d unassigned)",
-                    private$.state$groupVariable,
-                    sum(!private$.state$groupMissing),
-                    sum(private$.state$groupMissing))
-            }
-
-            private$.clearTable(self$results$settings)
-            private$.addSetting(
-                "Transformation",
-                private$.transformLabel(self$options$transform))
-            private$.addSetting(
-                "Dissimilarity",
-                private$.distanceLabel(self$options$distance))
-            if (isTRUE(self$options$distBinary))
-                private$.addSetting("Legacy Binary request", "Ignored")
-            private$.addSetting(
-                "Dimensions",
-                if (identical(k, 3L))
-                    "3 (legacy; plot shows NMDS1-NMDS2)"
-                else
-                    "2")
-            private$.addSetting("Samples used", prep$rowsUsed)
-            private$.addSetting("Features used", prep$varsUsed)
-            if (prep$rowsMissingExcluded > 0L)
-                private$.addSetting(
-                    "Missing rows excluded",
-                    prep$rowsMissingExcluded)
-            if (prep$rowsZeroExcluded > 0L)
-                private$.addSetting(
-                    "All-zero rows excluded",
-                    prep$rowsZeroExcluded)
-            if (prep$featuresZeroExcluded > 0L)
-                private$.addSetting(
-                    "All-zero features excluded",
-                    prep$featuresZeroExcluded)
-            private$.addSetting("Grouping", grouping)
-            private$.addSetting(
-                "Group display",
-                private$.effectiveOverlaySummary())
-            private$.addSetting(
-                "Environmental variables",
-                if (length(requestedEnv) == 0L)
-                    "None"
-                else
-                    sprintf(
-                        "%d fitted of %d requested",
-                        length(envRows),
-                        length(requestedEnv)))
-            if (length(requestedEnv) > 0L)
-                private$.addSetting(
-                    "Environmental permutations",
-                    as.character(self$options$nmdsEnvPerm))
-            private$.addSetting(
-                "Feature Scores",
-                if (!is.null(private$.state$features))
-                    "Shown"
-                else if (isTRUE(self$options$nmdsSpecies))
-                    "Unavailable"
-                else
-                    "Hidden")
-            private$.addSetting(
-                "Shepard diagram",
-                if (isTRUE(self$options$nmdsShepard) &&
-                        private$.state$shepardValid)
-                    "Shown"
-                else if (isTRUE(self$options$nmdsShepard))
-                    "Unavailable"
-                else
-                    "Hidden")
-            private$.addSetting("Seed", private$.seedLabel(prep))
-            private$.addSetting(
-                "Random starts",
-                sprintf(
-                    "%s tried; %d maximum",
-                    private$.fitValue(fit, "tries"),
-                    as.integer(self$options$nmdsTrymax)))
-            private$.addSetting(
-                "Maximum iterations",
-                as.character(self$options$nmdsMaxit))
-        },
 
         .populateCoreResults = function() {
             fit <- private$.state$fit
@@ -1268,7 +1195,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             k <- private$.state$effectiveK
 
             for (table in c(
-                    "stress", "shepardPairs", "sites", "features", "settings"))
+                    "stress", "shepardPairs", "sites", "features"))
                 private$.clearTable(self$results[[table]])
 
             stress <- private$.finiteNumber(fit$stress)
@@ -1290,24 +1217,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     private$.fitValue(fit, "iters")),
                 c("Engine", private$.fitValue(fit, "engine")))
             for (i in seq_along(diagnosticRows))
-                self$results$stress$addRow(
-                    rowKey=as.character(i),
+                miso_set_fixed_row(
+                    self$results$stress, i,
                     values=list(
                         item=diagnosticRows[[i]][[1L]],
                         value=diagnosticRows[[i]][[2L]]))
 
-            shepardPairs <- private$.state$shepardDisplayData
-            if (isTRUE(self$options$nmdsShepard) && !is.null(shepardPairs))
-                for (i in seq_len(nrow(shepardPairs)))
-                    self$results$shepardPairs$addRow(
-                        rowKey=as.character(i),
-                        values=list(
-                            dissimilarity=tofu_num_or_na(
-                                shepardPairs$dissimilarity[[i]]),
-                            ordinationDistance=tofu_num_or_na(
-                                shepardPairs$ordinationDistance[[i]]),
-                            monotonicFit=tofu_num_or_na(
-                                shepardPairs$monotonicFit[[i]])))
+            if (isTRUE(self$options$nmdsShepard))
+                private$.populateShepardPairs()
 
             isThreeDimensional <- identical(k, 3L)
             self$results$sites$getColumn("NMDS3")$setVisible(
@@ -1329,14 +1246,15 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 groupValue <- if (is.null(groups)) "" else groups[[i]]
                 values <- list(
                     row=prep$rowIndex[[i]],
-                    NMDS1=tofu_num_or_na(sites[i, 1L]),
-                    NMDS2=tofu_num_or_na(sites[i, 2L]),
+                    NMDS1=miso_num_or_na(sites[i, 1L]),
+                    NMDS2=miso_num_or_na(sites[i, 2L]),
                     NMDS3=if (isThreeDimensional)
-                        tofu_num_or_na(sites[i, 3L])
+                        miso_num_or_na(sites[i, 3L])
                     else
                         NA_real_,
                     group=groupValue)
-                self$results$sites$addRow(
+                miso_add_or_set_row(
+                    self$results$sites,
                     rowKey=as.character(prep$rowIndex[[i]]), values=values)
             }
 
@@ -1344,21 +1262,30 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (! is.null(features)) {
                 featureNames <- private$.featureNames()
                 for (i in seq_len(nrow(features)))
-                    self$results$features$addRow(
+                    miso_add_or_set_row(
+                        self$results$features,
                         rowKey=as.character(i),
                         values=list(
                             feature=featureNames[[i]],
-                            NMDS1=tofu_num_or_na(features[i, 1L]),
-                            NMDS2=tofu_num_or_na(features[i, 2L]),
+                            NMDS1=miso_num_or_na(features[i, 1L]),
+                            NMDS2=miso_num_or_na(features[i, 2L]),
                             NMDS3=if (isThreeDimensional)
-                                tofu_num_or_na(features[i, 3L])
+                                miso_num_or_na(features[i, 3L])
                             else
                                 NA_real_))
             }
+            self$results$sites$setNote(
+                key="method",
+                init=FALSE,
+                note=miso_method_note(
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance)))
+            self$results$stress$setNote(
+                key="method",
+                init=FALSE,
+                note=NULL)
             private$.prepareLabelState()
             private$.populateDescriptions()
-            private$.populateInterpretation()
-            private$.populateSettings()
         },
 
         .plotLimits = function(x, y, expansion=0.08) {
@@ -1401,23 +1328,42 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }))
         },
 
-        .buildNmdsPlot = function ()
+        .nmdsPlotData = function() {
+            list(
+                sites=private$.state$sites,
+                overlays=private$.state$overlays,
+                features=private$.state$features,
+                groupLabels=private$.state$groupLabels,
+                stress=private$.finiteNumber(private$.state$fit$stress),
+                featureNames=private$.featureNames(),
+                featureLabelSelection=private$.state$featureLabelSelection,
+                vectorEndpoints=private$.state$vectorEndpoints,
+                vectorLabelSelection=private$.state$vectorLabelSelection)
+        },
+
+        .shepardPlotData = function() {
+            list(
+                display=private$.state$shepardDisplayData,
+                all=private$.state$shepardData)
+        },
+
+        .buildNmdsPlot = function (plotData = private$.nmdsPlotData())
         {
-            sites <- private$.state$sites
+            sites <- plotData$sites
             if (is.null(sites) || ncol(sites) < 2L)
                 return(NULL)
-            overlays <- private$.state$overlays
-            features <- private$.state$features
+            overlays <- plotData$overlays
+            features <- plotData$features
             xValues <- c(0, sites[is.finite(sites[, 1L]), 1L])
             yValues <- c(0, sites[is.finite(sites[, 2L]), 2L])
             styles <- overlays$styles
             pointsStyled <- isTRUE(overlays$effective[["points"]])
             plot <- ggplot2::ggplot() + ggplot2::labs(x = "NMDS1", y = "NMDS2", caption = {
-                stress <- private$.finiteNumber(private$.state$fit$stress)
+                stress <- plotData$stress
                 if (is.na(stress))
                     "Stress unavailable"
                 else sprintf("Stress = %.3f", stress)
-            }) + .tofuPlotTheme()
+            }) + .misoPlotTheme()
             spiderData <- if (isTRUE(overlays$effective[["spider"]]))
                 private$.overlaySegmentData(overlays$spider, "Group spider")
             else data.frame()
@@ -1453,7 +1399,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     ggplot2::aes(x = x, y = y, group = pathGroup)), show.legend = TRUE)
             siteData <- data.frame(x = sites[, 1L], y = sites[, 2L], stringsAsFactors = FALSE)
             if (pointsStyled) {
-                siteData$group <- factor(private$.state$groupLabels, levels = styles$group)
+                siteData$group <- factor(plotData$groupLabels, levels = styles$group)
                 plot <- plot + ggplot2::geom_point(data = siteData, ggplot2::aes(x = x, y = y, colour = group,
                     shape = group), size = 2.5, stroke = 0.8)
             }
@@ -1464,15 +1410,15 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (!is.null(features) && nrow(features) > 0L && ncol(features) >= 2L) {
                 finiteFeatures <- is.finite(features[, 1L]) & is.finite(features[, 2L])
                 featureData <- data.frame(x = 0, y = 0, xend = features[finiteFeatures, 1L], yend = features[finiteFeatures,
-                    2L], label = private$.featureNames()[finiteFeatures], group = "Feature scores", layer = "Feature score",
+                    2L], label = plotData$featureNames[finiteFeatures], group = "Feature scores", layer = "Feature score",
                     original = which(finiteFeatures), stringsAsFactors = FALSE)
                 xValues <- c(xValues, featureData$xend)
                 yValues <- c(yValues, featureData$yend)
                 plot <- plot + ggplot2::geom_segment(data = featureData, ggplot2::aes(x = x, y = y, xend = xend,
                     yend = yend), arrow = grid::arrow(length = grid::unit(0.12, "cm"), type = "closed"), colour = "#4D4D4D",
                     linewidth = 0.45, alpha = 0.72, show.legend = FALSE)
-                labels <- private$.featureNames()
-                shown <- private$.state$featureLabelSelection$shown
+                labels <- plotData$featureNames
+                shown <- plotData$featureLabelSelection$shown
                 shown <- shown[shown %in% featureData$original]
                 if (length(shown) > 0L) {
                     labelData <- data.frame(x = features[shown, 1L], y = features[shown, 2L], label = labels[shown],
@@ -1483,7 +1429,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         colour = "#3D3D3D", size = 3.5, vjust = -0.45, check_overlap = FALSE, show.legend = FALSE)
                 }
             }
-            vectors <- private$.state$vectorEndpoints
+            vectors <- plotData$vectorEndpoints
             if (!is.null(vectors)) {
                 vectors <- as.matrix(vectors)
                 if (nrow(vectors) > 0L && ncol(vectors) >= 2L) {
@@ -1508,7 +1454,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         plot <- plot + ggplot2::geom_segment(data = vectorData, ggplot2::aes(x = x, y = y, xend = xend,
                           yend = yend), arrow = grid::arrow(length = grid::unit(0.14, "cm"), type = "closed"),
                           colour = "#8B1A1A", linewidth = 0.7, show.legend = FALSE)
-                        shown <- intersect(private$.state$vectorLabelSelection$shown, which(finiteVectors))
+                        shown <- intersect(plotData$vectorLabelSelection$shown, which(finiteVectors))
                         if (length(shown) > 0L) {
                           labelData <- data.frame(x = displayVectors[shown, 1L] * labelExpansion, y = displayVectors[shown,
                             2L] * labelExpansion, label = labels[shown], stringsAsFactors = FALSE)
@@ -1558,21 +1504,20 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 ,
 
         .plotNmds = function(image, ...) {
-            plot <- private$.buildNmdsPlot()
+            plot <- private$.buildNmdsPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))
             invisible(TRUE)
         },
 
-        .buildShepardPlot = function() {
-            fit <- private$.state$fit
-            if (is.null(fit) || !isTRUE(self$options$nmdsShepard) ||
-                    !private$.state$shepardValid)
+        .buildShepardPlot = function(plotData = private$.shepardPlotData()) {
+            if (is.null(plotData) || is.null(plotData$display) ||
+                    is.null(plotData$all) || nrow(plotData$display) == 0L)
                 return(NULL)
-            data <- private$.state$shepardDisplayData
-            allData <- private$.state$shepardData
-            if (is.null(data) || nrow(data) == 0L || is.null(allData))
+            data <- plotData$display
+            allData <- plotData$all
+            if (nrow(data) == 0L)
                 return(NULL)
             fitData <- allData[order(
                 allData$dissimilarity, allData$monotonicFit,
@@ -1591,11 +1536,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 ggplot2::labs(
                     x="Observed dissimilarity",
                     y="Ordination distance") +
-                .tofuPlotTheme()
+                .misoPlotTheme()
         },
 
         .plotShepard = function(image, ...) {
-            plot <- private$.buildShepardPlot()
+            plot <- private$.buildShepardPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

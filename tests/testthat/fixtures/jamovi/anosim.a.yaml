@@ -1,28 +1,39 @@
 ---
 name: anosim
 title: ANOSIM
-menuGroup: tofu
+menuGroup: miso
 menuTitle: ANOSIM
 menuSubtitle: Rank-based alternative
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Tests whether within-group samples are more similar than between-group samples using rank-based ANOSIM through vegan::anosim. Includes optional pairwise comparisons and rank diagnostics.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
+    - >-
+      Clarke, K. R. (1993). Non-parametric multivariate analyses of changes
+      in community structure. Australian Journal of Ecology, 18(1), 117-143.
+      https://doi.org/10.1111/j.1442-9993.1993.tb00438.x
 
 options:
   - name: data
     type: Data
 
   - name: vars
-    title: Feature variables (required)
+    title: Feature Variables
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
 
   - name: factor
-    title: Grouping variable (required)
+    title: Grouping Variable
     type: Variable
     suggested:
       - nominal
@@ -31,7 +42,7 @@ options:
       - factor
 
   - name: strata
-    title: Blocking variable (optional)
+    title: Blocking Variable
     type: Variable
     suggested:
       - nominal

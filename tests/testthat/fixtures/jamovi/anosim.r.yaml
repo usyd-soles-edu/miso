@@ -2,46 +2,26 @@
 name: anosim
 title: ANOSIM
 jrs: '1.1'
+refs:
+  - vegan
+  - clarke1993
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
-
-  - name: summaryPurpose
-    title: Data Summary
-    type: Html
-    visible: false
-
-  - name: summary
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
 
   - name: warnings
     title: ''
     type: Html
     visible: false
 
-  - name: globalPurpose
-    title: Global ANOSIM
-    type: Html
-    visible: false
-
   - name: global
-    title: ''
+    title: Global ANOSIM
     type: Table
     visible: false
-    rows: 0
+    rows: 1
     columns:
       - name: statistic
         title: Statistic
@@ -57,13 +37,8 @@ items:
         title: Effective permutations
         type: integer
 
-  - name: pairwisePurpose
-    title: Pairwise ANOSIM
-    type: Html
-    visible: false
-
   - name: pairwise
-    title: ''
+    title: Pairwise ANOSIM
     type: Table
     visible: false
     rows: 0
@@ -88,22 +63,37 @@ items:
     title: Ranked dissimilarities by pair category
     type: Html
     visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - strata
+      - permRestriction
+      - permScheme
+      - anosimN
+      - seed
 
   - name: rankPlot
-    title: ''
+    title: Ranked Dissimilarities Plot
     type: Image
     visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - strata
+      - permRestriction
+      - permScheme
+      - anosimN
+      - seed
     width: 600
     height: 480
     renderFun: .plotRank
 
-  - name: rankSummaryPurpose
-    title: Ranked-dissimilarity summary
-    type: Html
-    visible: false
-
   - name: rankSummary
-    title: ''
+    title: Ranked Dissimilarities
     type: Table
     visible: false
     rows: 0
@@ -123,28 +113,3 @@ items:
       - name: q3
         title: Q3 rank
         type: number
-
-  - name: note
-    title: How to read these results
-    type: Html
-    visible: false
-
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-
-  - name: settings
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-
-...

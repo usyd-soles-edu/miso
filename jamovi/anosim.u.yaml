@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required)
+        label: Feature Variables
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable (required)
+        label: Grouping Variable
         children:
           - type: VariablesListBox
             name: factor
@@ -24,7 +24,7 @@ children:
             isTarget: true
   - type: CollapseBox
     name: analysisChoices
-    label: Analysis choices
+    label: Analysis Choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -36,10 +36,13 @@ children:
         name: distBinary
       - type: CheckBox
         name: anosimPairwise
+        style: list
         events:
           change: update_control_states
-      - type: ComboBox
-        name: anosimAdjust
+        children:
+          - type: ComboBox
+            name: anosimAdjust
+            enable: (anosimPairwise)
   - type: CollapseBox
     name: plots
     label: Plots
@@ -50,7 +53,7 @@ children:
         name: showRankPlot
   - type: CollapseBox
     name: studyDesign
-    label: Study design and permutation restrictions
+    label: Study Design and Permutation Restrictions
     collapsed: true
     stretchFactor: 1
     children:
@@ -59,7 +62,7 @@ children:
         stretchFactor: 1
         children:
           - type: TargetLayoutBox
-            label: Blocking variable (optional)
+            label: Blocking Variable
             children:
               - type: VariablesListBox
                 name: strata
@@ -69,7 +72,7 @@ children:
         name: permRestriction
   - type: CollapseBox
     name: reproducibility
-    label: Reproducibility and computation
+    label: Reproducibility and Computation
     collapsed: true
     stretchFactor: 1
     children:

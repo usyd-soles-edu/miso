@@ -6,8 +6,17 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = anosimBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options, excluded="showRankPlot", data=self$data)
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
             private$.state <- list(
                 warnings=character(),
                 restriction=NULL,
@@ -17,11 +26,12 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 effectivePermutations=NA_integer_,
                 pairwisePermutations=integer(),
                 rankPlotData=NULL)
-            private$.resetResults()
+            private$.clearResults()
 
             hasVars <- length(self$options$vars) > 0L
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(
                     paste(
                         "ANOSIM compares ranked between-group and within-group dissimilarities.",
@@ -33,34 +43,44 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             if (! hasVars) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "ANOSIM is waiting for Feature variables.",
                     "Add one or more numeric response columns, such as species abundances."))
                 return()
             }
             if (! hasFactor) {
+                private$.discardKeyedRows()
                 private$.showGuidance(paste(
                     "ANOSIM is waiting for a Grouping variable.",
                     "Add one categorical variable containing at least two groups."))
                 return()
             }
 
-            prep <- tofu_prepare_resemblance(
-                data=self$data,
-                vars=self$options$vars,
-                factor=self$options$factor,
-                transform=self$options$transform,
-                distance=self$options$distance,
-                seed=self$options$seed,
-                strata=self$options$strata,
-                distBinary=self$options$distBinary)
-            if (prep$error) {
+            prep <- tryCatch(
+                miso_prepare_resemblance(
+                    data=self$data,
+                    vars=self$options$vars,
+                    factor=self$options$factor,
+                    transform=self$options$transform,
+                    distance=self$options$distance,
+                    seed=self$options$seed,
+                    strata=self$options$strata,
+                    distBinary=self$options$distBinary),
+                error=function(e) e)
+            if (inherits(prep, "error")) {
+                private$.discardKeyedRows()
+                stop(prep)
+            }
+            if (isTRUE(prep$error)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(prep$message)
                 return()
             }
 
             private$.state$restriction <- private$.restrictionState(prep)
             if (! is.null(private$.state$restriction$error)) {
+                private$.discardKeyedRows()
                 private$.showGuidance(private$.state$restriction$error)
                 return()
             }
@@ -68,102 +88,80 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep$warnings,
                 private$.state$restriction$warnings)
 
-            private$.state$cl <- tofu_parallel(self$options$useParallel)
-            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
-            if (isTRUE(self$options$useParallel) && is.null(private$.state$cl))
-                private$.state$warnings <- c(
-                    private$.state$warnings,
-                    paste(
-                        "Parallel processing was requested but unavailable;",
-                        "the analysis ran serially."))
-
-            tofu_populate_summary(
-                self$results,
-                prep,
-                self$options$transform,
-                self$options$distance)
-            private$.populatePurposes()
-
-            if (! private$.runGlobal(prep))
+            private$.state$cl <- miso_parallel(self$options$useParallel)
+            on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
+            if (! private$.runGlobal(prep)) {
+                private$.discardKeyedRows()
                 return()
+            }
 
             pairwiseShown <- FALSE
             if (isTRUE(self$options$anosimPairwise) && nlevels(prep$group) >= 3L)
                 pairwiseShown <- private$.runPairwise(prep)
-
-            private$.setInterpretation(prep, pairwiseShown)
-            private$.populateSettings(prep, pairwiseShown)
+            if (! pairwiseShown)
+                miso_clear_table(self$results$pairwise)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(pairwiseShown)
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            showRank <- isTRUE(self$options$showRankPlot) &&
+                !is.null(private$.state$rankPlotData)
+            self$results$rankPlot$setVisible(showRank)
+            self$results$rankPlotDescription$setVisible(FALSE)
+            self$results$rankSummary$setVisible(
+                !is.null(private$.state$rankPlotData))
+        },
+
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
-            tofu_clear_table(self$results$summary)
-            tofu_clear_table(self$results$global)
-            tofu_clear_table(self$results$pairwise)
-            tofu_clear_table(self$results$rankSummary)
-            rankSummary <- self$results$rankSummary
-            rankSummary$.__enclos_env__$private$.rowNames <- character()
+            miso_clear_fixed_table(self$results$global, 1L)
+            miso_clear_table_values(self$results$pairwise)
+            miso_clear_table_values(self$results$rankSummary)
             self$results$global$setNote(key="meaning", note="")
             self$results$pairwise$setNote(key="scope", note="")
             self$results$rankPlotDescription$setContent("")
-            self$results$note$setContent("")
-            tofu_clear_table(self$results$settings)
-            for (name in c(
-                    "summaryPurpose", "globalPurpose", "pairwisePurpose",
-                    "rankSummaryPurpose", "settingsPurpose"))
-                self$results[[name]]$setContent("")
 
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings",
-                    "global", "globalPurpose", "pairwise",
-                    "pairwisePurpose", "rankPlot", "rankPlotDescription",
-                    "rankSummary", "rankSummaryPurpose", "note", "settings",
-                    "settingsPurpose"))
+                    "guidance", "warnings",
+                    "global", "pairwise",
+                    "rankPlot", "rankPlotDescription",
+                    "rankSummary"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("global"))
+                self$results[[name]]$setVisible(TRUE)
+        },
+
+        # Destructive row removal for keyed result tables on rerun paths that
+        # do not repopulate them: guidance, rejections, and failed global fits
+        # must not leave stale or blank rows behind.
+        .discardKeyedRows = function() {
+            miso_clear_table(self$results$pairwise)
+            miso_clear_table(self$results$rankSummary)
         },
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
+            self$results$guidance$setVisible(FALSE)
+            hasRank <- !is.null(private$.state$rankPlotData)
             for (name in c(
-                    "summary", "summaryPurpose", "global", "globalPurpose",
-                    "note", "settings", "settingsPurpose"))
+                    "global"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
-            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
-            hasRank <- !is.null(private$.state$rankPlotData)
             showRank <- isTRUE(self$options$showRankPlot) && hasRank
-            for (name in c("rankPlot", "rankPlotDescription"))
-                self$results[[name]]$setVisible(showRank)
+            self$results$rankPlot$setVisible(showRank)
+            self$results$rankPlotDescription$setVisible(FALSE)
             self$results$rankSummary$setVisible(hasRank)
-            self$results$rankSummaryPurpose$setVisible(hasRank)
         },
 
-        .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                globalPurpose=c(
-                    "Global ANOSIM",
-                    "Tests whether within-group samples are more similar than between-group samples."),
-                pairwisePurpose=c(
-                    "Pairwise ANOSIM",
-                    "Compares ANOSIM separation between each pair of groups."),
-                rankSummaryPurpose=c(
-                    "Ranked-dissimilarity summary",
-                    "Summarises ranks within each pair category."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[! is.na(warnings) & nzchar(warnings)])
@@ -172,7 +170,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
@@ -194,18 +192,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     warnings <- c(
                         warnings,
                         paste(
-                            "This saved analysis requested Stratified permutations",
-                            "without a blocking variable. ANOSIM now uses Free",
-                            "permutations, which is equivalent for that design."))
+                            "Saved Stratified permutations without a blocking variable",
+                            "are implemented as Free permutations."))
                 }
                 else {
                     effectiveCode <- legacy
-                    warnings <- c(
-                        warnings,
-                        paste(
-                            "This saved analysis uses a legacy permutation setting.",
-                            "Reselect the effective restriction under Study design",
-                            "and permutation restrictions to migrate it."))
                 }
             }
 
@@ -262,7 +253,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 }
             }
 
-            state$control <- tofu_permutation(
+            state$control <- miso_permutation(
                 self$options$anosimN,
                 effectiveCode,
                 if (state$blockUsed) state$blockVector else NULL)
@@ -289,7 +280,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .runGlobal = function(prep) {
-            tofu_set_seed(prep)
+            miso_set_seed(prep)
             fit <- tryCatch(
                 withCallingHandlers(
                     vegan::anosim(
@@ -311,8 +302,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(FALSE)
             }
 
-            r <- tofu_num_or_na(fit$statistic)
-            p <- tofu_num_or_na(fit$signif)
+            r <- miso_num_or_na(fit$statistic)
+            p <- miso_num_or_na(fit$signif)
             permutations <- suppressWarnings(as.integer(fit$permutations))
             if (! is.finite(r) || ! is.finite(p)) {
                 private$.showGuidance(paste(
@@ -330,10 +321,13 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     as.integer(self$options$anosimN)
 
             private$.state$rankPlotData <- private$.prepareRankPlotData(fit)
+            if (is.null(private$.state$rankPlotData))
+                miso_clear_table(self$results$rankSummary)
+            self$results$rankPlot$setState(private$.state$rankPlotData)
             private$.populateRankDiagnostic()
 
-            self$results$global$addRow(
-                rowKey="r",
+            miso_set_fixed_row(
+                self$results$global, 1L,
                 values=list(
                     statistic="Global R",
                     value=r,
@@ -341,10 +335,17 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     permutations=private$.state$effectivePermutations))
             self$results$global$setNote(
                 key="meaning",
-                note=paste(
-                    "R compares ranked between-group and within-group",
-                    "dissimilarities. Permutation p uses the displayed",
-                    "restriction in Analysis settings."))
+                note=sprintf(
+                    "%s Effective restriction: %s%s.",
+                    miso_method_note(
+                        private$.transformLabel(self$options$transform),
+                        private$.distanceLabel(self$options$distance),
+                        self$options$distBinary),
+                    private$.state$restriction$effective,
+                    if (identical(private$.state$restriction$blockUsed, TRUE))
+                        sprintf(" within blocks of %s", private$.state$restriction$block)
+                    else ""),
+                init=FALSE)
             TRUE
         },
 
@@ -397,7 +398,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             raw <- all[selected, , drop=FALSE]
             raw$categoryIndex <- match(
                 as.character(raw$category), categoryLevels)
-            raw$x <- raw$categoryIndex + .tofuJitter(
+            raw$x <- raw$categoryIndex + .misoJitter(
                 nrow(raw), width=.16, seed=104729L)
             rownames(raw) <- NULL
 
@@ -413,13 +414,13 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(diagnostic))
                 return()
             categories <- levels(diagnostic$all$category)
-            for (i in seq_along(categories)) {
+            rankRows <- lapply(seq_along(categories), function(i) {
                 category <- categories[[i]]
                 values <- diagnostic$all$rank[
                     diagnostic$all$category == category &
                     is.finite(diagnostic$all$rank)]
-                self$results$rankSummary$addRow(
-                    rowKey=as.character(i),
+                list(
+                    key=as.character(i),
                     values=list(
                         category=category,
                         pairs=length(values),
@@ -428,8 +429,9 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             values, .25, names=FALSE)),
                         q3=unname(stats::quantile(
                             values, .75, names=FALSE))))
-            }
-            disclosure <- .tofuPlotDisclosure(
+            })
+            miso_reconcile_table_rows(self$results$rankSummary, rankRows)
+            disclosure <- .misoPlotDisclosure(
                 diagnostic$displayed,
                 diagnostic$total,
                 noun="raw pair ranks")
@@ -443,16 +445,12 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         groupCount)
                 else
                     character()
-                self$results$rankPlotDescription$setContent(tofu_html_block(
-                    "Shows the ranked dissimilarities underlying the ANOSIM statistic.",
-                    ariaLabel="About ANOSIM rank distributions",
-                    title="Ranked-dissimilarity plot"))
             }
+            self$results$rankPlotDescription$setContent("")
         },
 
-        .buildRankPlot = function() {
-            diagnostic <- private$.state$rankPlotData
-            if (is.null(diagnostic) || !isTRUE(self$options$showRankPlot))
+        .buildRankPlot = function(diagnostic = private$.state$rankPlotData) {
+            if (is.null(diagnostic))
                 return(NULL)
             all <- diagnostic$all
             all <- all[is.finite(all$rank) & !is.na(all$category), , drop=FALSE]
@@ -460,10 +458,10 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(NULL)
             categories <- levels(all$category)
             all$categoryIndex <- match(as.character(all$category), categories)
-            labels <- .tofuUniqueShortLabels(categories, width=28L)
+            labels <- .misoUniqueShortLabels(categories, width=28L)
             withinCategories <- categories[categories != "Between"]
             if (length(withinCategories) <= 64L) {
-                withinAesthetics <- .tofuGroupAesthetics(withinCategories)
+                withinAesthetics <- .misoGroupAesthetics(withinCategories)
                 colours <- c(
                     Between="#222222",
                     withinAesthetics$colour[withinCategories])
@@ -506,11 +504,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 ggplot2::labs(
                     x="Pair category",
                     y="Ranked dissimilarity") +
-                .tofuPlotTheme()
+                .misoPlotTheme()
         },
 
         .plotRank = function(image, ...) {
-            plot <- private$.buildRankPlot()
+            plot <- private$.buildRankPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))
@@ -547,7 +545,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 }
 
                 subDist <- stats::as.dist(distMat[idx, idx, drop=FALSE])
-                tofu_set_seed(prep)
+                miso_set_seed(prep)
                 fit <- tryCatch(
                     suppressWarnings(vegan::anosim(
                         subDist,
@@ -556,15 +554,15 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         parallel=private$.state$cl)),
                     error=function(e) e)
                 if (inherits(fit, "error") ||
-                        ! is.finite(tofu_num_or_na(fit$statistic)) ||
-                        ! is.finite(tofu_num_or_na(fit$signif))) {
+                        ! is.finite(miso_num_or_na(fit$statistic)) ||
+                        ! is.finite(miso_num_or_na(fit$signif))) {
                     failed <- c(failed, contrast)
                     next
                 }
                 successful[[contrast]] <- list(
                     contrast=contrast,
-                    r=tofu_num_or_na(fit$statistic),
-                    p=tofu_num_or_na(fit$signif))
+                    r=miso_num_or_na(fit$statistic),
+                    p=miso_num_or_na(fit$signif))
                 private$.state$pairwisePermutations[[contrast]] <-
                     as.integer(fit$permutations)
             }
@@ -585,22 +583,26 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pvals
             else
                 stats::p.adjust(pvals, method=self$options$anosimAdjust)
-            for (i in seq_along(successful)) {
+            pairwiseRows <- lapply(seq_along(successful), function(i) {
                 row <- successful[[i]]
-                self$results$pairwise$addRow(
-                    rowKey=as.character(i),
+                list(
+                    key=as.character(i),
                     values=list(
                         contrast=row$contrast,
                         r=row$r,
                         p=row$p,
                         padj=adjusted[[i]]))
-            }
+            })
+            miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
             self$results$pairwise$setNote(
                 key="scope",
-                note=paste(
-                    "Contrasts compare ranked group separation under the same",
-                    "effective restriction as Global ANOSIM. Adjustment applies",
-                    "only to the populated contrasts."))
+                note=sprintf(
+                    "Effective restriction: %s%s. P-value adjustment: %s across %d available contrasts.",
+                    private$.state$restriction$effective,
+                    if (isTRUE(private$.state$restriction$blockUsed))
+                        sprintf(" within blocks of %s", private$.state$restriction$block) else "",
+                    private$.adjustmentLabel(self$options$anosimAdjust), length(pvals)),
+                init=FALSE)
             TRUE
         },
 
@@ -616,7 +618,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             control <- tryCatch(
-                tofu_permutation(
+                miso_permutation(
                     self$options$anosimN,
                     restriction,
                     block),
@@ -632,61 +634,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             control
         },
 
-        .setInterpretation = function(prep, pairwiseShown) {
-            self$results$note$setContent(tofu_html_block(paste(
-                "R measures rank separation; larger positive values indicate stronger separation.",
-                "Permutation p compares this with random grouping."),
-                title="How to read these results"))
-        },
 
-        .populateSettings = function(prep, pairwiseShown) {
-            add <- function(setting, value) {
-                key <- as.character(length(self$results$settings$rowKeys) + 1L)
-                self$results$settings$addRow(
-                    rowKey=key,
-                    values=list(setting=setting, value=as.character(value)))
-            }
-
-            restriction <- private$.state$restriction
-            add("Transformation", private$.transformLabel(self$options$transform))
-            add("Dissimilarity", private$.distanceLabel(self$options$distance))
-            add("Binary dissimilarity", private$.enabledLabel(self$options$distBinary))
-            add("Grouping variable", prep$primary)
-            add("Observed groups", nlevels(prep$group))
-            add("Requested permutations", self$options$anosimN)
-            add("Effective global permutations", private$.state$effectivePermutations)
-            add("Requested permutation restriction", restriction$requested)
-            add("Effective permutation restriction", restriction$effective)
-            add("Blocking variable", restriction$block)
-            add("Block used", if (restriction$blockUsed) "Yes" else "No")
-            if (identical(restriction$effectiveCode, "series"))
-                add(
-                    "Sequence order",
-                    if (restriction$blockUsed)
-                        "Current data-row order within blocks"
-                    else
-                        "Current data-row order")
-            add("Pairwise comparisons", private$.enabledLabel(self$options$anosimPairwise))
-            add("Pairwise output", if (pairwiseShown) "Produced" else "Not produced")
-            if (pairwiseShown)
-                add(
-                    "Effective pairwise permutations",
-                    private$.pairwisePermutationLabel(
-                        private$.state$pairwisePermutations))
-            add(
-                "P-value adjustment",
-                if (pairwiseShown)
-                    private$.adjustmentLabel(self$options$anosimAdjust)
-                else
-                    "Not applied")
-            add("Random seed", if (is.na(prep$seed)) "Random" else prep$seed)
-            add(
-                "Parallel processing requested",
-                if (isTRUE(self$options$useParallel)) "Yes" else "No")
-            add(
-                "Effective execution",
-                if (is.null(private$.state$cl)) "Serial" else "Parallel")
-        },
 
         .hasValue = function(value) {
             ! is.null(value) && length(value) > 0L &&

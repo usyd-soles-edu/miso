@@ -17,7 +17,7 @@ pcoaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             showSpiders = FALSE, ...) {
 
             super$initialize(
-                package="tofu",
+                package="miso",
                 name="pcoa",
                 requiresData=TRUE,
                 ...)
@@ -26,9 +26,12 @@ pcoaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "vars",
                 vars,
                 suggested=list(
-                    "continuous"),
+                    "continuous",
+                    "nominal",
+                    "ordinal"),
                 permitted=list(
-                    "numeric"))
+                    "numeric",
+                    "factor"))
             private$..factor <- jmvcore::OptionVariable$new(
                 "factor",
                 factor,
@@ -142,31 +145,25 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     inherit = jmvcore::Group,
     active = list(
         guidance = function() private$.items[["guidance"]],
-        summaryPurpose = function() private$.items[["summaryPurpose"]],
-        summary = function() private$.items[["summary"]],
         warnings = function() private$.items[["warnings"]],
         ordinationDescription = function() private$.items[["ordinationDescription"]],
         ordination = function() private$.items[["ordination"]],
-        sitesPurpose = function() private$.items[["sitesPurpose"]],
         sites = function() private$.items[["sites"]],
-        centroidsPurpose = function() private$.items[["centroidsPurpose"]],
         centroids = function() private$.items[["centroids"]],
-        eigenvaluesPurpose = function() private$.items[["eigenvaluesPurpose"]],
-        eigenvalues = function() private$.items[["eigenvalues"]],
-        interpretation = function() private$.items[["interpretation"]],
-        settingsPurpose = function() private$.items[["settingsPurpose"]],
-        settings = function() private$.items[["settings"]]),
+        eigenvalues = function() private$.items[["eigenvalues"]]),
     private = list(),
     public=list(
         initialize=function(options) {
             super$initialize(
                 options=options,
                 name="",
-                title="PCoA")
+                title="PCoA",
+                refs=list(
+                    "vegan"))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
-                title="Getting started",
+                title="Getting Started",
                 visible=FALSE,
                 clearWith=list(
                     "vars",
@@ -175,49 +172,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="summaryPurpose",
-                title="Data summary",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="summary",
-                title="",
-                rows=0,
-                visible=FALSE,
-                columns=list(
-                    list(
-                        `name`="item",
-                        `title`="Item",
-                        `type`="text"),
-                    list(
-                        `name`="value",
-                        `title`="Value",
-                        `type`="text")),
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="warnings",
@@ -230,9 +185,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="ordinationDescription",
@@ -245,13 +198,11 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="ordination",
-                title="",
+                title="PCoA Ordination",
                 width=600,
                 height=500,
                 renderFun=".plotPcoa",
@@ -263,28 +214,11 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="sitesPurpose",
-                title="Site coordinates",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="sites",
-                title="",
+                title="Site Coordinates",
                 rows=0,
                 visible=FALSE,
                 columns=list(
@@ -317,28 +251,11 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="centroidsPurpose",
-                title="Group centroids",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="centroids",
-                title="",
+                title="Group Centroids",
                 rows=0,
                 visible=FALSE,
                 columns=list(
@@ -367,28 +284,11 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="eigenvaluesPurpose",
-                title="Eigenvalues",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
+                    "correction")))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="eigenvalues",
-                title="",
+                title="Eigenvalues",
                 rows=0,
                 visible=FALSE,
                 columns=list(
@@ -417,64 +317,7 @@ pcoaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distance",
                     "distBinary",
                     "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="interpretation",
-                title="How to read this ordination",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Html$new(
-                options=options,
-                name="settingsPurpose",
-                title="Settings",
-                visible=FALSE,
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="settings",
-                title="",
-                rows=0,
-                visible=FALSE,
-                columns=list(
-                    list(
-                        `name`="setting",
-                        `title`="Setting",
-                        `type`="text"),
-                    list(
-                        `name`="value",
-                        `title`="Value",
-                        `type`="text")),
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "sqrtDist",
-                    "correction",
-                    "showCentroids",
-                    "showSpiders")))}))
+                    "correction")))}))
 
 pcoaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "pcoaBase",
@@ -482,9 +325,9 @@ pcoaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     public = list(
         initialize = function(options, data=NULL, datasetId="", analysisId="", revision=0) {
             super$initialize(
-                package = "tofu",
+                package = "miso",
                 name = "pcoa",
-                version = c(0,2,1),
+                version = c(1,0,0),
                 options = options,
                 results = pcoaResults$new(options=options),
                 data = data,
@@ -503,6 +346,9 @@ pcoaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' dissimilarities among sites. The ordination visualises resemblance
 #' structure and does not test group differences. When called from R, it
 #' returns the jamovi analysis results object.
+#' @section References:
+#' Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+#'
 #' @param data The data frame containing the feature and grouping variables.
 #' @param vars Two or more numeric feature variables used to calculate
 #'   dissimilarities among sites.
@@ -531,27 +377,19 @@ pcoaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summaryPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$summary} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$ordination} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$sitesPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$sites} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$centroidsPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$centroids} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$eigenvaluesPurpose} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$eigenvalues} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$interpretation} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settingsPurpose} \tab \tab \tab \tab \tab a html \cr
-#'   \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 #'
-#' \code{results$summary$asDF}
+#' \code{results$sites$asDF}
 #'
-#' \code{as.data.frame(results$summary)}
+#' \code{as.data.frame(results$sites)}
 #'
 #' @export
 pcoa <- function(

@@ -5,15 +5,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = permanovaBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
 
-        .run = function() {
-            private$.state <- list(
-                warnings=character(), cl=NULL, permutation=NULL,
-                companion=list(
-                    requested=isTRUE(self$options$showCompanionPcoa),
-                    fit=NULL, plotData=NULL, displayFactor=NULL))
-            private$.resetResults()
-
+        .preparePermanova = function() {
             if (length(self$options$vars) == 0) {
                 private$.showGuidance(
                     paste(
@@ -23,29 +17,19 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Results update automatically.",
                         sep="\n"),
                     title="Getting started")
-                return()
+                return(NULL)
             }
 
-            if (tofu_is_missing_var(self$options$factor)) {
+            if (miso_is_missing_var(self$options$factor)) {
                 private$.showGuidance(
                     paste(
                         "PERMANOVA is waiting for a Grouping variable.",
                         "Add one categorical variable containing at least two groups."),
                     title="Action needed")
-                return()
+                return(NULL)
             }
 
-            if (identical(self$options$permScheme, "stratified") &&
-                    tofu_is_missing_var(self$options$strata)) {
-                private$.showGuidance(
-                    paste(
-                        "Within-block permutations require a Blocking variable.",
-                        "Add one, or select Free permutations."),
-                    title="Action needed")
-                return()
-            }
-
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
                 factor=self$options$factor,
@@ -56,48 +40,76 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 strata=self$options$strata,
                 covariates=self$options$covariates,
                 distBinary=self$options$distBinary)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(
                     paste0("PERMANOVA could not run: ", prep$message),
                     title="Action needed")
-                return()
+                return(NULL)
             }
 
             permutation <- private$.permutationState(prep)
             private$.state$permutation <- permutation
             if (! is.null(permutation$error)) {
                 private$.showGuidance(permutation$error, title="Action needed")
-                return()
+                return(NULL)
             }
 
             private$.state$warnings <- c(
                 private$.state$warnings,
                 prep$warnings,
                 permutation$warnings)
-            private$.state$cl <- tofu_parallel(self$options$useParallel)
-            on.exit(tofu_parallel_stop(private$.state$cl), add=TRUE)
+            private$.state$cl <- miso_parallel(self$options$useParallel)
+            prep
+        },
 
-            main <- private$.runPermanova(prep)
-            if (! main$success) {
-                private$.resetResults()
-                correction <- if (grepl("saturated", main$error, fixed=TRUE))
-                    "The selected model has no residual degrees of freedom. Remove a model term or use more samples."
-                else
-                    "Check the selected variables and model settings."
-                private$.showGuidance(
-                    paste0(
-                        "PERMANOVA could not run: ", correction,
-                        "\nTechnical detail: ", main$error),
-                    title="Action needed")
-                return()
-            }
+        .fitPermanova = function(prep) {
+            miso_set_seed(prep)
+            model <- private$.makeModelData(prep)
+            result <- tryCatch(
+                private$.adonisModel(prep, model),
+                error=function(e) e)
+            if (inherits(result, "error"))
+                return(list(success=FALSE, error=result$message))
+            list(success=TRUE, result=result, model=model)
+        },
 
-            tofu_populate_summary(
-                self$results,
-                prep,
-                self$options$transform,
-                self$options$distance)
-            private$.populatePurposes()
+        .assemblePermanovaResults = function(prep, main) {
+            tab <- as.data.frame(main$result)
+            rn <- rownames(tab)
+            termRows <- lapply(seq_len(nrow(tab)), function(i) {
+                notApplicable <- rn[[i]] %in% c("Residual", "Total")
+                list(
+                    key=as.character(i),
+                    values=list(
+                        source=miso_display_term(rn[[i]], prep),
+                        df=miso_num_or_na(tab[i, "Df"]),
+                        sumsqs=miso_num_or_na(tab[i, "SumOfSqs"]),
+                        r2=miso_num_or_na(tab[i, "R2"]),
+                        f=if (notApplicable) "" else miso_num_or_na(tab[i, "F"]),
+                        p=if (notApplicable) "" else miso_num_or_na(tab[i, "Pr(>F)"])))
+            })
+            miso_reconcile_table_rows(self$results$table, termRows)
+
+            permutation <- private$.state$permutation
+            blockDetail <- if (isTRUE(permutation$blockUsed))
+                sprintf(" Blocking variable: %s.", permutation$block)
+            else ""
+            sequenceDetail <- if (identical(self$options$permScheme, "series"))
+                " Sequence order: Current data-row order."
+            else ""
+            self$results$table$setNote(
+                key="method",
+                note=paste0(
+                    miso_method_note(
+                        private$.transformLabel(self$options$transform),
+                        private$.distanceLabel(self$options$distance),
+                        self$options$distBinary, self$options$distSqrt,
+                        private$.additiveLabel(self$options$distAdd)),
+                    sprintf(" Test type: %s. Permutation restrictions: %s (%d requested).",
+                        private$.testTypeLabel(self$options$permBy),
+                        permutation$effective, as.integer(self$options$permN)),
+                    blockDetail, sequenceDetail),
+                init=FALSE)
 
             private$.runCompanionPcoa(prep, main$model)
 
@@ -126,82 +138,134 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         pairwise$warnings)
                 }
             }
-
-            private$.setInterpretation(prep, main$model, pairwiseShown)
-            private$.populateSettings(prep, permutation, pairwiseShown)
+            if (! pairwiseShown)
+                miso_clear_table(self$results$pairwise)
             private$.showSuccessfulResults(pairwiseShown)
+            private$.setWarnings(c(
+                private$.state$warnings, private$.state$companion$warnings))
+        },
+
+        .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options,
+                excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
+                    "pcoaCentroids", "pcoaSpiders"),
+                data=self$data)
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
+            private$.state <- list(
+                warnings=character(), cl=NULL, permutation=NULL,
+                companion=list(
+                    requested=isTRUE(self$options$showCompanionPcoa),
+                    prep=NULL, model=NULL, fit=NULL, warnings=character(),
+                    plotData=NULL, displayFactor=NULL))
+            private$.clearResults()
+
+            prep <- tryCatch(private$.preparePermanova(), error=function(e) e)
+            if (inherits(prep, "error")) {
+                private$.discardKeyedRows()
+                stop(prep)
+            }
+            if (is.null(prep)) {
+                private$.discardKeyedRows()
+                return()
+            }
+            on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
+
+            main <- private$.fitPermanova(prep)
+            if (! main$success) {
+                private$.discardKeyedRows()
+                correction <- if (grepl("saturated", main$error, fixed=TRUE))
+                    "The selected model has no residual degrees of freedom. Remove a model term or use more samples."
+                else
+                    "Check the selected variables and model settings."
+                private$.showGuidance(
+                    paste0(
+                        "PERMANOVA could not run: ", correction,
+                        "\nTechnical detail: ", main$error),
+                    title="Action needed")
+                return()
+            }
+            private$.assemblePermanovaResults(prep, main)
+        },
+
+        .refreshDisplayOnly = function() {
+            requested <- isTRUE(self$options$showCompanionPcoa)
+            companion <- private$.state$companion
+            if (requested && !is.null(companion$prep) &&
+                    !is.null(companion$model)) {
+                miso_clear_table(self$results$companionPcoaSites)
+                miso_clear_table(self$results$companionPcoaCentroids)
+                private$.runCompanionPcoa(companion$prep, companion$model)
+                # Display-only reruns bypass the normal .run() tail. Publish
+                # selection notices here rather than leaving them in state.
+                private$.setWarnings(c(
+                    private$.state$warnings, private$.state$companion$warnings))
+                return()
+            }
+            miso_clear_table(self$results$companionPcoaSites)
+            miso_clear_table(self$results$companionPcoaCentroids)
+            self$results$companionPcoa$setVisible(FALSE)
+            self$results$companionPcoaDescription$setVisible(FALSE)
+            self$results$companionPcoaSites$setVisible(FALSE)
+            self$results$companionPcoaCentroids$setVisible(FALSE)
+            private$.state$companion$warnings <- character()
             private$.setWarnings(private$.state$warnings)
         },
 
-        .resetResults = function() {
+        .clearResults = function() {
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$companionPcoaDescription$setContent("")
-            for (name in c(
-                    "summaryPurpose", "tablePurpose",
-                    "companionPcoaSitesPurpose",
-                    "companionPcoaCentroidsPurpose", "pairwisePurpose",
-                    "settingsPurpose"))
-                self$results[[name]]$setContent("")
-            tofu_clear_table(self$results$summary)
-            tofu_clear_table(self$results$table)
-            tofu_clear_table(self$results$companionPcoaSites)
-            tofu_clear_table(self$results$companionPcoaCentroids)
-            tofu_clear_table(self$results$pairwise)
+            miso_clear_table_values(self$results$table)
+            miso_clear_table(self$results$companionPcoaSites)
+            miso_clear_table(self$results$companionPcoaCentroids)
+            miso_clear_table_values(self$results$pairwise)
             self$results$pairwise$setNote(
                 key="scope",
-                note="")
-            self$results$note$setContent("")
-            tofu_clear_table(self$results$settings)
+                note="",
+                init=FALSE)
 
             for (name in c(
-                    "guidance", "warnings", "summary", "summaryPurpose",
-                    "table", "tablePurpose",
+                    "guidance", "warnings",
+                    "table",
                     "companionPcoa", "companionPcoaDescription",
-                    "companionPcoaSites", "companionPcoaSitesPurpose",
+                    "companionPcoaSites",
                     "companionPcoaCentroids",
-                    "companionPcoaCentroidsPurpose",
-                    "pairwise", "pairwisePurpose", "note", "settings",
-                    "settingsPurpose"))
+                    "pairwise"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("table"))
+                self$results[[name]]$setVisible(TRUE)
+        },
+
+        # Destructive row removal for keyed result tables on rerun paths that
+        # do not repopulate them: guidance, rejections, and failed fits must
+        # not leave stale or blank rows behind.
+        .discardKeyedRows = function() {
+            miso_clear_table(self$results$table)
+            miso_clear_table(self$results$pairwise)
         },
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
         .showSuccessfulResults = function(pairwiseShown=FALSE) {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
-                    "summary", "summaryPurpose", "table", "tablePurpose",
-                    "note", "settings", "settingsPurpose"))
+                    "table"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$pairwise$setVisible(isTRUE(pairwiseShown))
-            self$results$pairwisePurpose$setVisible(isTRUE(pairwiseShown))
         },
 
-        .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                tablePurpose=c(
-                    "PERMANOVA table",
-                    "Tests compositional associations and reports each term's explained variation (R\u00B2)."),
-                companionPcoaSitesPurpose=c(
-                    "Companion PCoA site coordinates",
-                    "Lists plotted sample coordinates for identification or reuse."),
-                companionPcoaCentroidsPurpose=c(
-                    "Companion PCoA group centroids",
-                    "Lists the plotted mean position of each group."),
-                pairwisePurpose=c(
-                    "Pairwise PERMANOVA",
-                    "Compares pairs of groups and reports adjusted p-values when requested."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[nzchar(warnings)])
@@ -210,11 +274,17 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$warnings$setVisible(FALSE)
                 return()
             }
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
         .runCompanionPcoa = function(prep, model) {
+            private$.state$companion$warnings <- character()
+            private$.state$companion$prep <- prep
+            private$.state$companion$model <- model
+            private$.state$companion$fit <- NULL
+            private$.state$companion$plotData <- NULL
+            private$.state$companion$displayFactor <- NULL
             if (!isTRUE(self$options$showCompanionPcoa))
                 return()
 
@@ -225,7 +295,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             fit <- tryCatch(
-                .tofuPcoa(
+                .misoPcoa(
                     prep$dist,
                     sqrtDist=self$options$distSqrt,
                     correction=self$options$distAdd,
@@ -243,11 +313,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            plotData <- .tofuPcoaPlotData(
+            plotData <- .misoPcoaPlotData(
                 fit,
                 showCentroids=self$options$pcoaCentroids,
                 showSpiders=self$options$pcoaSpiders)
             private$.state$companion$plotData <- plotData
+            self$results$companionPcoa$setState(plotData)
             private$.populateCompanionSites(prep, fit)
             if (isTRUE(self$options$pcoaCentroids) ||
                     isTRUE(self$options$pcoaSpiders))
@@ -256,68 +327,72 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep, model, selection$name, fit, plotData,
                 selection$notice)
 
-            self$results$companionPcoaDescription$setVisible(TRUE)
+            self$results$companionPcoaDescription$setVisible(
+                is.null(plotData) || !isTRUE(plotData$available))
             self$results$companionPcoaSites$setVisible(TRUE)
-            self$results$companionPcoaSitesPurpose$setVisible(TRUE)
             self$results$companionPcoaCentroids$setVisible(
                 (isTRUE(self$options$pcoaCentroids) ||
                     isTRUE(self$options$pcoaSpiders)) &&
                 !is.null(fit$centroids))
-            self$results$companionPcoaCentroidsPurpose$setVisible(
-                self$results$companionPcoaCentroids$visible)
             self$results$companionPcoa$setVisible(
                 !is.null(plotData) && isTRUE(plotData$available))
         },
 
         .companionDisplayFactor = function(prep, model) {
             eligible <- names(model$factorColumns)
+            eligibleText <- if (length(eligible) == 0L)
+                "none"
+            else
+                paste(eligible, collapse=", ")
             multifactor <- length(eligible) > 1L
-            requested <- tofu_clean_vars(self$options$pcoaDisplayFactor)
+            requested <- miso_clean_vars(self$options$pcoaDisplayFactor)
             notice <- character()
+
+            unavailableMessage <- function(name, reason) {
+                paste0(
+                    "The selected display factor '", name, "' ", reason,
+                    " Choose one eligible retained model factor: ",
+                    eligibleText, ". ",
+                    "The PERMANOVA and pairwise results remain available.")
+            }
+
             if (!multifactor) {
                 selected <- eligible[[1L]]
                 if (length(requested) == 1L &&
                         !identical(requested[[1L]], selected)) {
                     stale <- requested[[1L]]
-                    if (stale %in% model$droppedFactorNames) {
-                        notice <- sprintf(
-                            paste(
-                                "Additional factor '%s' was not retained in",
-                                "the fitted PERMANOVA model after data",
-                                "filtering; the companion PCoA automatically",
-                                "displays '%s'."),
-                            stale, selected)
-                    } else {
-                        notice <- sprintf(
-                            paste(
-                                "The selected variable '%s' is not a",
-                                "categorical factor retained in the fitted",
-                                "PERMANOVA model; the companion PCoA",
-                                "automatically displays '%s'."),
-                            stale, selected)
-                    }
+                    reason <- if (stale %in% model$droppedFactorNames)
+                        paste0(
+                            "was not retained in the fitted PERMANOVA model after data filtering; the companion PCoA automatically displays '",
+                            selected, "'.")
+                    else if (!stale %in% names(self$data))
+                        paste0(
+                            "is unavailable in the data; the companion PCoA automatically displays '",
+                            selected, "'.")
+                    else
+                        paste0(
+                            "is not a categorical factor retained in the fitted PERMANOVA model; the companion PCoA automatically displays '",
+                            selected, "'.")
+                    notice <- unavailableMessage(stale, reason)
                 }
             } else {
                 if (length(requested) != 1L ||
                         !requested[[1L]] %in% eligible) {
-                    dropped <- if (length(requested) == 1L &&
-                            requested[[1L]] %in% model$droppedFactorNames) {
-                        sprintf(
-                            paste(
-                                "Additional factor '%s' was not retained after",
-                                "data filtering."),
-                            requested[[1L]])
-                    } else {
-                        character()
-                    }
+                    name <- if (length(requested) == 1L)
+                        requested[[1L]]
+                    else
+                        "(none or multiple variables)"
+                    reason <- if (length(requested) != 1L)
+                        "is not a single retained model factor."
+                    else if (name %in% model$droppedFactorNames)
+                        "was not retained in the fitted PERMANOVA model after data filtering."
+                    else if (!name %in% names(self$data))
+                        "is unavailable in the data."
+                    else
+                        "is not a categorical factor retained in the fitted PERMANOVA model."
                     return(list(
                         valid=FALSE,
-                        message=paste(
-                            dropped,
-                            "Choose one categorical model factor to display:",
-                            paste(eligible, collapse=", "),
-                            "Covariates, blocking variables, interactions, and",
-                            "variables outside the fitted model cannot be used.")))
+                        message=unavailableMessage(name, reason)))
                 }
                 selected <- requested[[1L]]
             }
@@ -327,35 +402,35 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     !modelColumn %in% names(model$data)) {
                 return(list(
                     valid=FALSE,
-                    message="The model factor selected for the companion PCoA is unavailable."))
+                    message=unavailableMessage(
+                        selected,
+                        "is unavailable from the fitted model data.")))
             }
             groups <- droplevels(as.factor(model$data[[modelColumn]]))
             if (length(groups) != attr(prep$dist, "Size") || anyNA(groups)) {
                 return(list(
                     valid=FALSE,
-                    message=paste(
-                        "The selected display factor does not align with the",
-                        "sites retained for PERMANOVA.")))
+                    message=unavailableMessage(
+                        selected,
+                        "does not align with the sites retained for PERMANOVA.")))
             }
             if (nlevels(groups) < 2L) {
                 return(list(
                     valid=FALSE,
-                    message=paste0(
-                        "The selected display factor '", selected,
-                        "' has fewer than two groups after data filtering.")))
+                    message=unavailableMessage(
+                        selected,
+                        "has fewer than two groups after data filtering.")))
             }
             list(valid=TRUE, name=selected, groups=groups,
                 automatic=!multifactor, notice=notice)
         },
 
         .showCompanionInstruction = function(message) {
+            self$results$companionPcoa$setVisible(FALSE)
+            self$results$companionPcoaSites$setVisible(FALSE)
+            self$results$companionPcoaCentroids$setVisible(FALSE)
             self$results$companionPcoaDescription$setContent(
-                tofu_html_block(c(
-                    paste(
-                        "Shows a two-dimensional representation of the",
-                        "dissimilarities used by PERMANOVA; nearby points",
-                        "generally represent more similar samples."),
-                    message),
+                miso_html_block(message,
                     ariaLabel="About PERMANOVA companion PCoA",
                     title="PERMANOVA companion PCoA"))
             self$results$companionPcoaDescription$setVisible(TRUE)
@@ -385,8 +460,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         site=fit$siteNames[[i]],
                         sourceRow=as.integer(prep$rowIndex[[i]]),
                         group=groups[[i]],
-                        PCoA1=tofu_num_or_na(axis1[[i]]),
-                        PCoA2=tofu_num_or_na(axis2[[i]])))
+                        PCoA1=miso_num_or_na(axis1[[i]]),
+                        PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -405,8 +480,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     list(
                         group=group,
                         n=as.integer(fit$groupSizes[[group]]),
-                        PCoA1=tofu_num_or_na(fit$centroids[i, 1L]),
-                        PCoA2=tofu_num_or_na(axis2[[i]])))
+                        PCoA1=miso_num_or_na(fit$centroids[i, 1L]),
+                        PCoA2=miso_num_or_na(axis2[[i]])))
             }
         },
 
@@ -415,9 +490,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 selectionNotice=character()) {
             available <- !is.null(plotData) && isTRUE(plotData$available)
             self$results$companionPcoaDescription$setContent(
-                tofu_html_block(
+                miso_html_block(
                     if (available)
-                        "Visualises sample resemblance and group positions alongside the test."
+                        character(0)
                     else
                         paste(
                             "A two-dimensional companion plot is unavailable.",
@@ -428,29 +503,51 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 length(model$covariateNames) > 0L ||
                 isTRUE(self$options$permInteractions)
             if (modelIsComplex)
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$companion$warnings <- c(
+                    private$.state$companion$warnings,
                     paste(
                         "The companion PCoA displays one grouping variable and",
                         "does not represent adjusted effects from the complete model."))
             if (length(selectionNotice) > 0L)
-                private$.state$warnings <- c(
-                    private$.state$warnings, selectionNotice)
+                private$.state$companion$warnings <- c(
+                    private$.state$companion$warnings, selectionNotice)
             if (available && isTRUE(plotData$neutral))
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$companion$warnings <- c(
+                    private$.state$companion$warnings,
                     paste(
                         "Neutral site styling is used because more than 64 groups",
                         "are present; centroids and spiders are omitted from the image."))
         },
 
         .plotCompanionPcoa = function(image, ...) {
-            plot <- .buildPcoaPlot(
-                private$.state$companion$plotData)
+            plot <- .buildPcoaPlot(image$state)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))
             invisible(TRUE)
+        },
+
+        .permutationNotice = function(scheme, blockName) {
+            hasBlock <- !is.null(blockName) && nzchar(blockName)
+            if (identical(scheme, "stratified") && !hasBlock)
+                return(list(
+                    kind="error",
+                    text=paste(
+                        "Within-block permutations require a Blocking variable.",
+                        "Add one, or select Free permutations.")))
+            if (identical(scheme, "free") && hasBlock)
+                return(list(
+                    kind="warning",
+                    text=sprintf(
+                        "Blocking variable '%s' is assigned but not used with Free permutations.",
+                        blockName)))
+            if (identical(scheme, "stratified") && hasBlock)
+                return(list(
+                    kind="table",
+                    text=sprintf(
+                        "Block used: Yes (Blocking variable '%s' is used for Within blocks permutations).",
+                        blockName)))
+            list(kind="none", text="")
         },
 
         .permutationState = function(prep) {
@@ -461,28 +558,24 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 free="Free",
                 stratified="Within blocks",
                 series="Series")
+            notice <- private$.permutationNotice(scheme, blockName)
             state <- list(
                 error=NULL,
                 warnings=character(),
+                notice=notice,
                 requested=unname(labels[[scheme]]),
                 effective=unname(labels[[scheme]]),
                 block=if (hasBlock) blockName else "None",
                 blockUsed=hasBlock && ! identical(scheme, "free"),
                 legalPermutations=NA_real_)
 
-            if (identical(scheme, "stratified") && ! hasBlock) {
-                state$error <- paste(
-                    "Within-block permutations require a Blocking variable.",
-                    "Add one, or select Free permutations.")
+            if (identical(notice$kind, "error")) {
+                state$error <- notice$text
                 return(state)
             }
 
-            if (identical(scheme, "free") && hasBlock) {
-                state$warnings <- c(
-                    state$warnings,
-                    sprintf(
-                        "Blocking variable '%s' is assigned but not used with Free permutations.",
-                        blockName))
+            if (identical(notice$kind, "warning")) {
+                state$warnings <- c(state$warnings, notice$text)
                 return(state)
             }
 
@@ -509,7 +602,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 }
             }
 
-            control <- tofu_permutation(
+            control <- miso_permutation(
                 self$options$permN,
                 scheme,
                 block)
@@ -534,36 +627,6 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             state
         },
 
-        .runPermanova = function(prep) {
-            tofu_set_seed(prep)
-            model <- private$.makeModelData(prep)
-            result <- tryCatch(
-                private$.adonisModel(prep, model),
-                error=function(e) e)
-            if (inherits(result, "error"))
-                return(list(success=FALSE, error=result$message))
-
-            tab <- as.data.frame(result)
-            rn <- rownames(tab)
-            for (i in seq_len(nrow(tab))) {
-                notApplicable <- rn[i] %in% c("Residual", "Total")
-                rowKey <- as.character(i)
-                values <- list(
-                    source=tofu_display_term(rn[i], prep),
-                    df=tofu_num_or_na(tab[i, "Df"]),
-                    sumsqs=tofu_num_or_na(tab[i, "SumOfSqs"]),
-                    r2=tofu_num_or_na(tab[i, "R2"]),
-                    f=if (notApplicable) "" else tofu_num_or_na(tab[i, "F"]),
-                    p=if (notApplicable) "" else tofu_num_or_na(tab[i, "Pr(>F)"]))
-                self$results$table$addRow(rowKey=rowKey, values=values)
-            }
-
-            list(
-                success=TRUE,
-                result=result,
-                model=model)
-        },
-
         .adonisModel = function(prep, model=NULL) {
             if (is.null(model))
                 model <- private$.makeModelData(prep)
@@ -582,7 +645,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             vegan::adonis2(
                 formula,
                 data=model$data,
-                permutations=tofu_permutation(
+                permutations=miso_permutation(
                     self$options$permN,
                     self$options$permScheme,
                     model$strata),
@@ -666,7 +729,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     subPrep$covariates <- prep$covariates[idx, , drop=FALSE]
                 contrast <- paste(pair, collapse=" vs ")
 
-                tofu_set_seed(subPrep)
+                miso_set_seed(subPrep)
                 result <- tryCatch(
                     private$.adonisModel(subPrep),
                     error=function(e) e)
@@ -681,8 +744,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 }
 
                 tab <- as.data.frame(result)
-                f <- tofu_num_or_na(tab[1, "F"])
-                p <- tofu_num_or_na(tab[1, "Pr(>F)"])
+                f <- miso_num_or_na(tab[1, "F"])
+                p <- miso_num_or_na(tab[1, "Pr(>F)"])
                 if (! is.finite(f) || ! is.finite(p)) {
                     warnings <- c(
                         warnings,
@@ -710,87 +773,42 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pvals
             else
                 stats::p.adjust(pvals, method=method)
-            for (i in seq_along(rows)) {
-                rows[[i]]$padj <- adjusted[[i]]
-                self$results$pairwise$addRow(
-                    rowKey=as.character(i),
-                    values=rows[[i]])
-            }
+            pairwiseRows <- lapply(seq_along(rows), function(i) {
+                values <- rows[[i]]
+                values$padj <- adjusted[[i]]
+                list(key=as.character(i), values=values)
+            })
+            miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
             retained <- c(prep$extra, prep$covariateNames)
-            retainedText <- if (length(retained) == 0L)
-                "none"
-            else
-                paste(retained, collapse=", ")
+            retainedText <- if (length(retained) == 0L) "" else
+                sprintf(" Adjustment terms: %s.", paste(retained, collapse=", "))
+            permutation <- private$.state$permutation
+            blockDetail <- if (isTRUE(permutation$blockUsed))
+                sprintf(" Blocking variable: %s.", permutation$block) else ""
+            sequenceDetail <- if (identical(self$options$permScheme, "series"))
+                " Sequence order: Current data-row order." else ""
             self$results$pairwise$setNote(
                 key="scope",
-                note=sprintf(
-                    paste(
-                        "Comparisons are between levels of Grouping variable '%s'.",
-                        "Test type: %s. Retained adjustment terms: %s.",
-                        "Permutation restrictions: %s. P-value adjustment: %s."),
-                    prep$primary,
-                    private$.testTypeLabel(self$options$permBy),
-                    retainedText,
-                    private$.state$permutation$effective,
-                    private$.adjustmentLabel(self$options$permAdjust)))
+                note=paste0(sprintf(
+                    "Grouping variable: %s. Test type: %s.%s Permutation restrictions: %s.",
+                    prep$primary, private$.testTypeLabel(self$options$permBy),
+                    retainedText, permutation$effective), blockDetail, sequenceDetail,
+                    sprintf(" P-value adjustment: %s across %d available contrasts.",
+                        private$.adjustmentLabel(self$options$permAdjust), length(pvals))),
+                init=FALSE)
 
             list(rows=length(rows), warnings=warnings)
         },
 
-        .setInterpretation = function(prep, model, pairwiseShown) {
-            self$results$note$setContent(tofu_html_block(paste(
-                "Pseudo-F compares among-group and within-group variation.",
-                    "R\u00B2 shows explained variation, and permutation p tests the null model."),
-                title="How to read these results"))
-        },
 
-        .populateSettings = function(prep, permutation, pairwiseShown) {
-            add <- function(setting, value) {
-                key <- as.character(length(self$results$settings$rowKeys) + 1L)
-                self$results$settings$addRow(
-                    rowKey=key,
-                    values=list(setting=setting, value=as.character(value)))
-            }
-
-            add("Transformation", private$.transformLabel(self$options$transform))
-            add("Dissimilarity", private$.distanceLabel(self$options$distance))
-            add("Binary dissimilarity", private$.enabledLabel(self$options$distBinary))
-            add("Square-root distances", private$.enabledLabel(self$options$distSqrt))
-            add("Additive constant", private$.additiveLabel(self$options$distAdd))
-            add("Number of permutations", self$options$permN)
-            add("Requested permutation restrictions", permutation$requested)
-            add("Effective permutation restrictions", permutation$effective)
-            if (identical(self$options$permScheme, "series"))
-                add("Sequence order", "Current data-row order")
-            add("Blocking variable", permutation$block)
-            add("Block used", if (permutation$blockUsed) "Yes" else "No")
-            add("Test type", private$.testTypeLabel(self$options$permBy))
-            add("Additional factors", private$.listLabel(prep$extra))
-            add("Continuous covariates", private$.listLabel(prep$covariateNames))
-            add("Interactions", private$.enabledLabel(self$options$permInteractions))
-            add("Pairwise comparisons", private$.enabledLabel(self$options$permPairwise))
-            add(
-                "P-value adjustment",
-                if (pairwiseShown)
-                    private$.adjustmentLabel(self$options$permAdjust)
-                else
-                    "Not applied")
-            add("Random seed", if (is.na(prep$seed)) "Random" else prep$seed)
-            add(
-                "Parallel processing requested",
-                if (isTRUE(self$options$useParallel)) "Yes" else "No")
-            add(
-                "Effective execution",
-                if (is.null(private$.state$cl)) "Serial" else "Parallel")
-        },
 
         .enabledLabel = function(value) {
             if (isTRUE(value)) "Enabled" else "Disabled"
         },
 
         .listLabel = function(value) {
-            value <- tofu_clean_vars(value)
+            value <- miso_clean_vars(value)
             if (length(value) == 0L) "None" else paste(value, collapse=", ")
         },
 

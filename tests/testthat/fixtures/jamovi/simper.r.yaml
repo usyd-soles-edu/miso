@@ -2,43 +2,23 @@
 name: simper
 title: SIMPER
 jrs: '1.1'
+refs:
+  - vegan
+  - clarke1993
 
 items:
   - name: guidance
-    title: Getting started
+    title: Getting Started
     type: Html
     visible: false
-
-  - name: summaryPurpose
-    title: Data Summary
-    type: Html
-    visible: false
-
-  - name: summary
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: item
-        title: Item
-        type: text
-      - name: value
-        title: Value
-        type: text
 
   - name: warnings
     title: ''
     type: Html
     visible: false
 
-  - name: contrastsPurpose
-    title: Contrast summary
-    type: Html
-    visible: false
-
   - name: contrasts
-    title: ''
+    title: Contrast Summary
     type: Table
     visible: false
     rows: 0
@@ -56,13 +36,8 @@ items:
         title: Mean dissimilarity
         type: number
 
-  - name: contributionsPurpose
-    title: Descriptive feature contributions
-    type: Html
-    visible: false
-
   - name: contributions
-    title: ''
+    title: Descriptive Feature Contributions
     type: Table
     visible: false
     rows: 0
@@ -80,15 +55,11 @@ items:
         title: Cumulative (%)
         type: number
 
-  - name: variabilityPurpose
-    title: Contribution variability
-    type: Html
-    visible: false
-
   - name: variability
-    title: ''
+    title: Contribution Variability
     type: Table
     visible: false
+    clearWith:
     rows: 0
     columns:
       - name: contrast
@@ -107,15 +78,11 @@ items:
         title: Average/SD
         type: number
 
-  - name: meansPurpose
-    title: Group means
-    type: Html
-    visible: false
-
   - name: means
-    title: ''
+    title: Group Means
     type: Table
     visible: false
+    clearWith:
     rows: 0
     columns:
       - name: contrast
@@ -132,7 +99,7 @@ items:
         type: number
 
   - name: table
-    title: Descriptive feature contributions
+    title: Descriptive Feature Contributions
     type: Table
     visible: false
     rows: 0
@@ -166,7 +133,7 @@ items:
         type: number
 
   - name: contributionPlots
-    title: Contribution plots by contrast
+    title: Contribution Plots by Contrast
     type: Array
     visible: false
     template:
@@ -174,21 +141,16 @@ items:
       title: Contrast contribution
       items:
         - name: description
-          title: Contribution plot
+          title: Contribution Plot
           type: Html
         - name: plot
-          title: ''
+          title: Contribution Plot
           type: Image
           width: 580
           height: 430
           renderFun: .plotContribution
-        - name: valuesPurpose
-          title: SIMPER contribution values
-          type: Html
-          visible: false
-
         - name: values
-          title: ''
+          title: Contribution Values
           type: Table
           rows: 0
           columns:
@@ -220,27 +182,25 @@ items:
               title: Direction
               type: text
   - name: heatmapDescription
-    title: Contrast overview heatmap
+    title: Contrast Overview Heatmap
     type: Html
     visible: false
+    clearWith:
 
   - name: heatmap
-    title: ''
+    title: Contrast Overview Heatmap
     type: Image
     visible: false
+    clearWith:
     width: 600
     height: 500
     renderFun: .plotHeatmap
 
-  - name: heatmapValuesPurpose
-    title: SIMPER contrast heatmap values
-    type: Html
-    visible: false
-
   - name: heatmapValues
-    title: ''
+    title: Contrast Heatmap Values
     type: Table
     visible: false
+    clearWith:
     rows: 0
     columns:
       - name: contrast
@@ -256,13 +216,8 @@ items:
         title: Selected for this contrast
         type: text
 
-  - name: assessmentPurpose
-    title: Exploratory permutation assessment
-    type: Html
-    visible: false
-
   - name: assessment
-    title: ''
+    title: Permutation Assessment
     type: Table
     visible: false
     rows: 0
@@ -281,28 +236,3 @@ items:
         title: Adjusted p
         type: number
         format: zto,pvalue
-
-  - name: note
-    title: How to read these results
-    type: Html
-    visible: false
-
-  - name: settingsPurpose
-    title: Analysis settings
-    type: Html
-    visible: false
-
-  - name: settings
-    title: ''
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: setting
-        title: Setting
-        type: text
-      - name: value
-        title: Value
-        type: text
-
-...

@@ -5,9 +5,20 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     inherit = clusterBase,
     private = list(
         .state = list(),
+        .lastStructuralKey = NULL,
+        .summaryRowNo = 0L,
+        .settingsRowNo = 0L,
         .autoLabelLimit = 40L,
 
         .run = function() {
+            structuralKey <- miso_options_signature(
+                self$options, excluded="sampleLabels", data=self$data)
+            if (!is.null(private$.lastStructuralKey) &&
+                    identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshDisplayOnly()
+                return()
+            }
+            private$.lastStructuralKey <- structuralKey
             private$.state <- list(
                 prep=NULL,
                 fit=NULL,
@@ -21,8 +32,10 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 cutLine=NULL,
                 cutDescription="No clusters were defined.",
                 clusterStyleAvailable=TRUE,
-                warnings=character())
-            private$.resetResults()
+                warnings=character(),
+                summaryRowNo=0L,
+                settingsRowNo=0L)
+            private$.clearResults()
 
             if (length(self$options$vars) == 0L) {
                 private$.showGuidance(
@@ -36,7 +49,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            prep <- tofu_prepare_resemblance(
+            prep <- miso_prepare_resemblance(
                 data=self$data,
                 vars=self$options$vars,
                 factor=NULL,
@@ -44,7 +57,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 distance=self$options$distance,
                 seed=0,
                 requireFactor=FALSE)
-            if (prep$error) {
+            if (isTRUE(prep$error)) {
                 private$.showGuidance(prep$message)
                 return()
             }
@@ -65,7 +78,6 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             showLabels <- private$.labelsAreShown(
                 prep$rowsUsed,
                 labelChoice$mode)
-            labelsShortened <- showLabels && any(nchar(labelState$labels) > 24L)
             clusterState <- private$.clusterDefinition(fit)
             membership <- if (isTRUE(clusterState$valid))
                 clusterState$membership
@@ -84,106 +96,136 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 labelMode=labelChoice$mode,
                 labelModeSource=labelChoice$source,
                 showLabels=showLabels,
-                labelsShortened=labelsShortened,
                 membership=membership,
                 cutLine=clusterState$cutLine,
                 cutDescription=clusterState$description,
                 clusterStyleAvailable=clusterCount <= 64L,
-                warnings=unique(c(
-                    prep$warnings,
-                    labelState$warnings,
-                    if (labelsShortened)
-                        paste(
-                            "Long sample labels are shortened only in the dendrogram;",
-                            "full labels are retained in the membership table.")
-                    else
-                        character(),
-                    clusterState$warning)))
+                baseWarnings=unique(c(
+                    prep$warnings, labelState$warnings, clusterState$warning)))
+            private$.refreshLabelWarnings()
 
-            private$.populateSummary(prep)
-            private$.populatePurposes()
-            private$.populateSettings(prep, labelState$source)
+            self$results$dendrogram$setState(list(
+                fit=private$.state$fit,
+                labels=private$.state$labels,
+                showLabels=private$.state$showLabels,
+                membership=private$.state$membership,
+                cutLine=private$.state$cutLine,
+                distanceLabel=private$.distanceLabel(self$options$distance)))
+
             private$.populateDendrogramStructure()
             private$.populateMembership()
-            private$.setWarnings(private$.state$warnings)
+            methodNote <- paste("Linkage: Group average.",
+                miso_method_note(
+                    private$.transformLabel(self$options$transform),
+                    private$.distanceLabel(self$options$distance)))
+            self$results$dendrogramStructure$setNote(
+                key="method", note=methodNote, init=FALSE)
+            cutNote <- if (is.null(private$.state$membership)) {
+                ""
+            } else if (identical(self$options$cutMode, "number")) {
+                paste0(sprintf("Cut rule: %d clusters.",
+                    length(unique(private$.state$membership))),
+                    if (is.null(private$.state$cutLine))
+                        " Tied merge heights prevent a single equivalent height cut."
+                    else
+                        "")
+            } else {
+                sprintf("Cut rule: dissimilarity height %s.",
+                    private$.formatHeight(self$options$cutHeight))
+            }
+            self$results$membership$setNote(
+                key="method", note=trimws(paste(methodNote, cutNote)),
+                init=FALSE)
             private$.populateDescription()
-            self$results$interpretation$setContent(tofu_html_block(paste(
-                "Merge height shows dissimilarity.",
-                "Branches can rotate around a merge without changing the clustering."),
-                title="How to read this dendrogram"))
             private$.showSuccessfulResults()
         },
 
-        .resetResults = function() {
+        .refreshDisplayOnly = function() {
+            if (is.null(private$.state$fit))
+                return()
+            labelChoice <- private$.effectiveSampleLabelMode()
+            private$.state$labelMode <- labelChoice$mode
+            private$.state$labelModeSource <- labelChoice$source
+            private$.state$showLabels <- private$.labelsAreShown(
+                length(private$.state$labels), labelChoice$mode)
+            private$.refreshLabelWarnings()
+            self$results$dendrogram$setState(list(
+                fit=private$.state$fit,
+                labels=private$.state$labels,
+                showLabels=private$.state$showLabels,
+                membership=private$.state$membership,
+                cutLine=private$.state$cutLine,
+                distanceLabel=private$.distanceLabel(self$options$distance)))
+            self$results$dendrogram$setVisible(TRUE)
+            self$results$dendrogramDescription$setVisible(FALSE)
+        },
+
+        .refreshLabelWarnings = function() {
+            private$.state$labelsShortened <- private$.state$showLabels &&
+                any(nchar(private$.state$labels) > 24L)
+            private$.state$warnings <- unique(c(
+                private$.state$baseWarnings,
+                if (private$.state$labelsShortened)
+                    paste(
+                        "Long sample labels are shortened only in the dendrogram;",
+                        "full labels are retained in the membership table.")))
+            private$.setWarnings(private$.state$warnings)
+        },
+
+        .clearResults = function() {
+            private$.summaryRowNo <- 0L
+            private$.settingsRowNo <- 0L
             self$results$guidance$setContent("")
-            tofu_clear_table(self$results$summary)
             self$results$warnings$setContent("")
             self$results$dendrogramDescription$setContent("")
-            tofu_clear_table(self$results$dendrogramStructure)
-            tofu_clear_table(self$results$membership)
-            self$results$interpretation$setContent("")
-            tofu_clear_table(self$results$settings)
-            for (name in c(
-                    "summaryPurpose", "dendrogramStructurePurpose",
-                    "membershipPurpose", "settingsPurpose"))
-                self$results[[name]]$setContent("")
+            miso_clear_table(self$results$dendrogramStructure)
+            miso_clear_table(self$results$membership)
 
             for (name in c(
-                    "guidance", "summary", "summaryPurpose", "warnings", "dendrogram",
+                    "guidance", "warnings", "dendrogram",
                     "dendrogramDescription", "dendrogramStructure",
-                    "dendrogramStructurePurpose", "membership",
-                    "membershipPurpose", "interpretation", "settings",
-                    "settingsPurpose"))
+                    "membership"
+                    ))
                 self$results[[name]]$setVisible(FALSE)
+            for (name in c("dendrogramStructure"))
+                self$results[[name]]$setVisible(TRUE)
         },
 
         .showGuidance = function(content, title="Action needed") {
             self$results$guidance$setTitle(title)
-            self$results$guidance$setContent(tofu_html_block(content))
+            self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
 
         .showSuccessfulResults = function() {
+            self$results$guidance$setVisible(FALSE)
             for (name in c(
-                    "summary", "summaryPurpose", "dendrogram",
-                    "dendrogramDescription", "dendrogramStructure",
-                    "dendrogramStructurePurpose", "interpretation", "settings",
-                    "settingsPurpose"))
+                    "dendrogram",
+                    "dendrogramStructure"
+                    ))
                 self$results[[name]]$setVisible(TRUE)
+            self$results$dendrogramDescription$setVisible(FALSE)
             if (!is.null(private$.state$membership)) {
                 self$results$membership$setVisible(TRUE)
-                self$results$membershipPurpose$setVisible(TRUE)
             }
         },
 
-        .populatePurposes = function() {
-            tofu_populate_purposes(self$results, list(
-                summaryPurpose=c(
-                    "Data summary",
-                    "Summarises included samples and features, including any exclusions."),
-                dendrogramStructurePurpose=c(
-                    "Dendrogram structure",
-                    "Lists dendrogram merges and their heights."),
-                membershipPurpose=c(
-                    "Cluster membership",
-                    "Lists each sample's cluster at the selected cut."),
-                settingsPurpose=c(
-                    "Analysis settings",
-                    "Lists the options used for this analysis.")))
-        },
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[!is.na(warnings) & nzchar(warnings)])
-            if (length(warnings) == 0L)
+            if (length(warnings) == 0L) {
+                self$results$warnings$setContent("")
+                self$results$warnings$setVisible(FALSE)
                 return()
-            self$results$warnings$setContent(tofu_warning_block(warnings))
+            }
+            self$results$warnings$setContent(miso_warning_block(warnings))
             self$results$warnings$setVisible(TRUE)
         },
 
         .sampleLabels = function(prep) {
             rowLabels <- as.character(prep$rowIndex)
             selected <- self$options$labels
-            if (tofu_is_missing_var(selected))
+            if (miso_is_missing_var(selected))
                 return(list(
                     labels=rowLabels,
                     source="Data row numbers",
@@ -333,32 +375,10 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .populateDescription = function() {
-            self$results$dendrogramDescription$setContent(tofu_html_block(
-                "Shows how samples merge into clusters as dissimilarity increases.",
-                ariaLabel="About the cluster dendrogram",
-                title="Group-average cluster dendrogram"))
+            self$results$dendrogramDescription$setContent("")
         },
 
-        .addSummary = function(item, value) {
-            key <- as.character(length(self$results$summary$rowKeys) + 1L)
-            self$results$summary$addRow(
-                rowKey=key,
-                values=list(item=item, value=as.character(value)))
-        },
 
-        .populateSummary = function(prep) {
-            private$.addSummary("Samples used", prep$rowsUsed)
-            private$.addSummary("Feature variables used", prep$varsUsed)
-            private$.addSummary(
-                "Rows excluded: missing feature values",
-                prep$rowsMissingExcluded)
-            private$.addSummary(
-                "Rows excluded: all-zero feature values",
-                prep$rowsZeroExcluded)
-            private$.addSummary(
-                "All-zero feature variables excluded",
-                prep$featuresZeroExcluded)
-        },
 
         .populateMembership = function() {
             membership <- private$.state$membership
@@ -410,49 +430,12 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         mergeStep=as.integer(mergeStep),
                         leftChild=childLabel(children[[1L]]),
                         rightChild=childLabel(children[[2L]]),
-                        height=tofu_num_or_na(fit$height[[mergeStep]])))
+                        height=miso_num_or_na(fit$height[[mergeStep]])))
                 rowKey <- rowKey + 1L
             }
         },
 
-        .addSetting = function(setting, value) {
-            key <- as.character(length(self$results$settings$rowKeys) + 1L)
-            self$results$settings$addRow(
-                rowKey=key,
-                values=list(setting=setting, value=as.character(value)))
-        },
 
-        .populateSettings = function(prep, labelSource) {
-            private$.addSetting(
-                "Transformation",
-                private$.transformLabel(self$options$transform))
-            private$.addSetting(
-                "Dissimilarity",
-                private$.distanceLabel(self$options$distance))
-            private$.addSetting("Linkage", "Group average (UPGMA)")
-            private$.addSetting("Sample label source", labelSource)
-            private$.addSetting(
-                "Sample labels",
-                sprintf(
-                    "%s%s (%s)",
-                    switch(private$.state$labelMode,
-                        auto="Automatic",
-                        show="Show",
-                        hide="Hide"),
-                    if (identical(
-                            private$.state$labelModeSource,
-                            "legacy"))
-                        " \u2014 inherited from an earlier version"
-                    else
-                        "",
-                    if (private$.state$showLabels) "shown" else "hidden"))
-            private$.addSetting(
-                "Clusters defined",
-                if (is.null(private$.state$membership))
-                    "No"
-                else
-                    private$.state$cutDescription)
-        },
 
         .transformLabel = function(value) {
             switch(value,
@@ -538,7 +521,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 x=nodeX,
                 y=nodeHeight,
                 stringsAsFactors=FALSE)
-            labelMap <- .tofuUniqueShortLabels(labels, width=24L)
+            labelMap <- .misoUniqueShortLabels(labels, width=24L)
             leaf <- data.frame(
                 sampleIndex=fit$order,
                 x=seq_len(n),
@@ -554,7 +537,8 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .buildDendrogram = function (fit = private$.state$fit, labels = private$.state$labels, showLabels = private$.state$showLabels,
-            membership = private$.state$membership, cutLine = private$.state$cutLine)
+            membership = private$.state$membership, cutLine = private$.state$cutLine,
+            distanceLabel = private$.distanceLabel(self$options$distance))
         {
             if (is.null(fit))
                 return(NULL)
@@ -570,7 +554,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             else length(unique(membership))
             if (clusterCount > 0L && clusterCount <= 64L) {
                 keys <- as.character(sort(unique(leaf$cluster)))
-                aesthetics <- .tofuGroupAesthetics(keys)
+                aesthetics <- .misoGroupAesthetics(keys)
                 plot <- plot + ggplot2::geom_point(data = leaf, ggplot2::aes(x = x, y = y, colour = clusterKey,
                     shape = clusterKey), size = 2.2, stroke = 0.55) + ggplot2::scale_colour_manual(name = "Cluster",
                     values = aesthetics$colour[keys]) + ggplot2::scale_shape_manual(name = "Cluster", values = aesthetics$shape[keys])
@@ -590,7 +574,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 leaf$x
             else NULL, labels = axisLabels, expand = ggplot2::expansion(mult = c(0.015, 0.015)), guide = ggplot2::guide_axis(check.overlap = FALSE)) +
                 ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.02, 0.06))) + ggplot2::labs(x = "Samples",
-                y = paste(private$.distanceLabel(self$options$distance), "dissimilarity")) + .tofuPlotTheme() +
+                y = paste(distanceLabel, "dissimilarity")) + .misoPlotTheme() +
                 ggplot2::theme(axis.text.x = if (isTRUE(showLabels))
                     ggplot2::element_text(angle = 55, hjust = 1, vjust = 1, size = 10)
                 else ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank(),
@@ -599,7 +583,16 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 ,
 
         .plotDendrogram = function(image, ...) {
-            plot <- private$.buildDendrogram()
+            plotData <- image$state
+            if (is.null(plotData))
+                return()
+            plot <- private$.buildDendrogram(
+                fit=plotData$fit,
+                labels=plotData$labels,
+                showLabels=plotData$showLabels,
+                membership=plotData$membership,
+                cutLine=plotData$cutLine,
+                distanceLabel=plotData$distanceLabel)
             if (is.null(plot))
                 return()
             suppressWarnings(print(plot))

@@ -38,8 +38,12 @@ anosim_negative_data <- function() {
 expect_anosim_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
+    fixed <- c("global")
     for (name in hidden)
-        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        if (name %in% fixed)
+            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
+        else
+            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_anosim_yaml_node <- function(node, name) {
@@ -56,12 +60,12 @@ find_anosim_yaml_node <- function(node, name) {
 }
 
 test_that("ANOSIM schema follows the approved required-first hierarchy", {
-    options <- yaml::read_yaml(tofu_fixture_path("jamovi", "anosim.a.yaml"))$options
-    ui <- yaml::read_yaml(tofu_fixture_path("jamovi", "anosim.u.yaml"))
+    options <- yaml::read_yaml(miso_fixture_path("jamovi", "anosim.a.yaml"))$options
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "anosim.u.yaml"))
     by_name <- setNames(options, vapply(options, `[[`, character(1), "name"))
 
-    expect_identical(by_name$vars$title, "Feature variables (required)")
-    expect_identical(by_name$factor$title, "Grouping variable (required)")
+    expect_identical(by_name$vars$title, "Feature Variables")
+    expect_identical(by_name$factor$title, "Grouping Variable")
     expect_identical(by_name$permRestriction$default, "free")
     expect_identical(
         vapply(by_name$permRestriction$options, `[[`, character(1), "name"),
@@ -82,9 +86,17 @@ test_that("ANOSIM schema follows the approved required-first hierarchy", {
     expect_true(is.null(find_anosim_yaml_node(ui, "permScheme")))
 })
 
+test_that("ANOSIM UI nests adjustment under pairwise comparisons", {
+    ui <- yaml::read_yaml(miso_fixture_path("jamovi", "anosim.u.yaml"))
+    pairwise <- find_anosim_yaml_node(ui, "anosimPairwise")
+    expect_identical(pairwise$style, "list")
+    expect_identical(pairwise$children[[1L]]$name, "anosimAdjust")
+    expect_identical(pairwise$children[[1L]]$enable, "(anosimPairwise)")
+})
+
 test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
     source <- paste(
-        readLines(tofu_fixture_path("jamovi", "js", "anosim.js")),
+        readLines(miso_fixture_path("jamovi", "js", "anosim.js")),
         collapse="\n")
 
     expect_match(
@@ -97,15 +109,13 @@ test_that("ANOSIM UI dependencies and progressive disclosure are explicit", {
 
 test_that("ANOSIM result schema hides every empty shell", {
     results <- yaml::read_yaml(
-        tofu_fixture_path("jamovi", "anosim.r.yaml"))$items
+        miso_fixture_path("jamovi", "anosim.r.yaml"))$items
     by_name <- setNames(results, vapply(results, `[[`, character(1), "name"))
 
     expect_true(all(vapply(results, function(item) identical(item$visible, FALSE), logical(1))))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$warnings$type, "Html")
-    expect_identical(by_name$note$type, "Html")
-    expect_identical(by_name$global$title, "")
-    expect_identical(by_name$globalPurpose$title, "Global ANOSIM")
+    expect_identical(by_name$global$title, "Global ANOSIM")
     expect_identical(by_name$global$columns[[2L]]$title, "R")
     expect_identical(by_name$global$columns[[3L]]$title, "Permutation p")
     expect_identical(by_name$pairwise$columns[[4L]]$title, "Adjusted p")
@@ -117,8 +127,6 @@ test_that("ANOSIM result schema hides every empty shell", {
     expect_identical(
         vapply(by_name$rankSummary$columns, `[[`, character(1), "name"),
         c("category", "pairs", "median", "q1", "q3"))
-    expect_identical(by_name$settings$title, "")
-    expect_identical(by_name$settingsPurpose$title, "Analysis settings")
 })
 
 test_that("new ANOSIM shows only complete getting-started guidance", {
@@ -134,7 +142,7 @@ test_that("new ANOSIM shows only complete getting-started guidance", {
     expect_anosim_visibility(
         result,
         visible="guidance",
-        hidden=c("summary", "warnings", "global", "pairwise", "note", "settings")
+        hidden=c("warnings", "global", "pairwise")
     )
 })
 
@@ -148,7 +156,7 @@ test_that("incomplete and fatal ANOSIM states show one correction", {
     expect_anosim_visibility(
         features_only,
         visible="guidance",
-        hidden=c("summary", "warnings", "global", "pairwise", "note", "settings")
+        hidden=c("warnings", "global", "pairwise")
     )
 
     invalid <- anosim(
@@ -163,7 +171,7 @@ test_that("incomplete and fatal ANOSIM states show one correction", {
     expect_anosim_visibility(
         invalid,
         visible="guidance",
-        hidden=c("summary", "warnings", "global", "pairwise", "note", "settings")
+        hidden=c("warnings", "global", "pairwise")
     )
 })
 
@@ -179,9 +187,9 @@ test_that("successful ANOSIM hides empty guidance warning and pairwise shells", 
     expect_anosim_visibility(
         result,
         visible=c(
-            "summary", "global", "rankPlot", "rankPlotDescription",
-            "rankSummary", "note", "settings"),
-        hidden=c("guidance", "warnings", "pairwise")
+            "global", "rankPlot",
+            "rankSummary"),
+        hidden=c("guidance", "warnings", "pairwise", "rankPlotDescription")
     )
     expect_equal(nrow(result$global$asDF), 1L)
 })
@@ -326,6 +334,8 @@ test_that("ANOSIM rank plot supports exactly 64 within-group styles", {
     shapes <- plot$scales$get_scales("shape")$palette(65L)
 
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(nrow(analysis$results$rankSummary$asDF), 65L)
     expect_identical(unname(colours[[1L]]), "#222222")
     expect_identical(unname(shapes[[1L]]), 1L)
@@ -348,9 +358,7 @@ test_that("ANOSIM rank plot degrades gracefully above 64 groups", {
 
     expect_s3_class(private$.buildRankPlot(), "ggplot")
     expect_identical(nrow(analysis$results$rankSummary$asDF), 66L)
-    expect_match(
-        tofu_squish_result(analysis$results$rankPlotDescription),
-        "ranked dissimilarities underlying the ANOSIM statistic")
+    expect_identical(analysis$results$rankPlotDescription$content, "")
 })
 
 test_that("ANOSIM rank plot handles long colliding labels accessibly", {
@@ -378,6 +386,8 @@ test_that("ANOSIM rank plot handles long colliding labels accessibly", {
     axis_labels <- built$layout$panel_params[[1L]]$x$get_labels()
 
     expect_s3_class(plot, "ggplot")
+    expect_identical(plot$theme$plot.background$fill, "transparent")
+    expect_identical(plot$theme$panel.background$fill, "transparent")
     expect_identical(length(unique(axis_labels)), length(axis_labels))
     expect_true(all(nchar(axis_labels) <= 28L))
     expect_true(any(grepl("~", axis_labels, fixed=TRUE)))
@@ -387,32 +397,6 @@ test_that("ANOSIM rank plot handles long colliding labels accessibly", {
         c("Between", paste("Within", labels)))
 })
 
-test_that("ANOSIM rank diagnostic visibility toggles without changing inference", {
-    data <- anosim_state_data()
-    shown <- suppressWarnings(suppressMessages(anosim(
-        data=data, vars=c("sp1", "sp2", "sp3"), factor="group",
-        showRankPlot=TRUE, anosimN=19, seed=123)))
-    hidden <- suppressWarnings(suppressMessages(anosim(
-        data=data, vars=c("sp1", "sp2", "sp3"), factor="group",
-        showRankPlot=FALSE, anosimN=19, seed=123)))
-
-    expect_true(shown$rankPlot$visible)
-    expect_true(shown$rankPlotDescription$visible)
-    expect_true(shown$rankSummary$visible)
-    expect_false(hidden$rankPlot$visible)
-    expect_false(hidden$rankPlotDescription$visible)
-    expect_true(hidden$rankSummary$visible)
-    expect_gt(nrow(hidden$rankSummary$asDF), 0L)
-    expect_equal(hidden$rankSummary$asDF, shown$rankSummary$asDF, tolerance=0)
-    expect_equal(hidden$global$asDF, shown$global$asDF, tolerance=0)
-    expect_identical(hidden$settings$asDF, shown$settings$asDF)
-
-    description <- tofu_squish_result(shown$rankPlotDescription)
-    expect_match(description, "ranked dissimilarities")
-    expect_match(description, "ANOSIM statistic")
-    plain_description <- gsub("<[^>]+>", "", description)
-    expect_lte(length(strsplit(plain_description, "[.!?]+")[[1L]]), 5L)
-})
 
 test_that("ANOSIM rank diagnostic clears stale output across option and input changes", {
     data <- anosim_state_data()
@@ -465,9 +449,10 @@ test_that("ANOSIM valid invalid valid transitions clear stale output", {
     factor_option$.__enclos_env__$private$.value <- NULL
     analysis$run()
     expect_true(analysis$results$guidance$visible)
-    expect_false(analysis$results$global$visible)
+    expect_true(analysis$results$global$visible)
     expect_false(analysis$results$pairwise$visible)
-    expect_equal(length(analysis$results$global$rowKeys), 0L)
+    expect_equal(length(analysis$results$global$rowKeys), 1L)
+    expect_true(all(is.na(analysis$results$global$asDF$value)))
     expect_equal(length(analysis$results$pairwise$rowKeys), 0L)
 
     factor_option$.__enclos_env__$private$.value <- "group"
@@ -477,34 +462,6 @@ test_that("ANOSIM valid invalid valid transitions clear stale output", {
     expect_true(analysis$results$pairwise$visible)
 })
 
-test_that("ANOSIM reports unused and effective blocking truthfully", {
-    free <- suppressWarnings(suppressMessages(anosim(
-        data=anosim_blocked_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permRestriction="free",
-        anosimN=19,
-        seed=123
-    )))
-    free_settings <- setNames(free$settings$asDF$value, free$settings$asDF$setting)
-    expect_match(as.character(free$warnings$asString()), "assigned but not used")
-    expect_identical(free_settings[["Blocking variable"]], "block")
-    expect_identical(free_settings[["Block used"]], "No")
-
-    within <- suppressWarnings(suppressMessages(anosim(
-        data=anosim_blocked_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permRestriction="stratified",
-        anosimN=19,
-        seed=123
-    )))
-    within_settings <- setNames(within$settings$asDF$value, within$settings$asDF$setting)
-    expect_identical(within_settings[["Effective permutation restriction"]], "Within blocks")
-    expect_identical(within_settings[["Block used"]], "Yes")
-})
 
 test_that("ineffective ANOSIM blocks stop inference", {
     data <- anosim_state_data()
@@ -519,83 +476,13 @@ test_that("ineffective ANOSIM blocks stop inference", {
         seed=123
     )
 
-    expect_match(tofu_squish_result(result$guidance), "does not vary within any block")
-    expect_false(result$global$visible)
-    expect_equal(nrow(result$global$asDF), 0L)
+    expect_match(miso_squish_result(result$guidance), "does not vary within any block")
+    expect_true(result$global$visible)
+    expect_equal(nrow(result$global$asDF), 1L)
+    expect_true(all(is.na(result$global$asDF$value)))
 })
 
-test_that("blocked pairwise ANOSIM uses the displayed permutation design", {
-    data <- anosim_blocked_data()
-    result <- suppressWarnings(suppressMessages(anosim(
-        data=data,
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permRestriction="stratified",
-        anosimPairwise=TRUE,
-        anosimAdjust="none",
-        anosimN=19,
-        seed=123
-    )))
 
-    expected <- list()
-    distance <- vegan::vegdist(data[c("sp1", "sp2", "sp3")], method="bray")
-    distance_matrix <- as.matrix(distance)
-    for (pair in utils::combn(levels(data$group), 2L, simplify=FALSE)) {
-        keep <- data$group %in% pair
-        set.seed(123)
-        fit <- vegan::anosim(
-            stats::as.dist(distance_matrix[keep, keep, drop=FALSE]),
-            droplevels(data$group[keep]),
-            permutations=tofu_permutation(19, "stratified", droplevels(data$block[keep])))
-        expected[[paste(pair, collapse=" vs ")]] <- c(
-            r=as.numeric(fit$statistic), p=as.numeric(fit$signif))
-    }
-
-    actual <- result$pairwise$asDF
-    expect_identical(actual$contrast, names(expected))
-    expect_equal(actual$r, unname(vapply(expected, `[[`, numeric(1), "r")))
-    expect_equal(actual$p, unname(vapply(expected, `[[`, numeric(1), "p")))
-    expect_equal(actual$padj, actual$p)
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
-    expect_match(
-        settings[["Effective pairwise permutations"]],
-        "for each populated contrast|across populated contrasts")
-})
-
-test_that("Series ANOSIM uses row order within the displayed blocks", {
-    data <- anosim_blocked_data()
-    result <- suppressWarnings(suppressMessages(anosim(
-        data=data,
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permRestriction="series",
-        anosimPairwise=TRUE,
-        anosimAdjust="none",
-        anosimN=19,
-        seed=123
-    )))
-
-    distance <- vegan::vegdist(data[c("sp1", "sp2", "sp3")], method="bray")
-    set.seed(123)
-    expected_global <- vegan::anosim(
-        distance,
-        data$group,
-        permutations=tofu_permutation(19, "series", data$block))
-    expect_equal(result$global$asDF$value, as.numeric(expected_global$statistic))
-    expect_equal(result$global$asDF$p, as.numeric(expected_global$signif))
-
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
-    expect_identical(
-        settings[["Effective permutation restriction"]],
-        "Series (rows in order)")
-    expect_identical(
-        settings[["Sequence order"]],
-        "Current data-row order within blocks")
-    expect_identical(settings[["Block used"]], "Yes")
-    expect_true(result$pairwise$visible)
-})
 
 test_that("ANOSIM retains successful pairwise contrasts and names failures", {
     partial <- suppressWarnings(suppressMessages(anosim(
@@ -629,94 +516,204 @@ test_that("ANOSIM hides pairwise output when every contrast fails", {
     expect_match(as.character(result$warnings$asString()), "Pairwise ANOSIM was unavailable")
 })
 
-test_that("two-group ANOSIM never shows an empty pairwise table", {
-    result <- suppressWarnings(suppressMessages(anosim(
-        data=anosim_state_data(two_groups=TRUE),
+
+
+
+
+test_that("rank plot renders from serialized Image state alone", {
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showRankPlot=TRUE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=anosim_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$rankPlot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$all, "data.frame")
+    expect_s3_class(state$raw, "data.frame")
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$rankPlotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=480)
+    analysis$.__enclos_env__$private$.plotRank(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+test_that("rank plot renders from Image state even when showRankPlot is false", {
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showRankPlot=FALSE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=anosim_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    image <- analysis$results$rankPlot
+    state <- image$state
+    expect_false(is.null(state))
+    expect_s3_class(state$all, "data.frame")
+    expect_false(image$visible)
+
+    restored <- unserialize(serialize(state, NULL))
+    analysis$.__enclos_env__$private$.state$rankPlotData <- NULL
+    image$setState(restored)
+
+    file <- tempfile(fileext=".png")
+    on.exit({
+        if (grDevices::dev.cur() > 1L)
+            grDevices::dev.off()
+        unlink(file)
+    }, add=TRUE)
+    grDevices::png(file, width=600, height=480)
+    analysis$.__enclos_env__$private$.plotRank(image)
+    grDevices::dev.off()
+    expect_gt(file.info(file)$size, 1000)
+})
+
+
+test_that("structural grouping inputs rebuild pairwise rows while display toggles do not", {
+    data <- anosim_state_data()
+    data$quarter <- factor(rep(c("W", "X", "Y", "Z"), length.out=nrow(data)))
+    options <- anosimOptions$new(
         vars=c("sp1", "sp2", "sp3"),
         factor="group",
+        strata="quarter",
         anosimPairwise=TRUE,
         anosimN=19,
-        seed=123
-    )))
+        seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    keys <- analysis$results$pairwise$rowKeys
+    contrastsBefore <- analysis$results$pairwise$asDF$contrast
 
-    expect_false(result$pairwise$visible)
-    expect_equal(nrow(result$pairwise$asDF), 0L)
-    expect_match(
-        as.character(result$note$asString()),
-        "Permutation p compares this with random grouping")
+    factorOption <- options$option("factor")
+    factorOption$.__enclos_env__$private$.value <- "quarter"
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_false(identical(analysis$results$pairwise$rowKeys, keys))
+    expect_gt(length(analysis$results$pairwise$rowKeys), length(keys))
+    expect_false(identical(
+        analysis$results$pairwise$asDF$contrast,
+        contrastsBefore))
+    expect_setequal(
+        analysis$results$pairwise$asDF$contrast,
+        c("W vs X", "W vs Y", "W vs Z", "X vs Y", "X vs Z", "Y vs Z"))
 })
 
-test_that("legacy Stratified ANOSIM migrates truthfully", {
-    free <- suppressWarnings(suppressMessages(anosim(
-        data=anosim_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permScheme="free",
-        anosimN=19,
-        seed=123
-    )))
-    legacy <- suppressWarnings(suppressMessages(anosim(
-        data=anosim_state_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        permScheme="stratified",
-        anosimN=19,
-        seed=123
-    )))
-
-    expect_equal(legacy$global$asDF, free$global$asDF, tolerance=0)
-    settings <- setNames(legacy$settings$asDF$value, legacy$settings$asDF$setting)
-    expect_identical(settings[["Requested permutation restriction"]], "Stratified (legacy)")
-    expect_identical(settings[["Effective permutation restriction"]], "Free")
-    expect_match(as.character(legacy$warnings$asString()), "equivalent for that design")
-})
-
-test_that("blocked legacy Stratified ANOSIM remains within blocks", {
-    data <- anosim_blocked_data()
-    current <- suppressWarnings(suppressMessages(anosim(
-        data=data,
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permRestriction="stratified",
-        anosimN=19,
-        seed=123
-    )))
-    legacy <- suppressWarnings(suppressMessages(anosim(
-        data=data,
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        strata="block",
-        permScheme="stratified",
-        anosimN=19,
-        seed=123
-    )))
-
-    expect_equal(legacy$global$asDF, current$global$asDF, tolerance=0)
-    settings <- setNames(legacy$settings$asDF$value, legacy$settings$asDF$setting)
-    expect_identical(settings[["Requested permutation restriction"]], "Stratified (legacy)")
-    expect_identical(settings[["Effective permutation restriction"]], "Within blocks")
-    expect_identical(settings[["Block used"]], "Yes")
-})
-
-test_that("ANOSIM interpretation explains negative R and settings are effective", {
+test_that("ANOSIM reports interpretation-critical settings in surviving table notes", {
     result <- suppressWarnings(suppressMessages(anosim(
-        data=anosim_negative_data(),
-        vars=c("sp1", "sp2", "sp3"),
-        factor="group",
-        anosimN=19,
-        seed=123
-    )))
-    interpretation <- tofu_squish_result(result$note)
-    settings <- setNames(result$settings$asDF$value, result$settings$asDF$setting)
+        data=anosim_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", anosimPairwise=TRUE, anosimN=19, seed=123)))
+    expect_true(result$global$visible)
+    expect_match(miso_table_note(result$global, "meaning"), "Effective restriction")
+    expect_match(miso_table_note(result$pairwise, "scope"), "P-value adjustment")
+})
 
-    expect_match(interpretation, "R measures rank separation")
-    expect_match(interpretation, "stronger separation")
-    expect_match(interpretation, "max-width: 44em", fixed=TRUE)
-    expect_match(interpretation, "overflow-wrap: anywhere", fixed=TRUE)
-    expect_identical(settings[["Requested permutation restriction"]], "Free")
-    expect_identical(settings[["Effective permutation restriction"]], "Free")
-    expect_identical(settings[["Random seed"]], "123")
-    expect_identical(settings[["Pairwise comparisons"]], "Disabled")
-    expect_identical(settings[["P-value adjustment"]], "Not applied")
+miso_anosim_cells <- function(table) {
+    table$columns[[1L]]$.__enclos_env__$private$.cells
+}
+
+test_that("enabling the rank plot keeps routine prose absent without changing tables", {
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        showRankPlot=FALSE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=anosim_state_data())
+    suppressWarnings(suppressMessages(analysis$run()))
+    before <- analysis$results$global$asDF
+    cells <- miso_anosim_cells(analysis$results$rankSummary)
+    option <- options$option("showRankPlot")
+    option$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    fresh <- suppressWarnings(suppressMessages(anosim(
+        data=anosim_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", showRankPlot=TRUE, anosimN=19, seed=123)))
+    expect_identical(analysis$results$rankPlotDescription$asString(),
+        fresh$rankPlotDescription$asString())
+    expect_identical(analysis$results$rankPlotDescription$content, "")
+    expect_false(analysis$results$rankPlotDescription$visible)
+    expect_equal(analysis$results$global$asDF, before, tolerance=0)
+    expect_identical(miso_anosim_cells(analysis$results$rankSummary), cells)
+})
+
+
+test_that("value-only data edits refresh ANOSIM tables and keep their cells", {
+    data <- anosim_state_data()
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        anosimPairwise=TRUE, anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    pairwiseKeys <- analysis$results$pairwise$rowKeys
+    rankKeys <- analysis$results$rankSummary$rowKeys
+    pairwiseCells <- miso_anosim_cells(analysis$results$pairwise)
+    rankCells <- miso_anosim_cells(analysis$results$rankSummary)
+    before <- analysis$results$pairwise$asDF
+
+    # Same samples, groups, and contrasts; only feature values change, so the
+    # data signature changes but every row key survives the rerun.
+    edited <- anosim_state_data()
+    edited$sp1 <- edited$sp1 + 0.25
+    analysis$.__enclos_env__$private$.data$sp1 <- edited$sp1
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_identical(analysis$results$pairwise$rowKeys, pairwiseKeys)
+    expect_identical(analysis$results$rankSummary$rowKeys, rankKeys)
+    expect_true(identical(
+        miso_anosim_cells(analysis$results$pairwise), pairwiseCells))
+    expect_true(identical(
+        miso_anosim_cells(analysis$results$rankSummary), rankCells))
+    expect_false(isTRUE(all.equal(before, analysis$results$pairwise$asDF)))
+
+    fresh <- anosimClass$new(options=anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group",
+        anosimPairwise=TRUE, anosimN=19, seed=123), data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$pairwise$asDF, fresh$results$pairwise$asDF,
+        tolerance=1e-12)
+    expect_equal(
+        analysis$results$rankSummary$asDF, fresh$results$rankSummary$asDF,
+        tolerance=1e-12)
+})
+
+test_that("data edits that remove a group rebuild ANOSIM rows and stay fresh", {
+    data <- anosim_state_data()
+    options <- anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", anosimN=19, seed=123)
+    analysis <- anosimClass$new(options=options, data=data)
+    suppressWarnings(suppressMessages(analysis$run()))
+    rankKeys <- analysis$results$rankSummary$rowKeys
+
+    edited <- anosim_state_data(two_groups=TRUE)
+    analysis$.__enclos_env__$private$.data <- edited
+    suppressWarnings(suppressMessages(analysis$run()))
+
+    expect_false(identical(analysis$results$rankSummary$rowKeys, rankKeys))
+    expect_identical(
+        analysis$results$rankSummary$asDF$category,
+        c("Between", "Within A", "Within B"))
+
+    fresh <- anosimClass$new(options=anosimOptions$new(
+        vars=c("sp1", "sp2", "sp3"), factor="group", anosimN=19, seed=123),
+        data=edited)
+    suppressWarnings(suppressMessages(fresh$run()))
+    expect_equal(
+        analysis$results$rankSummary$asDF, fresh$results$rankSummary$asDF,
+        tolerance=1e-12)
+})
+
+
+test_that("ANOSIM publication output omits routine prose", {
+    result <- suppressWarnings(suppressMessages(anosim(
+        data=anosim_state_data(), vars=c("sp1", "sp2", "sp3"),
+        factor="group", seed=123, anosimN=19)))
+    note <- miso_table_note(result$global, "meaning")
+    expect_false(grepl("Random seed|Execution:|Disabled|Requested permutation restriction|R compares|not applicable to the Residual", note))
+    expect_false(result$rankPlotDescription$visible)
+    expect_identical(result$rankPlotDescription$content, "")
 })

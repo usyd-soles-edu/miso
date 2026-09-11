@@ -1,28 +1,35 @@
 ---
 name: nmds
 title: nMDS
-menuGroup: tofu
+menuGroup: miso
 menuTitle: nMDS
 menuSubtitle: Visualise sample patterns
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Produces a non-metric multidimensional scaling ordination through vegan::metaMDS. Reports stress and convergence and can add group, feature, environmental, and Shepard diagnostics.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
 
 options:
   - name: data
     type: Data
 
   - name: vars
-    title: Feature variables (required)
+    title: Feature Variables
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
 
   - name: factor
-    title: Grouping variable (optional)
+    title: Grouping Variable
     type: Variable
     suggested:
       - nominal
@@ -140,17 +147,17 @@ options:
     min: 1
 
   - name: nmdsShepard
-    title: Show Shepard diagram
+    title: Shepard Diagram
     type: Bool
     default: true
 
   - name: nmdsOverlay
-    title: Style points by group
+    title: Group point styling
     type: Bool
     default: true
 
   - name: nmdsEnv
-    title: Environmental variables (optional)
+    title: Environmental Variables
     type: Variables
     suggested:
       - continuous
@@ -159,7 +166,7 @@ options:
     default: null
 
   - name: nmdsSpecies
-    title: Show feature scores
+    title: Feature Scores
     type: Bool
     default: false
 

@@ -69,26 +69,31 @@ permdisp(
 A results object containing:
 \tabular{llllll}{
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
-  \code{results$summary} \tab \tab \tab \tab \tab a table \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
   \code{results$pairwise} \tab \tab \tab \tab \tab a table \cr
-  \code{results$plot} \tab \tab \tab \tab \tab an image \cr
   \code{results$plotDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$plot} \tab \tab \tab \tab \tab an image \cr
   \code{results$distances} \tab \tab \tab \tab \tab a table \cr
-  \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr
+  \code{results$ordinationPlot} \tab \tab \tab \tab \tab an image \cr
   \code{results$ordinationScores} \tab \tab \tab \tab \tab a table \cr
-  \code{results$note} \tab \tab \tab \tab \tab a html \cr
-  \code{results$settings} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$summary$asDF}
+\code{results$anova$asDF}
 
-\code{as.data.frame(results$summary)}
+\code{as.data.frame(results$anova)}
 }
 \description{
-PERMDISP
+Tests whether groups differ in multivariate dispersion using
+vegan::betadisper and permutation tests. Includes distance-to-centre
+summaries, diagnostics, and an optional ordination.
+}
+\section{References}{
+
+Oksanen et al. (2026). vegan: Community Ecology Package (R package version 2.7-5). https://vegandevs.github.io/vegan/
+
+Anderson, M. J. (2006). Distance-based tests for homogeneity of multivariate dispersions. Biometrics, 62(1), 245-253. https://doi.org/10.1111/j.1541-0420.2005.00440.x
 }

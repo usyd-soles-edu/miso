@@ -1,7 +1,7 @@
 ---
-title: Multivariate Abundance Workflows
-name: tofu
-version: 0.2.1
+title: Multivariate Inference, Similarity and Ordination (MISO)
+name: miso
+version: 1.0.0
 jms: '1.0'
 authors:
   - Januar Harianto
@@ -15,9 +15,9 @@ description: >-
 analyses:
   - title: PERMANOVA
     name: permanova
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: PERMANOVA
     menuSubtitle: Test group differences
     description: >-
@@ -26,9 +26,9 @@ analyses:
       permutations, pairwise comparisons, and a descriptive companion PCoA.
   - title: ANOSIM
     name: anosim
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: ANOSIM
     menuSubtitle: Rank-based alternative
     description: >-
@@ -37,9 +37,9 @@ analyses:
       pairwise comparisons and rank diagnostics.
   - title: PERMDISP
     name: permdisp
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: PERMDISP
     menuSubtitle: Check group dispersion
     description: >-
@@ -48,9 +48,9 @@ analyses:
       summaries, diagnostics, and an optional ordination.
   - title: nMDS
     name: nmds
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: nMDS
     menuSubtitle: Visualise sample patterns
     description: >-
@@ -59,9 +59,9 @@ analyses:
       environmental, and Shepard diagnostics.
   - title: PCoA
     name: pcoa
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: PCoA
     menuSubtitle: Visualise distance structure
     description: >-
@@ -71,9 +71,9 @@ analyses:
       returns the jamovi analysis results object.
   - title: Cluster analysis
     name: cluster
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: Cluster analysis
     menuSubtitle: Visualise sample similarity
     description: >-
@@ -82,9 +82,9 @@ analyses:
       memberships are descriptive.
   - title: SIMPER
     name: simper
-    ns: tofu
+    ns: miso
     category: analyses
-    menuGroup: tofu
+    menuGroup: miso
     menuTitle: SIMPER
     menuSubtitle: Feature contributions
     description: >-

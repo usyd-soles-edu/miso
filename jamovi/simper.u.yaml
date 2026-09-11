@@ -10,13 +10,13 @@ children:
     stretchFactor: 1
     children:
       - type: TargetLayoutBox
-        label: Feature variables (required)
+        label: Feature Variables
         children:
           - type: VariablesListBox
             name: vars
             isTarget: true
       - type: TargetLayoutBox
-        label: Grouping variable (required)
+        label: Grouping Variable
         children:
           - type: VariablesListBox
             name: factor
@@ -25,7 +25,7 @@ children:
 
   - type: CollapseBox
     name: analysisChoices
-    label: Analysis choices
+    label: Analysis Choices
     collapsed: false
     stretchFactor: 1
     children:
@@ -84,7 +84,7 @@ children:
     stretchFactor: 1
     children:
       - type: Label
-        label: Contrast shown
+        label: Contrast Shown
         heading: true
         margin: none
       - type: Label
@@ -95,7 +95,7 @@ children:
         margin: small
         children:
           - type: Label
-            label: Features shown
+            label: Features Shown
             heading: true
             margin: none
           - type: TextBox
@@ -123,21 +123,26 @@ children:
 
   - type: CollapseBox
     name: permutationAssessment
-    label: Permutation assessment (advanced)
+    label: Permutation Assessment (Advanced)
     collapsed: true
     stretchFactor: 1
     children:
       - type: CheckBox
         name: simperAssess
+        style: list
         events:
           change: update_control_states
-      - type: TextBox
-        name: simperN
-        format: number
-      - type: ComboBox
-        name: simperAdjust
-      - type: TextBox
-        name: seed
-        format: number
+        children:
+          - type: TextBox
+            name: simperN
+            format: number
+            enable: (simperAssess)
+          - type: ComboBox
+            name: simperAdjust
+            enable: (simperAssess)
+          - type: TextBox
+            name: seed
+            format: number
+            enable: (simperAssess)
 
 ...

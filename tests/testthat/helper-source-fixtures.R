@@ -1,3 +1,3 @@
-tofu_fixture_path <- function(...) {
+miso_fixture_path <- function(...) {
     testthat::test_path("fixtures", ...)
 }

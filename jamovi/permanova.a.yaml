@@ -1,28 +1,39 @@
 ---
 name: permanova
 title: PERMANOVA
-menuGroup: tofu
+menuGroup: miso
 menuTitle: PERMANOVA
 menuSubtitle: Test group differences
-version: '0.2.1'
+version: '1.0.0'
 jas: '1.2'
 description:
   main: Tests whether multivariate composition is associated with one or more predictors using PERMANOVA through vegan::adonis2. Supports restricted permutations, pairwise comparisons, and a descriptive companion PCoA.
+  references:
+    - >-
+      Oksanen et al. (2026). vegan: Community Ecology Package (R package
+      version 2.7-5). https://vegandevs.github.io/vegan/
+    - >-
+      Anderson, M. J. (2001). A new method for non-parametric multivariate
+      analysis of variance. Austral Ecology, 26(1), 32-46.
+      https://doi.org/10.1111/j.1442-9993.2001.01070.pp.x
 
 options:
   - name: data
     type: Data
 
   - name: vars
-    title: Feature variables (required)
+    title: Feature Variables
     type: Variables
     suggested:
       - continuous
+      - nominal
+      - ordinal
     permitted:
       - numeric
+      - factor
 
   - name: factor
-    title: Grouping variable (required)
+    title: Grouping Variable
     type: Variable
     suggested:
       - nominal
@@ -31,7 +42,7 @@ options:
       - factor
 
   - name: permFactors
-    title: Additional factors (optional)
+    title: Additional Factors
     type: Variables
     suggested:
       - nominal
@@ -41,7 +52,7 @@ options:
     default: null
 
   - name: strata
-    title: Blocking variable (optional)
+    title: Blocking Variable
     type: Variable
     suggested:
       - nominal
@@ -51,7 +62,7 @@ options:
     default: null
 
   - name: covariates
-    title: Continuous covariates (optional)
+    title: Continuous Covariates
     type: Variables
     suggested:
       - continuous
@@ -164,7 +175,7 @@ options:
     min: 0
 
   - name: permInteractions
-    title: Include interactions
+    title: Model Interactions
     type: Bool
     default: false
 
@@ -225,7 +236,7 @@ options:
     default: holm
 
   - name: showCompanionPcoa
-    title: Show companion PCoA
+    title: Companion PCoA
     type: Bool
     default: false
     description: Whether to show a descriptive PCoA based on the exact distance settings used by PERMANOVA.
@@ -243,13 +254,13 @@ options:
     description: For multifactor models, choose the same primary or additional factor already included and retained in the fitted PERMANOVA model; other variables are rejected.
 
   - name: pcoaCentroids
-    title: Show group centroids
+    title: Group Centroids
     type: Bool
     default: false
     description: Whether to draw and tabulate group centroids in the companion PCoA.
 
   - name: pcoaSpiders
-    title: Connect sites to centroids
+    title: Site-centroid connections
     type: Bool
     default: false
     description: Whether to connect displayed sites to their group centroid; spiders also show centroids.

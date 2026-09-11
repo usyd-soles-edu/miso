@@ -6,6 +6,6 @@
 ^\.pre-commit-config\.yaml$
 ^\.\.Rcheck$
 ^build$
-^tofu_.*\.jmo$
+^miso_.*\.jmo$
 ^tests/manual/workbooks$
 ^LICENSE$
