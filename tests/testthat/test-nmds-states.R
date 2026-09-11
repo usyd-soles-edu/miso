@@ -824,6 +824,28 @@ test_that("all plot-only toggles preserve exact numerical results", {
     }
 })
 
+test_that("nMDS overlay toggles reuse the fitted ordination", {
+    analysis <- run_nmds_private(
+        nmds_state_data(n=30L, groups=5L),
+        vars=paste0("feature_0", 1:4),
+        factor="group",
+        nmdsOverlay=FALSE,
+        seed=0,
+        nmdsTrymax=5)
+    private <- analysis$.__enclos_env__$private
+    fit <- private$.state$fit
+    sites <- analysis$results$sites$asDF
+
+    overlay <- analysis$options$option("nmdsOverlay")
+    overlay$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(private$.run()))
+
+    expect_false(private$.structuralChanged)
+    expect_identical(private$.state$fit, fit)
+    expect_identical(analysis$results$sites$asDF, sites)
+    expect_true(isTRUE(private$.state$overlays$effective[["points"]]))
+})
+
 test_that("ellipse helper matches vegan scaling for non-unit scale", {
     analysis <- run_nmds_private(
         nmds_state_data(n=18L),

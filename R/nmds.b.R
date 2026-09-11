@@ -198,14 +198,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$shepardDisplayed <-
                     nrow(private$.state$shepardDisplayData)
             }
-            if (isTRUE(self$options$nmdsShepard) &&
-                    ! private$.state$shepardValid)
-                private$.state$warnings <- c(
-                    private$.state$warnings,
-                    paste(
-                        "The Shepard diagram was requested but was not shown",
-                        "because finite dissimilarity and ordination-distance",
-                        "values were unavailable."))
+            private$.prepareShepardWarnings()
+            private$.state$baseWarnings <- unique(private$.state$warnings)
             private$.populateCoreResults()
             self$results$ordination$setState(private$.nmdsPlotData())
             self$results$shepard$setState(private$.shepardPlotData())
@@ -418,17 +412,19 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 nmdsK=self$options$nmdsK,
                 nmdsTrymax=self$options$nmdsTrymax,
                 nmdsMaxit=self$options$nmdsMaxit,
-                nmdsOverlay=self$options$nmdsOverlay,
                 nmdsEnv=self$options$nmdsEnv,
                 nmdsSpecies=self$options$nmdsSpecies,
-                nmdsHull=self$options$nmdsHull,
-                nmdsEllipse=self$options$nmdsEllipse,
-                nmdsSpider=self$options$nmdsSpider,
                 nmdsEnvPerm=self$options$nmdsEnvPerm,
                 dataSignature=miso_data_signature(self$data)), NULL)
         },
 
         .refreshDisplayOnly = function() {
+            if (is.null(private$.state$fit))
+                return()
+            private$.prepareOverlays()
+            private$.prepareShepardWarnings()
+            private$.syncWarnings()
+            self$results$ordination$setState(private$.nmdsPlotData())
             showShepard <- isTRUE(self$options$nmdsShepard) &&
                 isTRUE(private$.state$shepardValid)
             if (showShepard) {
@@ -610,7 +606,9 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .clearResults = function() {
             private$.state <- list(
-                warnings=character(), fit=NULL, prep=NULL, sites=NULL,
+                warnings=character(), baseWarnings=character(),
+                overlayWarnings=character(), shepardWarnings=character(),
+                fit=NULL, prep=NULL, sites=NULL,
                 features=NULL, group=NULL, groupLabels=NULL,
                 groupMissing=NULL, groupVariable=NULL,
                 assignedGroupLevels=character(), envRows=list(),
@@ -658,18 +656,36 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setVisible(TRUE)
         },
 
-        .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
-            self$results$guidance$setVisible(FALSE)
+        .syncWarnings = function() {
+            private$.state$warnings <- unique(c(
+                private$.state$baseWarnings,
+                private$.state$overlayWarnings,
+                private$.state$shepardWarnings))
             hasWarnings <- length(private$.state$warnings) > 0L
             if (hasWarnings)
                 self$results$warnings$setContent(miso_warning_block(
-                    unique(private$.state$warnings)))
+                    private$.state$warnings))
+            self$results$warnings$setVisible(hasWarnings)
+        },
+
+        .prepareShepardWarnings = function() {
+            private$.state$shepardWarnings <- character()
+            if (isTRUE(self$options$nmdsShepard) &&
+                    ! private$.state$shepardValid)
+                private$.state$shepardWarnings <- paste(
+                    "The Shepard diagram was requested but was not shown",
+                    "because finite dissimilarity and ordination-distance",
+                    "values were unavailable.")
+        },
+
+        .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
+            self$results$guidance$setVisible(FALSE)
+            private$.syncWarnings()
             for (name in c(
                     "ordination",
                     "stress", "sites"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$ordinationDescription$setVisible(FALSE)
-            self$results$warnings$setVisible(hasWarnings)
             self$results$shepard$setVisible(showShepard)
             self$results$shepardDescription$setVisible(FALSE)
             self$results$shepardPairs$setVisible(showShepard)
@@ -803,10 +819,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 sprintf("The requested %s was not shown.", subject)
             else
                 sprintf("The requested %s was not shown because %s.", subject, detail)
-            private$.state$warnings <- c(private$.state$warnings, message)
+            private$.state$overlayWarnings <- c(
+                private$.state$overlayWarnings, message)
         },
 
         .prepareOverlays = function() {
+            private$.state$overlayWarnings <- character()
             requested <- private$.overlayRequests()
             overlays <- list(
                 requested=requested,
@@ -837,8 +855,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             if (length(assignedLevels) > 64L) {
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$overlayWarnings <- c(
+                    private$.state$overlayWarnings,
                     sprintf(
                         paste(
                             "Grouping variable '%s' has %d assigned groups;",
@@ -934,8 +952,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         overlays$ellipse[[level]] <- geometry
                     }
                     for (detail in unique(ellipseWarnings))
-                        private$.state$warnings <- c(
-                            private$.state$warnings,
+                        private$.state$overlayWarnings <- c(
+                            private$.state$overlayWarnings,
                             sprintf("Ellipse layer: %s", detail))
                 }
                 overlays$effective[["ellipse"]] <- length(overlays$ellipse) > 0L
