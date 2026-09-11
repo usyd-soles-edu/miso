@@ -2,6 +2,11 @@
 
 Multivariate Inference, Similarity and Ordination (MISO) brings common multivariate methods, often used to analyse ecological and biological datasets, from R into [jamovi](https://www.jamovi.org). It was created to assist in teaching biostatistics at the University of Sydney and should be fine to use for research as long as the user recognises its limitations. The statistical calculations are powered primarily by the [`vegan`](https://cran.r-project.org/package=vegan) R package. If you need functionality that is not included, please use `vegan` directly or suggest an addition.
 
+The user manual is authored as a Quarto website in
+[`docs/miso-manual/`](docs/miso-manual/). It explains the analyses, required
+data, options, output, and limitations without packaging internal test
+material. The manual is prepared locally and is not currently published.
+
 | Analysis | R function | What it does |
 |---|---|---|
 | PERMANOVA | `vegan::adonis2` | Tests multivariate group differences using permutations |
