@@ -425,6 +425,7 @@ test_that("SIMPER returns stable contribution results and plot output", {
             vars = c("sp1", "sp2", "sp3"),
             factor = "group",
             simperN = 19,
+            simperPlots = TRUE,
             seed = 123
         )
     )

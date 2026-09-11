@@ -274,7 +274,7 @@ test_that("display-only controls do not invalidate unrelated native tables", {
         anosim="showRankPlot", permdisp=c("showDistancePlot", "showOrdinationPlot"),
         nmds=c("nmdsShepard", "nmdsOverlay", "nmdsSpecies", "nmdsHull", "nmdsEllipse", "nmdsSpider"),
         pcoa=c("showCentroids", "showSpiders"), cluster="sampleLabels",
-        simper=c("simperDetails", "simperHeatmap"))
+        simper=c("simperDetails", "simperPlots", "simperHeatmap"))
     for (analysisName in names(displayOnly)) {
         items <- miso_task6_result_items(analysisName)
         for (item in items) {

@@ -15,6 +15,7 @@ simper(
   simperN = 999,
   simperTop = 10,
   simperCum = 70,
+  simperPlots = FALSE,
   simperHeatmap = FALSE,
   simperAssess = FALSE,
   simperAdjust = "holm",
@@ -41,6 +42,8 @@ simper(
 \item{simperTop}{.}
 
 \item{simperCum}{.}
+
+\item{simperPlots}{.}
 
 \item{simperHeatmap}{.}
 

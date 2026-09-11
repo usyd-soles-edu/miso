@@ -15,6 +15,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             simperN = 999,
             simperTop = 10,
             simperCum = 70,
+            simperPlots = FALSE,
             simperHeatmap = FALSE,
             simperAssess = FALSE,
             simperAdjust = "holm",
@@ -113,6 +114,10 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 default=70,
                 min=1,
                 max=100)
+            private$..simperPlots <- jmvcore::OptionBool$new(
+                "simperPlots",
+                simperPlots,
+                default=FALSE)
             private$..simperHeatmap <- jmvcore::OptionBool$new(
                 "simperHeatmap",
                 simperHeatmap,
@@ -145,6 +150,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..simperN)
             self$.addOption(private$..simperTop)
             self$.addOption(private$..simperCum)
+            self$.addOption(private$..simperPlots)
             self$.addOption(private$..simperHeatmap)
             self$.addOption(private$..simperAssess)
             self$.addOption(private$..simperAdjust)
@@ -160,6 +166,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         simperN = function() private$..simperN$value,
         simperTop = function() private$..simperTop$value,
         simperCum = function() private$..simperCum$value,
+        simperPlots = function() private$..simperPlots$value,
         simperHeatmap = function() private$..simperHeatmap$value,
         simperAssess = function() private$..simperAssess$value,
         simperAdjust = function() private$..simperAdjust$value,
@@ -174,6 +181,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..simperN = NA,
         ..simperTop = NA,
         ..simperCum = NA,
+        ..simperPlots = NA,
         ..simperHeatmap = NA,
         ..simperAssess = NA,
         ..simperAdjust = NA,
@@ -534,6 +542,7 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperN .
 #' @param simperTop .
 #' @param simperCum .
+#' @param simperPlots .
 #' @param simperHeatmap .
 #' @param simperAssess .
 #' @param simperAdjust .
@@ -572,6 +581,7 @@ simper <- function(
     simperN = 999,
     simperTop = 10,
     simperCum = 70,
+    simperPlots = FALSE,
     simperHeatmap = FALSE,
     simperAssess = FALSE,
     simperAdjust = "holm",
@@ -600,6 +610,7 @@ simper <- function(
         simperN = simperN,
         simperTop = simperTop,
         simperCum = simperCum,
+        simperPlots = simperPlots,
         simperHeatmap = simperHeatmap,
         simperAssess = simperAssess,
         simperAdjust = simperAdjust,

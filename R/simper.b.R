@@ -10,7 +10,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             structuralKey <- miso_options_signature(
-                self$options, excluded=c("simperDetails", "simperHeatmap"),
+                self$options, excluded=c("simperDetails", "simperPlots", "simperHeatmap"),
                 data=self$data)
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
@@ -20,6 +20,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.lastStructuralKey <- structuralKey
             private$.lastDisplayKey <- list(
                 simperDetails=isTRUE(self$options$simperDetails),
+                simperPlots=isTRUE(self$options$simperPlots),
                 simperHeatmap=isTRUE(self$options$simperHeatmap))
             private$.state <- list(
                 warnings=character(),
@@ -139,13 +140,17 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .refreshDisplayOnly = function() {
             descriptive <- private$.state$descriptive
             details <- isTRUE(self$options$simperDetails)
+            plots <- isTRUE(self$options$simperPlots)
             heatmap <- isTRUE(self$options$simperHeatmap)
             previousDisplay <- private$.lastDisplayKey
             private$.lastDisplayKey <- list(
                 simperDetails=details,
+                simperPlots=plots,
                 simperHeatmap=heatmap)
             detailsChanged <- is.null(previousDisplay) ||
                 !identical(previousDisplay$simperDetails, details)
+            plotsChanged <- is.null(previousDisplay) ||
+                !identical(previousDisplay$simperPlots, plots)
             heatmapChanged <- is.null(previousDisplay) ||
                 !identical(previousDisplay$simperHeatmap, heatmap)
 
@@ -157,6 +162,13 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             self$results$variability$setVisible(details && !is.null(descriptive))
             self$results$means$setVisible(details && !is.null(descriptive))
+
+            if (plotsChanged) {
+                self$results$contributionPlots$clear()
+                if (plots && !is.null(descriptive))
+                    private$.populateContributionPlots(descriptive)
+            }
+            self$results$contributionPlots$setVisible(plots && !is.null(descriptive))
 
             if (heatmapChanged) {
                 miso_clear_table(self$results$heatmapValues)
@@ -269,10 +281,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$means$setVisible(details)
             for (name in c(
                     "contrasts",
-                    "contributions",
-                    "contributionPlots"
+                    "contributions"
                     ))
                 self$results[[name]]$setVisible(TRUE)
+            self$results$contributionPlots$setVisible(
+                isTRUE(self$options$simperPlots))
             self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap))
             self$results$heatmapDescription$setVisible(FALSE)
             self$results$heatmapValues$setVisible(
@@ -459,6 +472,13 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 lapply(descriptive$displayRows, as.data.frame, stringsAsFactors=FALSE))
             private$.state$contrastLabels <- unique(private$.state$plotData$contrast)
             private$.state$contrastTotals <- descriptive$contrastTotals
+            if (isTRUE(self$options$simperPlots))
+                private$.populateContributionPlots(descriptive)
+            if (isTRUE(self$options$simperHeatmap))
+                private$.populateOptionalHeatmap()
+        },
+
+        .populateContributionPlots = function(descriptive) {
             for (contrast in private$.state$contrastLabels) {
                 item <- self$results$contributionPlots$addItem(contrast)
                 item$setTitle(contrast)
@@ -499,8 +519,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             direction=direction))
                 }
             }
-            if (isTRUE(self$options$simperHeatmap))
-                private$.populateOptionalHeatmap()
         },
 
         .runAssessment = function(prep, displayRows) {

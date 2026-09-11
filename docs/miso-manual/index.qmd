@@ -119,8 +119,10 @@ the table as a descriptive ranking of features contributing to group contrasts.
 It is sensitive to dispersion and correlated features, so it is not a
 confirmatory feature-selection method.
 
-Use the cumulative-contribution threshold to focus the table. Contribution
-plots and the optional heatmap are descriptive. **Permutation contribution
+Use the cumulative-contribution threshold to focus the table. Turn on
+**Contribution plots** to show the selected features for each observed
+contrast. Contribution plots and the optional heatmap are descriptive.
+**Permutation contribution
 assessment** adds an exploratory assessment using the selected permutations,
 p-value adjustment, and seed; interpret it alongside the study design and
 global multivariate analysis.

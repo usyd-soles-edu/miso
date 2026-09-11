@@ -83,6 +83,8 @@ children:
     collapsed: false
     stretchFactor: 1
     children:
+      - type: CheckBox
+        name: simperPlots
       - type: Label
         label: Contrast Shown
         heading: true
