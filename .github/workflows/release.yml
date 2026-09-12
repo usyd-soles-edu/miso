@@ -1,0 +1,162 @@
+# Draft-first release orchestrator.
+#
+# Dispatch manually with a tag (e.g. v1.0.0). The workflow:
+#   1. prepare   — cheap fail-fast checks on ubuntu-latest: the tag exists,
+#                  resolves to a commit, its version matches DESCRIPTION and
+#                  jamovi/0000.yaml, and no release for the tag is already
+#                  PUBLISHED (draft is fine; reruns are safe).
+#   2. build-*   — the two platform build workflows (kept read-only), called
+#                  at the exact tagged commit.
+#   3. draft     — creates or refreshes a DRAFT release holding the two CI
+#                  .jmo assets. The draft is never published automatically:
+#                  after building/verifying the Apple-Silicon .jmo locally,
+#                  attach it (`gh release upload <tag> <file>`) and publish
+#                  (`gh release edit <tag> --draft=false`). Nothing is public
+#                  until that manual publish step.
+#
+# Notes:
+#   * Idempotent: rerunning the same tag refreshes the two CI assets on the
+#     existing draft (--clobber). A published release hard-fails instead of
+#     being overwritten.
+#   * Only tags from v1.0.0 onward contain the CI validation scripts; older
+#     tags cannot pass the build step.
+#   * Versioned asset names are deliberate: students always know which
+#     module version a downloaded file is.
+
+name: Release (draft)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to release (e.g. v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Verify tag and release state
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 1
+
+      - name: Resolve tag and verify version metadata
+        id: resolve
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "${TAG}" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '${TAG}' does not look like vX.Y.Z"; exit 1 ;;
+          esac
+          VERSION="${TAG#v}"
+          SHA=$(git rev-parse "refs/tags/${TAG}^{commit}")
+          echo "tag ${TAG} -> commit ${SHA} (version ${VERSION})"
+
+          DESC_VERSION=$(git show "${SHA}:DESCRIPTION" | sed -n 's/^Version:[[:space:]]*//p' | head -n1 | tr -d '\r')
+          YAML_VERSION=$(git show "${SHA}:jamovi/0000.yaml" | sed -n 's/^version:[[:space:]]*//p' | head -n1 | tr -d "\r\"'")
+          echo "DESCRIPTION: ${DESC_VERSION}"
+          echo "jamovi/0000.yaml: ${YAML_VERSION}"
+          test "${VERSION}" = "${DESC_VERSION}" || { echo "::error::tag ${TAG} but DESCRIPTION says ${DESC_VERSION}"; exit 1; }
+          test "${VERSION}" = "${YAML_VERSION}" || { echo "::error::tag ${TAG} but jamovi/0000.yaml says ${YAML_VERSION}"; exit 1; }
+
+          # only tags containing the CI validation scripts are releasable;
+          # stop historical tags (v0.2.x) here rather than after long builds
+          git show "${SHA}:.github/scripts/validate-jmo.sh" >/dev/null || {
+            echo "::error::tag ${TAG} predates the CI build tooling (needs .github/scripts/validate-jmo.sh); tag v1.0.0 or newer"
+            exit 1
+          }
+
+          # fail fast on an already-published release; a draft is fine (rerun
+          # path refreshes its assets) and a missing release is the normal path
+          if gh release view "${TAG}" --json isDraft >/dev/null 2>&1; then
+            IS_DRAFT=$(gh release view "${TAG}" --json isDraft --jq '.isDraft')
+            test "${IS_DRAFT}" = "true" || {
+              echo "::error::release ${TAG} is already PUBLISHED - refusing to touch student-facing assets"
+              exit 1
+            }
+            echo "draft release for ${TAG} exists; CI assets will be refreshed"
+          else
+            echo "no existing release for ${TAG}; a draft will be created"
+          fi
+
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+  build-windows:
+    name: Build .jmo (win-x64)
+    needs: prepare
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      sha: ${{ needs.prepare.outputs.sha }}
+
+  build-macos-intel:
+    name: Build .jmo (macos-x64)
+    needs: prepare
+    uses: ./.github/workflows/build-macos-intel.yml
+    with:
+      sha: ${{ needs.prepare.outputs.sha }}
+
+  draft:
+    name: Create or refresh draft release
+    needs: [prepare, build-windows, build-macos-intel]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Download built .jmo artifacts
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Check the built assets are present
+        run: |
+          set -euo pipefail
+          ls -l dist
+          test -f "dist/miso-${VERSION}-win-x64.jmo" || { echo "::error::missing dist/miso-${VERSION}-win-x64.jmo"; exit 1; }
+          test -f "dist/miso-${VERSION}-macos-x64.jmo" || { echo "::error::missing dist/miso-${VERSION}-macos-x64.jmo"; exit 1; }
+
+      - name: Create or refresh the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          set -euo pipefail
+          ASSETS=("dist/miso-${VERSION}-win-x64.jmo" "dist/miso-${VERSION}-macos-x64.jmo")
+          if gh release view "${TAG}" --json isDraft >/dev/null 2>&1; then
+            IS_DRAFT=$(gh release view "${TAG}" --json isDraft --jq '.isDraft')
+            test "${IS_DRAFT}" = "true" || { echo "::error::release ${TAG} is published; refusing to modify it"; exit 1; }
+            echo "draft exists; refreshing CI assets"
+            gh release upload "${TAG}" "${ASSETS[@]}" --clobber
+          else
+            echo "creating draft release ${TAG}"
+            gh release create "${TAG}" "${ASSETS[@]}" \
+              --draft --target "${SHA}" \
+              --title "MISO ${TAG}" \
+              --generate-notes
+          fi
+          echo "draft ready: attach the Apple-Silicon build, then publish with:"
+          echo "  gh release upload ${TAG} miso-${VERSION}-macos-arm64.jmo"
+          echo "  gh release edit ${TAG} --draft=false"

@@ -18,6 +18,12 @@ name: Build Windows .jmo (manual)
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      sha:
+        description: 'Exact commit SHA to build (defaults to the dispatched ref)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -39,6 +45,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.sha || github.sha }}
 
       - name: Check version metadata is consistent
         run: |
