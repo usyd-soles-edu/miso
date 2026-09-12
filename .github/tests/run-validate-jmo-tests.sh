@@ -313,6 +313,18 @@ out=$(bash "$HELPER" --manifest x --parser y --version 1 --module m --suffix s -
 rc=0; out=$(bash "$HELPER" --manifest x --parser y --version 1 --module m --suffix s --tempdir "$WORK" --github-env "$WORK/env" 2>&1) || rc=$?
 [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -Fq "validate-jmo: missing required option --jmo" && ok "T12 strict mode: unset required input fails with exact message" || bad "T12 rc=$rc out=$out"
 
+# === T12b: Windows 7z backslash listing normalisation ==========================
+# Real 7z on Windows emits entry paths with backslash separators; the helper
+# must normalise them before the forward-slash fixed-item checks.
+D="$WORK/t12b"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$GOOD_FILE"
+sed -i.bak 's|/|\\|g' "$D/miso_1.0.0.jmo.listing" && rm -f "$D/miso_1.0.0.jmo.listing.bak"
+out=$(run_helper "$D") && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ -f "$D/miso-1.0.0-win-x64.jmo" ]; then
+  ok "T12b backslash (Windows 7z) listing normalised; helper succeeds"
+else
+  bad "T12b backslash listing failed (rc=$rc; tail: $(printf '%s' "$out" | tail -2 | tr '\n' '|'))"
+fi
+
 # === T13: size floor ============================================================
 D="$WORK/t13"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$GOOD_FILE"
 dd if=/dev/zero of="$D/miso_1.0.0.jmo" bs=1024 count=1 status=none

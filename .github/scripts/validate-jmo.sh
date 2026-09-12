@@ -64,6 +64,9 @@ echo "${JMO} is ${SIZE} bytes"
 # --- 2. structural checks against the archive listing -----------------------
 LISTING="${TEMPDIR}/jmo-listing.txt"
 7z l "${JMO}" > "${LISTING}"
+# 7-Zip on Windows lists entry paths with backslash separators (miso\x.yaml);
+# normalise to forward slashes so the fixed-item checks below match either way
+sed -i.bak 's|\\|/|g' "${LISTING}" && rm -f "${LISTING}.bak"
 check_in_jmo() {
   grep -Fq "$1" "${LISTING}" || { echo "::error::missing from ${JMO}: $1" >&2; exit 1; }
 }
