@@ -120,9 +120,16 @@ jobs:
     with:
       sha: ${{ needs.prepare.outputs.sha }}
 
+  build-macos-arm64:
+    name: Build .jmo (macos-arm64)
+    needs: prepare
+    uses: ./.github/workflows/build-macos-arm64.yml
+    with:
+      sha: ${{ needs.prepare.outputs.sha }}
+
   draft:
     name: Create or refresh draft release
-    needs: [prepare, build-windows, build-macos-intel]
+    needs: [prepare, build-windows, build-macos-intel, build-macos-arm64]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -175,6 +182,7 @@ jobs:
           ls -l dist
           test -f "dist/miso-${VERSION}-win-x64.jmo" || { echo "::error::missing dist/miso-${VERSION}-win-x64.jmo"; exit 1; }
           test -f "dist/miso-${VERSION}-macos-x64.jmo" || { echo "::error::missing dist/miso-${VERSION}-macos-x64.jmo"; exit 1; }
+          test -f "dist/miso-${VERSION}-macos-arm64.jmo" || { echo "::error::missing dist/miso-${VERSION}-macos-arm64.jmo"; exit 1; }
 
       - name: Create or refresh the draft release
         env:
@@ -182,7 +190,7 @@ jobs:
           SHA: ${{ needs.prepare.outputs.sha }}
         run: |
           set -euo pipefail
-          ASSETS=("dist/miso-${VERSION}-win-x64.jmo" "dist/miso-${VERSION}-macos-x64.jmo")
+          ASSETS=("dist/miso-${VERSION}-win-x64.jmo" "dist/miso-${VERSION}-macos-x64.jmo" "dist/miso-${VERSION}-macos-arm64.jmo")
           VIEW_ERR=$(gh release view "${TAG}" --json isDraft 2>&1) && VIEW_RC=0 || VIEW_RC=$?
           if [ "${VIEW_RC}" -eq 0 ]; then
             IS_DRAFT=$(printf '%s' "${VIEW_ERR}" | jq -e '.isDraft == true' >/dev/null 2>&1 && echo true || echo false)
@@ -200,5 +208,4 @@ jobs:
               --notes-file RELEASE_NOTES.md
           fi
           echo "draft ready: attach the Apple-Silicon build, then publish with:"
-          echo "  gh release upload ${TAG} miso-${VERSION}-macos-arm64.jmo"
-          echo "  gh release edit ${TAG} --draft=false"
+                    echo "  gh release edit ${TAG} --draft=false"
