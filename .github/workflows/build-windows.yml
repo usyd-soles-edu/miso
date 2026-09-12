@@ -1,0 +1,163 @@
+# Manually triggered Windows x64 .jmo build.
+#
+# Builds a sideloadable miso .jmo for students while the module awaits jamovi
+# library acceptance. The build downloads the official jamovi Windows release
+# and runs the jamovi compiler (bundled in the jmvtools source package)
+# directly with the runner's Node.js — no R, jamovi, or jmvtools installation
+# happens on the runner. The .jmo is uploaded as a workflow artifact only:
+# no release is created and no write permissions are requested.
+#
+# Note: a workflow_dispatch workflow only appears in the Actions tab once this
+# file is present on the default branch (main).
+#
+# When a new jamovi series is released, bump JAMOVI_VERSION and
+# JMVTOOLS_VERSION together (jmvtools versions track jamovi releases on
+# repo.jamovi.org).
+
+name: Build Windows .jmo (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  JAMOVI_VERSION: '2.7.38.0'
+  JMVTOOLS_VERSION: '28.3'
+
+jobs:
+  build-windows:
+    name: Build .jmo (win-x64)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check version metadata is consistent
+        run: |
+          set -euo pipefail
+          DESC_VERSION=$(sed -n 's/^Version:[[:space:]]*//p' DESCRIPTION | head -n1 | tr -d '\r')
+          YAML_VERSION=$(sed -n 's/^version:[[:space:]]*//p' jamovi/0000.yaml | head -n1 | tr -d "\r\"'")
+          echo "DESCRIPTION: ${DESC_VERSION}"
+          echo "jamovi/0000.yaml: ${YAML_VERSION}"
+          test -n "${DESC_VERSION}" || { echo '::error::DESCRIPTION has no Version field'; exit 1; }
+          test "${DESC_VERSION}" = "${YAML_VERSION}" || {
+            echo "::error::Version mismatch - DESCRIPTION is '${DESC_VERSION}' but jamovi/0000.yaml is '${YAML_VERSION}'. Bump both together."
+            exit 1
+          }
+          echo "MISO_VERSION=${DESC_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Cache jamovi download
+        id: cache-jamovi
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/jamovi-dist.zip
+          key: jamovi-${{ env.JAMOVI_VERSION }}-win-x64
+
+      - name: Download jamovi
+        if: steps.cache-jamovi.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          # dl-cdn.jamovi.org (Cloudflare) rejects requests without browser-like headers
+          curl -fL --retry 3 --max-time 900 \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            -H "Referer: https://www.jamovi.org/" \
+            -o "${RUNNER_TEMP}/jamovi-dist.zip" \
+            "https://dl-cdn.jamovi.org/jamovi-${JAMOVI_VERSION}-win-x64.zip"
+
+      - name: Extract jamovi
+        run: |
+          set -euo pipefail
+          7z x -y -o"${RUNNER_TEMP}/jamovi-dist" "${RUNNER_TEMP}/jamovi-dist.zip" > /dev/null
+          # the zip contains a single top-level "jamovi/" directory
+          JAMOVI_HOME=$(cygpath -m "${RUNNER_TEMP}")/jamovi-dist/jamovi
+          test -f "${JAMOVI_HOME}/bin/jamovi.exe" || { echo '::error::bin/jamovi.exe not found in the extracted jamovi distribution'; exit 1; }
+          echo "JAMOVI_HOME=${JAMOVI_HOME}" >> "$GITHUB_ENV"
+
+      - name: Fetch jamovi compiler (bundled in the jmvtools source package)
+        run: |
+          set -euo pipefail
+          # git-bash tar parses "D:\..." paths as remote hosts; hand it a POSIX path instead
+          TMP_POSIX=$(cygpath -u "${RUNNER_TEMP}")
+          curl -fsSL --retry 3 -o "${TMP_POSIX}/jmvtools.tar.gz" \
+            "https://repo.jamovi.org/src/contrib/jmvtools_${JMVTOOLS_VERSION}.tar.gz"
+          tar xzf "${TMP_POSIX}/jmvtools.tar.gz" -C "${TMP_POSIX}"
+          test -f "${TMP_POSIX}/jmvtools/inst/node_modules/jamovi-compiler/index.js" || {
+            echo "::error::jamovi-compiler not found in the jmvtools ${JMVTOOLS_VERSION} tarball - the package layout may have changed"
+            exit 1
+          }
+
+      - name: Build module
+        run: |
+          set -euo pipefail
+          node "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/index.js" \
+            --build . --home "${JAMOVI_HOME}"
+
+      - name: Validate and collect artifact
+        run: |
+          set -euo pipefail
+          JMO="miso_${MISO_VERSION}.jmo"
+          test -f "${JMO}" || { echo "::error::${JMO} was not produced in the repository root"; exit 1; }
+
+          # sanity floor only: a real .jmo bundles compiled R packages
+          MIN_BYTES=1000000
+          SIZE=$(wc -c < "${JMO}")
+          echo "${JMO} is ${SIZE} bytes"
+          test "${SIZE}" -gt "${MIN_BYTES}" || { echo "::error::${JMO} is unexpectedly small (${SIZE} bytes); dependency bundling probably failed"; exit 1; }
+
+          # structural checks: the archive must contain the module manifest,
+          # the miso R package, the external dependencies that jamovi does not
+          # bundle itself (ggplot2/R6/jmvcore ship with jamovi), the module
+          # dataset, and one UI bundle per analysis in jamovi/0000.yaml.
+          # Keep this list in sync when analyses or datasets are added.
+          # The listing is written to a file once and grepped from there:
+          # under pipefail, "7z l | grep -Fq" can fail spuriously because
+          # grep -q exits on the first match and 7z receives SIGPIPE while
+          # still writing a large listing.
+          LISTING=$(cygpath -u "${RUNNER_TEMP}")/jmo-listing.txt
+          7z l "${JMO}" > "${LISTING}"
+          check_in_jmo() {
+            grep -Fq "$1" "${LISTING}" || { echo "::error::missing from ${JMO}: $1"; exit 1; }
+          }
+          check_in_jmo 'miso/jamovi.yaml'
+          check_in_jmo 'miso/R/miso/DESCRIPTION'
+          check_in_jmo 'miso/R/vegan/DESCRIPTION'
+          check_in_jmo 'miso/R/permute/DESCRIPTION'
+          check_in_jmo 'miso/data/dune_meadows.csv'
+          for analysis in permanova anosim permdisp nmds pcoa cluster simper; do
+            check_in_jmo "miso/ui/${analysis}.js"
+          done
+
+          # content checks: the compiled manifest and package metadata must
+          # carry the module name and the version being built. Line endings
+          # are normalized first (a Windows build can bundle CRLF files, and
+          # the git checkout on the runner can introduce CRLF into the
+          # DESCRIPTION), and matching uses fixed-string whole-line compares
+          # (-Fxq) so the version is compared literally: 1.0.0 can never
+          # regex-match corrupted metadata such as 1x0x0.
+          VALDIR=$(cygpath -u "${RUNNER_TEMP}")/validate
+          7z e -y -o"${VALDIR}" "${JMO}" miso/jamovi.yaml miso/R/miso/DESCRIPTION > /dev/null
+          tr -d '\r' < "${VALDIR}/jamovi.yaml" > "${VALDIR}/jamovi.yaml.n"
+          tr -d '\r' < "${VALDIR}/DESCRIPTION" > "${VALDIR}/DESCRIPTION.n"
+          grep -Fxq 'name: miso' "${VALDIR}/jamovi.yaml.n" || { echo '::error::compiled jamovi.yaml does not declare name: miso'; exit 1; }
+          grep -Fxq "version: ${MISO_VERSION}" "${VALDIR}/jamovi.yaml.n" || { echo "::error::compiled jamovi.yaml version does not match ${MISO_VERSION}"; exit 1; }
+          grep -Fxq 'Package: miso' "${VALDIR}/DESCRIPTION.n" || { echo '::error::bundled miso package does not declare Package: miso'; exit 1; }
+          grep -Fxq "Version: ${MISO_VERSION}" "${VALDIR}/DESCRIPTION.n" || { echo "::error::bundled miso package version does not match ${MISO_VERSION}"; exit 1; }
+
+          # platform-suffixed name so future macOS artifacts cannot be confused with it
+          OUT="miso-${MISO_VERSION}-win-x64.jmo"
+          mv "${JMO}" "${OUT}"
+          echo "JMO_OUT=${OUT}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: miso-win-x64-v${{ env.MISO_VERSION }}
+          path: ${{ env.JMO_OUT }}
+          retention-days: 14
+          if-no-files-found: error
