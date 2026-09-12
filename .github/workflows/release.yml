@@ -62,10 +62,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          case "${TAG}" in
-            v[0-9]*.[0-9]*.[0-9]*) ;;
-            *) echo "::error::tag '${TAG}' does not look like vX.Y.Z"; exit 1 ;;
-          esac
+          # strict numeric vX.Y.Z: rejects v1.2.3-beta, v1x.2.3, v1.2.3.4, etc.
+          if ! [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::tag '${TAG}' does not look like vX.Y.Z"; exit 1
+          fi
           VERSION="${TAG#v}"
           SHA=$(git rev-parse "refs/tags/${TAG}^{commit}")
           echo "tag ${TAG} -> commit ${SHA} (version ${VERSION})"
@@ -85,16 +85,22 @@ jobs:
           }
 
           # fail fast on an already-published release; a draft is fine (rerun
-          # path refreshes its assets) and a missing release is the normal path
-          if gh release view "${TAG}" --json isDraft >/dev/null 2>&1; then
-            IS_DRAFT=$(gh release view "${TAG}" --json isDraft --jq '.isDraft')
+          # path refreshes its assets) and a missing release is the normal path.
+          # "missing" must be CONFIRMED (a not-found response); network, auth,
+          # or API errors fail closed rather than being mistaken for absence.
+          VIEW_ERR=$(gh release view "${TAG}" --json isDraft 2>&1) && VIEW_RC=0 || VIEW_RC=$?
+          if [ "${VIEW_RC}" -eq 0 ]; then
+            IS_DRAFT=$(printf '%s' "${VIEW_ERR}" | jq -e '.isDraft == true' >/dev/null 2>&1 && echo true || echo false)
             test "${IS_DRAFT}" = "true" || {
               echo "::error::release ${TAG} is already PUBLISHED - refusing to touch student-facing assets"
               exit 1
             }
             echo "draft release for ${TAG} exists; CI assets will be refreshed"
-          else
+          elif printf '%s' "${VIEW_ERR}" | grep -qi 'not found'; then
             echo "no existing release for ${TAG}; a draft will be created"
+          else
+            echo "::error::could not determine release state for ${TAG}: ${VIEW_ERR}"
+            exit 1
           fi
 
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
@@ -122,6 +128,7 @@ jobs:
     permissions:
       contents: write
     env:
+      GH_REPO: ${{ github.repository }}
       TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
@@ -145,11 +152,15 @@ jobs:
         run: |
           set -euo pipefail
           ASSETS=("dist/miso-${VERSION}-win-x64.jmo" "dist/miso-${VERSION}-macos-x64.jmo")
-          if gh release view "${TAG}" --json isDraft >/dev/null 2>&1; then
-            IS_DRAFT=$(gh release view "${TAG}" --json isDraft --jq '.isDraft')
+          VIEW_ERR=$(gh release view "${TAG}" --json isDraft 2>&1) && VIEW_RC=0 || VIEW_RC=$?
+          if [ "${VIEW_RC}" -eq 0 ]; then
+            IS_DRAFT=$(printf '%s' "${VIEW_ERR}" | jq -e '.isDraft == true' >/dev/null 2>&1 && echo true || echo false)
             test "${IS_DRAFT}" = "true" || { echo "::error::release ${TAG} is published; refusing to modify it"; exit 1; }
             echo "draft exists; refreshing CI assets"
             gh release upload "${TAG}" "${ASSETS[@]}" --clobber
+          elif ! printf '%s' "${VIEW_ERR}" | grep -qi 'not found'; then
+            echo "::error::could not determine release state for ${TAG}: ${VIEW_ERR}"
+            exit 1
           else
             echo "creating draft release ${TAG}"
             gh release create "${TAG}" "${ASSETS[@]}" \
