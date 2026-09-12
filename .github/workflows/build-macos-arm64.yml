@@ -1,9 +1,9 @@
 # Manually triggered macOS (Apple Silicon arm64) .jmo build.
 #
-# Companion to build-windows.yml: builds the macos-x64 variant that Intel
-# Mac students need (a macos-arm64 .jmo built on Apple Silicon does not run
-# on Intel Macs, and vice versa). Same contract: downloads the official
-# jamovi Intel macOS release, runs the jamovi compiler (bundled in the
+# Companion to build-windows.yml and build-macos-intel.yml: builds the
+# macos-arm64 variant for Apple Silicon Macs (a macos-arm64 .jmo does not
+# run on Intel Macs, and vice versa). Same contract: downloads the official
+# jamovi Apple Silicon macOS release, runs the jamovi compiler (bundled in the
 # jmvtools source package) with the runner's Node.js — no R, jamovi, or
 # jmvtools installation happens on the runner. The .jmo is uploaded as a
 # workflow artifact only: no release is created and no write permissions
