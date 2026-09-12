@@ -132,6 +132,37 @@ jobs:
       TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
+      - name: Checkout the released tree
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 1
+
+      - name: Extract release notes from NEWS.md
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          # keep the first heading that mentions this version, up to the next
+          # heading of the same level or shallower (NEWS.md convention); fall
+          # back to generated notes when no matching section exists
+          : > RELEASE_NOTES.md
+          if [ -f NEWS.md ]; then
+            awk -v v="$VERSION" '
+              BEGIN { esc = v; gsub(/\./, "\\.", esc); re = "(^|[^0-9.])" esc "([^0-9.]|$)" }
+              /^#+[[:space:]]/ {
+                level = index($0, " ") - 1
+                if (inside && level <= want) exit
+                if (!inside && $0 ~ re) { inside = 1; want = level; print; next }
+              }
+              inside { print }
+            ' NEWS.md > RELEASE_NOTES.md
+          fi
+          if [ ! -s RELEASE_NOTES.md ]; then
+            printf 'MISO %s.\n' "$VERSION" > RELEASE_NOTES.md
+          fi
+          cat RELEASE_NOTES.md
+
       - name: Download built .jmo artifacts
         uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
@@ -166,7 +197,7 @@ jobs:
             gh release create "${TAG}" "${ASSETS[@]}" \
               --draft --target "${SHA}" \
               --title "MISO ${TAG}" \
-              --generate-notes
+              --notes-file RELEASE_NOTES.md
           fi
           echo "draft ready: attach the Apple-Silicon build, then publish with:"
           echo "  gh release upload ${TAG} miso-${VERSION}-macos-arm64.jmo"
