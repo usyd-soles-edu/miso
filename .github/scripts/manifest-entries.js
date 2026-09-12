@@ -3,7 +3,7 @@
  * manifest-entries.js — parse and validate jamovi/0000.yaml with a real YAML
  * parser, then emit the validated entries as line-based lists.
  *
- * CI-only helper for .github/workflows/build-windows.yml. The parser is the
+ * CI-only helper for .github/workflows/build-jmo.yml. The parser is the
  * js-yaml bundled inside the checksum-verified jmvtools tarball that the
  * workflow already downloads and verifies — no new dependency is installed.
  *
