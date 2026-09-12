@@ -1,0 +1,166 @@
+# Manually triggered macOS (Apple Silicon arm64) .jmo build.
+#
+# Companion to build-windows.yml and build-macos-intel.yml: builds the
+# macos-arm64 variant for Apple Silicon Macs (a macos-arm64 .jmo does not
+# run on Intel Macs, and vice versa). Same contract: downloads the official
+# jamovi Apple Silicon macOS release, runs the jamovi compiler (bundled in the
+# jmvtools source package) with the runner's Node.js — no R, jamovi, or
+# jmvtools installation happens on the runner. The .jmo is uploaded as a
+# workflow artifact only: no release is created and no write permissions
+# are requested.
+#
+# Platform differences from the Windows workflow:
+#   * jamovi ships as a .dmg: mounted read-only with hdiutil, jamovi.app
+#     copied to runner temp, then detached.
+#   * macOS ships `shasum` (not GNU `sha256sum`): the pin checks use the
+#     equivalent `shasum -a 256 -c -` form.
+#   * 7-Zip is not preinstalled: installed via Homebrew so the exact same
+#     validated .github/scripts/validate-jmo.sh helper runs unchanged.
+#
+# Note: a workflow_dispatch workflow only appears in the Actions tab once
+# this file is present on the default branch (main).
+#
+# When a new jamovi series is released, bump JAMOVI_VERSION and
+# JMVTOOLS_VERSION together (jmvtools versions track jamovi releases on
+# repo.jamovi.org).
+
+name: Build macOS Apple Silicon .jmo (manual)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      sha:
+        description: 'Exact commit SHA to build (defaults to the dispatched ref)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  JAMOVI_VERSION: '2.7.38.0'
+  JAMOVI_SHA256: 'b694ec11eba6693586304b697d5a7ecfe7ae1e7295b6e84002f9da837a5d85fc'
+  JMVTOOLS_VERSION: '28.3'
+  JMVTOOLS_SHA256: 'c34ec517fccc077ba5907d4d650c22d69bae1aac9de9242da3285e318523f730'
+
+jobs:
+  build-macos-arm64:
+    name: Build .jmo (macos-arm64)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+
+      - name: Check version metadata is consistent
+        run: |
+          set -euo pipefail
+          DESC_VERSION=$(sed -n 's/^Version:[[:space:]]*//p' DESCRIPTION | head -n1 | tr -d '\r')
+          YAML_VERSION=$(sed -n 's/^version:[[:space:]]*//p' jamovi/0000.yaml | head -n1 | tr -d "\r\"'")
+          echo "DESCRIPTION: ${DESC_VERSION}"
+          echo "jamovi/0000.yaml: ${YAML_VERSION}"
+          test -n "${DESC_VERSION}" || { echo '::error::DESCRIPTION has no Version field'; exit 1; }
+          test "${DESC_VERSION}" = "${YAML_VERSION}" || {
+            echo "::error::Version mismatch - DESCRIPTION is '${DESC_VERSION}' but jamovi/0000.yaml is '${YAML_VERSION}'. Bump both together."
+            exit 1
+          }
+          echo "MISO_VERSION=${DESC_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Cache jamovi download
+        id: cache-jamovi
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/jamovi-dist.dmg
+          key: jamovi-${{ env.JAMOVI_VERSION }}-macos-arm64-${{ env.JAMOVI_SHA256 }}
+
+      - name: Download jamovi
+        if: steps.cache-jamovi.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          # dl-cdn.jamovi.org (Cloudflare) rejects requests without browser-like headers
+          curl -fL --retry 3 --max-time 900 \
+            -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            -H "Referer: https://www.jamovi.org/" \
+            -o "${RUNNER_TEMP}/jamovi-dist.dmg" \
+            "https://dl-cdn.jamovi.org/jamovi-${JAMOVI_VERSION}-macos-arm64.dmg"
+
+      - name: Install 7-Zip (for the validation helper)
+        run: |
+          set -euo pipefail
+          command -v 7z >/dev/null 2>&1 || brew install p7zip
+          command -v 7z >/dev/null 2>&1 || { echo '::error::7z unavailable after brew install p7zip'; exit 1; }
+
+      - name: Verify and mount jamovi
+        run: |
+          set -euo pipefail
+          # integrity pin: verified on every run, including cache hits, so a
+          # tampered or corrupted download/cache entry can never be mounted.
+          # The pinned hash is self-recorded from the version-addressed URL
+          # above (jamovi publishes no checksum for these disk images).
+          echo "${JAMOVI_SHA256} *${RUNNER_TEMP}/jamovi-dist.dmg" | shasum -a 256 -c -
+          MNT=$(hdiutil attach -nobrowse -readonly "${RUNNER_TEMP}/jamovi-dist.dmg" | grep -o '/Volumes/.*' | head -1)
+          cp -R "${MNT}/jamovi.app" "${RUNNER_TEMP}/jamovi.app"
+          hdiutil detach "${MNT}" -quiet || true
+          JAMOVI_HOME="${RUNNER_TEMP}/jamovi.app"
+          test -d "${JAMOVI_HOME}/Contents" || { echo '::error::jamovi.app/Contents not found in the mounted disk image'; exit 1; }
+          echo "JAMOVI_HOME=${JAMOVI_HOME}" >> "$GITHUB_ENV"
+
+      - name: Fetch jamovi compiler (bundled in the jmvtools source package)
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/jmvtools.tar.gz" \
+            "https://repo.jamovi.org/src/contrib/jmvtools_${JMVTOOLS_VERSION}.tar.gz"
+          # integrity pin: the tarball's code runs on this runner via node, so
+          # verify it before extraction. Self-recorded hash (repo.jamovi.org
+          # publishes no checksum for archived jmvtools source versions).
+          echo "${JMVTOOLS_SHA256} *${RUNNER_TEMP}/jmvtools.tar.gz" | shasum -a 256 -c -
+          tar xzf "${RUNNER_TEMP}/jmvtools.tar.gz" -C "${RUNNER_TEMP}"
+          test -f "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/index.js" || {
+            echo "::error::jamovi-compiler not found in the jmvtools ${JMVTOOLS_VERSION} tarball - the package layout may have changed"
+            exit 1
+          }
+          # the manifest validator uses the js-yaml bundled inside this same
+          # checksum-verified tarball; confirm it is present so a layout
+          # change fails here rather than deep inside validation
+          test -f "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" || {
+            echo '::error::bundled js-yaml parser not found alongside jamovi-compiler'
+            exit 1
+          }
+
+      - name: Build module
+        run: |
+          set -euo pipefail
+          node "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/index.js" \
+            --build . --home "${JAMOVI_HOME}"
+
+      - name: Validate and collect artifact
+        run: |
+          set -euo pipefail
+          # all validation logic lives in the tracked CI helper so it is
+          # testable: size floor, archive-listing checks for every manifest
+          # dataset and analysis, exact-line metadata checks, and the
+          # platform-suffixed rename with JMO_OUT export. macOS 7z lists
+          # forward-slash paths, so no separator normalisation is needed here.
+          bash .github/scripts/validate-jmo.sh \
+            --jmo "miso_${MISO_VERSION}.jmo" \
+            --manifest jamovi/0000.yaml \
+            --parser "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" \
+            --version "${MISO_VERSION}" \
+            --module miso \
+            --suffix macos-arm64 \
+            --tempdir "${RUNNER_TEMP}/validate" \
+            --github-env "${GITHUB_ENV}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: miso-macos-arm64-v${{ env.MISO_VERSION }}
+          path: ${{ env.JMO_OUT }}
+          retention-days: 14
+          if-no-files-found: error
