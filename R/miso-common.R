@@ -223,17 +223,40 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         seed=seed)
 }
 
+# Empty tables follow the analysis's option policy. Notes describe a fitted
+# result, so they must not survive a return to the empty/incomplete state.
+miso_show_empty_tables <- function(results, visible) {
+    for (name in names(visible)) {
+        table <- results[[name]]
+        for (key in names(table$.__enclos_env__$private$.notes))
+            table$setNote(key=key, note=NULL)
+        table$setVisible(visible[[name]])
+    }
+}
+
+# jamovi's zero-row renderer returns before clearing the previous footer.
+# Finish empty visible tables with a genuinely blank row so stale notes disappear.
+# Run this after population/early returns; never insert a row into a fitted table.
+miso_finish_empty_tables <- function(results) {
+    for (table in results$items) {
+        if (inherits(table, "Table") && isTRUE(table$visible) &&
+                length(table$rowKeys) == 0L)
+            table$addRow(rowKey=".empty", values=miso_blank_table_values(table))
+    }
+}
+
 miso_clear_table <- function(table) {
     try(table$deleteRows(), silent=TRUE)
     if (!is.null(table$.__enclos_env__$private$.rowNames))
         table$.__enclos_env__$private$.rowNames <- character()
 }
 
-# Typed blank values for one row of a result table: blanks never replace the
-# Cell objects, only their values.
+# Logical NA is the jamovi missing-cell sentinel. NA_real_ is serialized as a
+# numeric NaN by jmvcore, which renders as "NaN" in the app. Blanking preserves
+# Cell objects and the table column types.
 miso_blank_table_values <- function(table) {
     setNames(lapply(table$columns, function(column) {
-        if (column$type %in% c("integer", "number")) NA_real_ else ""
+        if (column$type %in% c("integer", "number")) NA else ""
     }), vapply(table$columns, `[[`, character(1), "name"))
 }
 
@@ -341,7 +364,9 @@ miso_set_seed <- function(prep) {
 miso_num_or_na <- function(x) {
     x <- suppressWarnings(as.numeric(x))
     if (length(x) == 0 || is.na(x) || ! is.finite(x))
-        NA_real_
+        # jmvcore serializes numeric NA as NaN. A logical NA is its missing-cell
+        # sentinel, and renders as the standard native missing-value marker.
+        NA
     else
         x
 }

@@ -29,7 +29,7 @@ analyses:
     name: permanova
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: PERMANOVA
     menuSubtitle: Test group differences
     description: >-
@@ -40,7 +40,7 @@ analyses:
     name: anosim
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: ANOSIM
     menuSubtitle: Rank-based alternative
     description: >-
@@ -51,7 +51,7 @@ analyses:
     name: permdisp
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: PERMDISP
     menuSubtitle: Check group dispersion
     description: >-
@@ -62,7 +62,7 @@ analyses:
     name: nmds
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: nMDS
     menuSubtitle: Visualise sample patterns
     description: >-
@@ -73,7 +73,7 @@ analyses:
     name: pcoa
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: PCoA
     menuSubtitle: Visualise distance structure
     description: >-
@@ -85,7 +85,7 @@ analyses:
     name: cluster
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: Cluster analysis
     menuSubtitle: Visualise sample similarity
     description: >-
@@ -96,7 +96,7 @@ analyses:
     name: simper
     ns: miso
     category: analyses
-    menuGroup: miso
+    menuGroup: Multivariate
     menuTitle: SIMPER
     menuSubtitle: Feature contributions
     description: >-

@@ -10,7 +10,18 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .settingsRowNo = 0L,
         .autoLabelLimit = 40L,
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    dendrogramStructure=TRUE, membership=isTRUE(self$options$defineClusters)))
+        },
+
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- miso_options_signature(
                 self$options, excluded="sampleLabels", data=self$data)
             if (!is.null(private$.lastStructuralKey) &&
@@ -38,14 +49,8 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.clearResults()
 
             if (length(self$options$vars) == 0L) {
-                private$.showGuidance(
-                    paste(
-                        "Cluster analysis groups samples with similar multivariate composition.",
-                        "1. Add one or more numeric Feature variables.",
-                        "2. Optionally add a Sample labels variable.",
-                        "Results update automatically.",
-                        sep="\n"),
-                    title="Getting started")
+                if (!miso_is_missing_var(self$options$labels))
+                    private$.showGuidance("Add one or more numeric Feature variables.")
                 return()
             }
 
@@ -141,8 +146,10 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .refreshDisplayOnly = function() {
-            if (is.null(private$.state$fit))
+            if (is.null(private$.state$fit)) {
+                private$.showEmptyTables()
                 return()
+            }
             labelChoice <- private$.effectiveSampleLabelMode()
             private$.state$labelMode <- labelChoice$mode
             private$.state$labelModeSource <- labelChoice$source
@@ -187,8 +194,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "membership"
                     ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("dendrogramStructure"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -205,9 +211,7 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     ))
                 self$results[[name]]$setVisible(TRUE)
             self$results$dendrogramDescription$setVisible(FALSE)
-            if (!is.null(private$.state$membership)) {
-                self$results$membership$setVisible(TRUE)
-            }
+            self$results$membership$setVisible(!is.null(private$.state$membership))
         },
 
 

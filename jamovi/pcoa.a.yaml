@@ -1,7 +1,7 @@
 ---
 name: pcoa
 title: PCoA
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: PCoA
 menuSubtitle: Visualise distance structure
 version: '1.0.0'

@@ -35,6 +35,28 @@ test_that("nMDS lifecycle seams retain the fitted state contract", {
     expect_equal(nrow(analysis$results$sites$asDF), nrow(nmds_state_data()))
 })
 
+test_that("two-dimensional nMDS serializes unavailable third coordinates as missing", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
+    analysis <- run_nmds_private(
+        nmds_state_data(),
+        vars=paste0("feature_0", 1:4),
+        nmdsSpecies=TRUE,
+        nmdsEnv="temperature",
+        seed=123,
+        nmdsTrymax=20)
+    for (name in c("sites", "features", "envfit")) {
+        table <- analysis$results[[name]]
+        expect_false(table$getColumn("NMDS3")$visible, info=name)
+        nmds3 <- Filter(function(column) identical(column$name, "NMDS3"),
+            table$asProtoBuf()$table$columns)[[1L]]
+        for (cell in nmds3$cells) {
+            expect_true(cell$has("o"), info=name)
+            expect_false(cell$has("d"), info=name)
+        }
+    }
+})
+
 nmds_squish <- function(value) {
     trimws(gsub("[[:space:]]+", " ", as.character(value)))
 }
@@ -214,22 +236,14 @@ expect_nmds_plot_inside_frame <- function(data) {
 expect_nmds_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("sites", "stress")
     for (name in hidden)
-        if (name %in% fixed)
-            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
-        else
-            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
-expect_only_nmds_guidance <- function(result) {
-    expect_nmds_visibility(
-        result,
-        "guidance",
-        c(
-            "warnings", "ordination", "ordinationDescription",
-            "stress", "shepard", "shepardDescription", "envfit",
-            "sites", "features"))
+expect_nmds_correction_with_tables <- function(result) {
+    expect_nmds_visibility(result,
+        visible=c("guidance", "stress", "sites"),
+        hidden=c("warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
 }
 
 find_nmds_yaml_node <- function(node, name) {
@@ -356,10 +370,9 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
 
     noneAnalysis <- run_nmds_private(data, vars=character())
     none <- noneAnalysis$results
-    expect_match(
-        nmds_squish(none$guidance$asString()),
-        "at least two numeric Feature variables")
-    expect_only_nmds_guidance(none)
+    expect_false(none$guidance$visible)
+    for (name in c("sites", "stress", "shepardPairs"))
+        expect_true(none[[name]]$visible)
     expect_null(noneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 
     oneAnalysis <- run_nmds_private(data, vars="feature_01")
@@ -367,7 +380,7 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
     expect_match(
         nmds_squish(one$guidance$asString()),
         "at least two usable numeric Feature variables")
-    expect_only_nmds_guidance(one)
+    expect_nmds_correction_with_tables(one)
     expect_null(oneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 })
 
@@ -463,7 +476,7 @@ test_that("too few usable sites gives dimensionality-specific guidance", {
     expect_match(guidance, "at least 3 usable sites")
     expect_match(guidance, "missing\\s+feature values")
     expect_match(guidance, "Feature variable assignments")
-    expect_only_nmds_guidance(result)
+    expect_nmds_correction_with_tables(result)
 })
 
 test_that("fewer than two retained features returns one correction state", {
@@ -477,7 +490,7 @@ test_that("fewer than two retained features returns one correction state", {
     expect_match(
         nmds_squish(result$guidance$asString()),
         "at least two usable numeric Feature variables")
-    expect_only_nmds_guidance(result)
+    expect_nmds_correction_with_tables(result)
 })
 
 test_that("signed transformations name incompatible dissimilarities", {
@@ -494,7 +507,7 @@ test_that("signed transformations name incompatible dissimilarities", {
     expect_match(
         guidance,
         "Euclidean, Manhattan, Canberra, Gower, or\\s+Mahalanobis")
-    expect_only_nmds_guidance(result)
+    expect_nmds_correction_with_tables(result)
 })
 
 test_that("signed transformations retain compatible Euclidean workflows", {
@@ -524,7 +537,7 @@ test_that("non-finite transformations give transformation-specific guidance", {
     expect_match(guidance, "Standardize")
     expect_match(guidance, "empty samples")
     expect_match(guidance, "feature variation")
-    expect_only_nmds_guidance(result)
+    expect_nmds_correction_with_tables(result)
 })
 
 test_that("constant dissimilarities give one actionable failure state", {
@@ -542,7 +555,7 @@ test_that("constant dissimilarities give one actionable failure state", {
     expect_match(guidance, "empty samples")
     expect_match(guidance, "transformation")
     expect_match(guidance, "feature\\s+variation")
-    expect_only_nmds_guidance(result)
+    expect_nmds_correction_with_tables(result)
 })
 
 test_that("model errors return escaped correction-oriented guidance", {
@@ -558,7 +571,7 @@ test_that("model errors return escaped correction-oriented guidance", {
     expect_match(guidance, "nMDS could not find a solution")
     expect_match(guidance, "Technical detail")
     expect_match(guidance, "<failure> &amp; detail", fixed=TRUE)
-    expect_only_nmds_guidance(result)
+    expect_nmds_correction_with_tables(result)
 })
 
 

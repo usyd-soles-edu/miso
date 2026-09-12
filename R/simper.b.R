@@ -8,7 +8,22 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .lastStructuralKey = NULL,
         .lastDisplayKey = NULL,
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    contrasts=TRUE, contributions=TRUE,
+                    variability=isTRUE(self$options$simperDetails),
+                    means=isTRUE(self$options$simperDetails),
+                    assessment=isTRUE(self$options$simperAssess),
+                    heatmapValues=isTRUE(self$options$simperHeatmap)))
+        },
+
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- miso_options_signature(
                 self$options, excluded=c("simperDetails", "simperPlots", "simperHeatmap"),
                 data=self$data)
@@ -36,14 +51,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
                 private$.discardKeyedRows()
-                private$.showGuidance(
-                    paste(
-                        "SIMPER (similarity percentages) explores which features contribute most to Bray-Curtis dissimilarity between groups.",
-                        "1. Add numeric Feature variables, such as species abundances.",
-                        "2. Add one categorical Grouping variable containing at least two observed groups.",
-                        "A contrast is one pair of observed groups being compared.",
-                        sep="\n"),
-                    title="Getting started")
                 return()
             }
             if (! hasVars) {
@@ -138,6 +145,10 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .refreshDisplayOnly = function() {
+            if (is.null(private$.state$descriptive)) {
+                private$.showEmptyTables()
+                return()
+            }
             descriptive <- private$.state$descriptive
             details <- isTRUE(self$options$simperDetails)
             plots <- isTRUE(self$options$simperPlots)
@@ -251,8 +262,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "heatmapValues", "assessment"
                     ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("contrasts", "contributions"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         # Destructive row removal for keyed result tables on rerun paths that

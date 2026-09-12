@@ -1,7 +1,7 @@
 ---
 name: cluster
 title: Cluster analysis
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: Cluster analysis
 menuSubtitle: Visualise sample similarity
 version: '1.0.0'

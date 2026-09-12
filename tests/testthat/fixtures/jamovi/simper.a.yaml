@@ -1,7 +1,7 @@
 ---
 name: simper
 title: SIMPER
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: SIMPER
 menuSubtitle: Feature contributions
 version: '1.0.0'

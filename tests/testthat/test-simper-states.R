@@ -26,12 +26,8 @@ simper_many_feature_data <- function(groups=LETTERS[1:2], per_group=4L) {
 expect_simper_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("contrasts", "contributions")
     for (name in hidden)
-        if (name %in% fixed)
-            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
-        else
-            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_simper_yaml_node <- function(node, name) {
@@ -264,32 +260,18 @@ test_that("new and incomplete SIMPER analyses show one actionable state", {
     analysis <- simperClass$new(options=options, data=data)
     analysis$.__enclos_env__$private$.run()
     new <- analysis$results
-    expect_match(as.character(new$guidance$asString()), "max-width: 44em", fixed=TRUE)
-    expect_match(as.character(new$guidance$asString()), "SIMPER \\(similarity percentages\\)")
-    expect_match(as.character(new$guidance$asString()), "Feature variables")
-    expect_match(as.character(new$guidance$asString()), "Grouping variable")
-    expect_simper_visibility(
-        new,
-        visible="guidance",
-        hidden=c(
-            "warnings", "contrasts", "contributions", "variability",
-            "means", "table", "contributionPlots", "heatmap",
-            "heatmapDescription", "heatmapValues", "assessment")
-    )
+    expect_simper_visibility(new,
+        visible=c("contrasts", "contributions"),
+        hidden=c("guidance", "warnings", "variability", "means", "table", "contributionPlots", "heatmap", "heatmapDescription", "heatmapValues", "assessment"))
 
     features_only <- simper(
         data=data,
         vars=c("sp1", "sp2", "sp3"),
         factor=NULL)
     expect_match(as.character(features_only$guidance$asString()), "Grouping variable")
-    expect_simper_visibility(
-        features_only,
-        visible="guidance",
-        hidden=c(
-            "warnings", "contrasts", "contributions", "variability",
-            "means", "table", "contributionPlots", "heatmap",
-            "heatmapDescription", "heatmapValues", "assessment")
-    )
+    expect_simper_visibility(features_only,
+        visible=c("guidance", "contrasts", "contributions"),
+        hidden=c("warnings", "variability", "means", "table", "contributionPlots", "heatmap", "heatmapDescription", "heatmapValues", "assessment"))
 })
 
 
@@ -472,7 +454,7 @@ test_that("incompatible hidden transformations stop actionably", {
         expect_match(as.character(result$guidance$asString()), "cannot produce valid")
         expect_true(result$contributions$visible)
         expect_false(result$table$visible)
-        expect_equal(nrow(result$contributions$asDF), 0L)
+        expect_miso_empty_table(result$contributions)
         expect_equal(nrow(result$table$asDF), 0L)
     }
 })
@@ -556,19 +538,21 @@ test_that("SIMPER valid invalid valid transitions clear stale output", {
     analysis$run()
     expect_true(analysis$results$guidance$visible)
     expect_true(analysis$results$contributions$visible)
-    expect_equal(length(analysis$results$contributions$rowKeys), 0L)
-    for (name in c("variability", "means", "table")) {
-        expect_false(analysis$results[[name]]$visible)
-        expect_equal(length(analysis$results[[name]]$rowKeys), 0L)
+    expect_miso_empty_table(analysis$results$contributions)
+    expect_false(analysis$results$table$visible)
+    expect_length(analysis$results$table$rowKeys, 0L)
+    for (name in c("variability", "means")) {
+        expect_true(analysis$results[[name]]$visible)
+        expect_miso_empty_table(analysis$results[[name]])
     }
-    expect_false(analysis$results$assessment$visible)
-    expect_equal(length(analysis$results$assessment$rowKeys), 0L)
+    expect_true(analysis$results$assessment$visible)
+    expect_miso_empty_table(analysis$results$assessment)
     expect_false(analysis$results$contributionPlots$visible)
     expect_length(analysis$results$contributionPlots$items, 0L)
     expect_false(analysis$results$heatmap$visible)
     expect_false(analysis$results$heatmapDescription$visible)
-    expect_false(analysis$results$heatmapValues$visible)
-    expect_equal(length(analysis$results$heatmapValues$rowKeys), 0L)
+    expect_true(analysis$results$heatmapValues$visible)
+    expect_miso_empty_table(analysis$results$heatmapValues)
 
     factor_option$.__enclos_env__$private$.value <- "group"
     suppressWarnings(suppressMessages(analysis$run()))

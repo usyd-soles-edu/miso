@@ -15,6 +15,7 @@
 
 miso_display_name <- "Multivariate Inference, Similarity and Ordination (MISO)"
 miso_technical_name <- "miso"
+miso_ribbon_group <- "Multivariate"
 miso_identity_version <- "1.0.0"
 miso_analysis_names <- c(
     "permanova", "anosim", "permdisp", "nmds", "pcoa", "cluster", "simper")
@@ -114,7 +115,7 @@ test_that("the seven public analysis names stay stable under the Multivariate In
         rep(miso_technical_name, length(analyses)))
     expect_identical(
         vapply(analyses, `[[`, character(1), "menuGroup"),
-        rep(miso_technical_name, length(analyses)))
+        rep(miso_ribbon_group, length(analyses)))
 })
 
 test_that("the test suite entry point runs the Multivariate Inference, Similarity and Ordination (MISO) package only", {

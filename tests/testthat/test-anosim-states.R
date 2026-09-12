@@ -38,12 +38,8 @@ anosim_negative_data <- function() {
 expect_anosim_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("global")
     for (name in hidden)
-        if (name %in% fixed)
-            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
-        else
-            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_anosim_yaml_node <- function(node, name) {
@@ -129,21 +125,16 @@ test_that("ANOSIM result schema hides every empty shell", {
         c("category", "pairs", "median", "q1", "q3"))
 })
 
-test_that("new ANOSIM shows only complete getting-started guidance", {
+test_that("new anosim shows empty tables without a tutorial", {
     options <- anosimOptions$new(vars=character(), factor=NULL)
     analysis <- anosimClass$new(options=options, data=anosim_state_data())
     analysis$.__enclos_env__$private$.run()
     result <- analysis$results
 
     guidance <- as.character(result$guidance$asString())
-    expect_match(guidance, "ANOSIM compares ranked")
-    expect_match(guidance, "Feature variables")
-    expect_match(guidance, "Grouping variable")
-    expect_anosim_visibility(
-        result,
-        visible="guidance",
-        hidden=c("warnings", "global", "pairwise")
-    )
+    expect_anosim_visibility(result,
+        visible=c("global"),
+        hidden=c("guidance", "warnings", "pairwise"))
 })
 
 test_that("incomplete and fatal ANOSIM states show one correction", {
@@ -153,11 +144,9 @@ test_that("incomplete and fatal ANOSIM states show one correction", {
         factor=NULL
     )
     expect_match(as.character(features_only$guidance$asString()), "Grouping variable")
-    expect_anosim_visibility(
-        features_only,
-        visible="guidance",
-        hidden=c("warnings", "global", "pairwise")
-    )
+    expect_anosim_visibility(features_only,
+        visible=c("guidance", "global"),
+        hidden=c("warnings", "pairwise"))
 
     invalid <- anosim(
         data=anosim_state_data(),
@@ -168,11 +157,9 @@ test_that("incomplete and fatal ANOSIM states show one correction", {
     expect_match(
         as.character(invalid$guidance$asString()),
         "Blocking[[:space:]|]+variable")
-    expect_anosim_visibility(
-        invalid,
-        visible="guidance",
-        hidden=c("warnings", "global", "pairwise")
-    )
+    expect_anosim_visibility(invalid,
+        visible=c("guidance", "global"),
+        hidden=c("warnings", "pairwise"))
 })
 
 test_that("successful ANOSIM hides empty guidance warning and pairwise shells", {
@@ -184,13 +171,9 @@ test_that("successful ANOSIM hides empty guidance warning and pairwise shells", 
         seed=123
     )))
 
-    expect_anosim_visibility(
-        result,
-        visible=c(
-            "global", "rankPlot",
-            "rankSummary"),
-        hidden=c("guidance", "warnings", "pairwise", "rankPlotDescription")
-    )
+    expect_anosim_visibility(result,
+        visible=c("global", "rankPlot", "rankSummary"),
+        hidden=c("guidance", "warnings", "pairwise", "rankPlotDescription"))
     expect_equal(nrow(result$global$asDF), 1L)
 })
 
@@ -427,8 +410,8 @@ test_that("ANOSIM rank diagnostic clears stale output across option and input ch
     expect_true(analysis$results$guidance$visible)
     expect_false(analysis$results$rankPlot$visible)
     expect_false(analysis$results$rankPlotDescription$visible)
-    expect_false(analysis$results$rankSummary$visible)
-    expect_equal(nrow(analysis$results$rankSummary$asDF), 0L)
+    expect_true(analysis$results$rankSummary$visible)
+    expect_miso_empty_table(analysis$results$rankSummary)
 })
 
 test_that("ANOSIM valid invalid valid transitions clear stale output", {
@@ -450,10 +433,10 @@ test_that("ANOSIM valid invalid valid transitions clear stale output", {
     analysis$run()
     expect_true(analysis$results$guidance$visible)
     expect_true(analysis$results$global$visible)
-    expect_false(analysis$results$pairwise$visible)
+    expect_true(analysis$results$pairwise$visible)
     expect_equal(length(analysis$results$global$rowKeys), 1L)
     expect_true(all(is.na(analysis$results$global$asDF$value)))
-    expect_equal(length(analysis$results$pairwise$rowKeys), 0L)
+    expect_miso_empty_table(analysis$results$pairwise)
 
     factor_option$.__enclos_env__$private$.value <- "group"
     suppressWarnings(suppressMessages(analysis$run()))

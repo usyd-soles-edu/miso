@@ -8,7 +8,19 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .state = list(),
         .lastStructuralKey = NULL,
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    global=TRUE, rankSummary=TRUE,
+                    pairwise=isTRUE(self$options$anosimPairwise)))
+        },
+
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- miso_options_signature(
                 self$options, excluded="showRankPlot", data=self$data)
             if (!is.null(private$.lastStructuralKey) &&
@@ -32,14 +44,6 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
                 private$.discardKeyedRows()
-                private$.showGuidance(
-                    paste(
-                        "ANOSIM compares ranked between-group and within-group dissimilarities.",
-                        "1. Add one or more numeric Feature variables.",
-                        "2. Add one categorical Grouping variable with at least two groups.",
-                        "Results update automatically.",
-                        sep="\n"),
-                    title="Getting started")
                 return()
             }
             if (! hasVars) {
@@ -105,6 +109,10 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .refreshDisplayOnly = function() {
+            if (is.null(private$.state$rankPlotData)) {
+                private$.showEmptyTables()
+                return()
+            }
             showRank <- isTRUE(self$options$showRankPlot) &&
                 !is.null(private$.state$rankPlotData)
             self$results$rankPlot$setVisible(showRank)
@@ -130,8 +138,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "rankSummary"
                     ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("global"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         # Destructive row removal for keyed result tables on rerun paths that

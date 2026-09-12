@@ -29,12 +29,8 @@ test_that("PERMANOVA lifecycle seams retain the fitted output contract", {
 expect_result_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("table")
     for (name in hidden)
-        if (name %in% fixed)
-            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
-        else
-            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 test_that("PERMANOVA study design controls use the full option width", {
@@ -74,24 +70,16 @@ test_that("PERMANOVA outputs use native titles and notes", {
         names(by_name))))
 })
 
-test_that("new PERMANOVA shows only complete getting-started guidance", {
-    result <- permanova(
+test_that("new permanova shows empty tables without a tutorial", {
+    analysis <- permanovaClass$new(
         data=permanova_state_data(),
-        vars=character(),
-        factor="group"
-    )
+        options=permanovaOptions$new(vars=character(), factor=NULL))
+    analysis$.__enclos_env__$private$.run()
+    result <- analysis$results
 
-    guidance <- miso_squish_result(result$guidance)
-    expect_match(guidance, "max-width: 44em", fixed=TRUE)
-    expect_match(guidance, "To run PERMANOVA:", fixed=TRUE)
-    expect_match(guidance, "1. Add one or more numeric Feature variables.", fixed=TRUE)
-    expect_match(guidance, "2. Add one categorical Grouping variable with at least two groups.", fixed=TRUE)
-    expect_match(guidance, "Results update automatically.", fixed=TRUE)
-    expect_result_visibility(
-        result,
-        visible="guidance",
-        hidden=c("warnings", "table", "pairwise")
-    )
+    expect_result_visibility(result,
+        visible=c("table"),
+        hidden=c("guidance", "warnings", "pairwise"))
 })
 
 test_that("features without a group show one actionable correction", {
@@ -105,14 +93,12 @@ test_that("features without a group show one actionable correction", {
     expect_match(guidance, "max-width: 44em", fixed=TRUE)
     expect_match(guidance, "PERMANOVA is waiting for a Grouping variable.", fixed=TRUE)
     expect_match(guidance, "Add one categorical variable containing at least two groups.", fixed=TRUE)
-    expect_result_visibility(
-        result,
-        visible="guidance",
-        hidden=c("warnings", "table", "pairwise")
-    )
+    expect_result_visibility(result,
+        visible=c("guidance", "table"),
+        hidden=c("warnings", "pairwise"))
 })
 
-test_that("preparation failure hides all result shells", {
+test_that("preparation failure preserves empty native tables", {
     data <- permanova_state_data()
     data$sp1[[1L]] <- -1
     result <- permanova(
@@ -122,11 +108,9 @@ test_that("preparation failure hides all result shells", {
     )
 
     expect_match(as.character(result$guidance$asString()), "Negative values")
-    expect_result_visibility(
-        result,
-        visible="guidance",
-        hidden=c("warnings", "table", "pairwise")
-    )
+    expect_result_visibility(result,
+        visible=c("guidance", "table"),
+        hidden=c("warnings", "pairwise"))
 })
 
 test_that("model failure hides prepared but invalid output", {
@@ -143,11 +127,9 @@ test_that("model failure hides prepared but invalid output", {
     )
 
     expect_match(as.character(result$guidance$asString()), "PERMANOVA could not run")
-    expect_result_visibility(
-        result,
-        visible="guidance",
-        hidden=c("warnings", "table", "pairwise")
-    )
+    expect_result_visibility(result,
+        visible=c("guidance", "table"),
+        hidden=c("warnings", "pairwise"))
 })
 
 test_that("standard success hides empty guidance warnings and pairwise output", {
@@ -159,11 +141,9 @@ test_that("standard success hides empty guidance warnings and pairwise output", 
         seed=123
     ))
 
-    expect_result_visibility(
-        result,
+    expect_result_visibility(result,
         visible=c("table"),
-        hidden=c("guidance", "warnings", "pairwise")
-    )
+        hidden=c("guidance", "warnings", "pairwise"))
 })
 
 test_that("PERMANOVA table fields match adonis2 columns by name", {
@@ -242,7 +222,7 @@ test_that("PERMANOVA permutation notices follow the restriction truth table", {
     expect_match(miso_squish_result(results$withinWithoutBlock$guidance),
         "Add one, or select Free permutations.", fixed=TRUE)
     expect_false(results$withinWithoutBlock$warnings$visible)
-    expect_equal(nrow(results$withinWithoutBlock$table$asDF), 0L)
+    expect_miso_empty_table(results$withinWithoutBlock$table)
 
     expect_false(results$withinWithBlock$guidance$visible)
     expect_false(results$withinWithBlock$warnings$visible)
@@ -325,11 +305,9 @@ test_that("successful preprocessing warnings appear with valid inference", {
     ))
 
     expect_match(as.character(result$warnings$asString()), "rows excluded")
-    expect_result_visibility(
-        result,
+    expect_result_visibility(result,
         visible=c("warnings", "table"),
-        hidden=c("guidance", "pairwise")
-    )
+        hidden=c("guidance", "pairwise"))
 })
 
 test_that("within-block permutations require a block", {
@@ -346,11 +324,9 @@ test_that("within-block permutations require a block", {
         as.character(result$guidance$asString()),
         "Within-block permutations require a Blocking variable"
     )
-    expect_result_visibility(
-        result,
-        visible="guidance",
-        hidden=c("warnings", "table", "pairwise")
-    )
+    expect_result_visibility(result,
+        visible=c("guidance", "table"),
+        hidden=c("warnings", "pairwise"))
 })
 
 
@@ -423,7 +399,7 @@ test_that("within-block validation identifies ineffective and singleton blocks",
         miso_squish_result(failed$guidance),
         "Grouping variable does not vary within any block")
     expect_true(failed$table$visible)
-    expect_equal(length(failed$table$rowKeys), 0L)
+    expect_miso_empty_table(failed$table)
 
     singleton <- permanova_state_data()
     singleton$block <- factor(c("solo", "x", "y", "x", "y", "x", "y", "x", "y"))

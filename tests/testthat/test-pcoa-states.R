@@ -366,12 +366,12 @@ test_that("PCoA uses neutral styling beyond the supported group palette", {
     }, logical(1))))
 })
 
-test_that("PCoA analysis hides empty output and clears stale output", {
+test_that("PCoA preserves empty tables and clears stale output", {
     data <- pcoa_small_data()
     vars <- pcoa_feature_names(data)
     emptyAnalysis <- run_pcoa_private(data, character())
     empty <- emptyAnalysis$results
-    expect_true(empty$guidance$visible)
+    expect_false(empty$guidance$visible)
     for (name in c("warnings", "ordination",
             "ordinationDescription", "centroids"))
         expect_false(empty[[name]]$visible, info=name)
@@ -405,8 +405,8 @@ test_that("PCoA analysis hides empty output and clears stale output", {
     analysis$.__enclos_env__$private$.run()
     result <- analysis$results
     expect_true(result$guidance$visible)
-    expect_identical(nrow(result$sites$asDF), 0L)
-    expect_identical(nrow(result$eigenvalues$asDF), 0L)
+    expect_miso_empty_table(result$sites)
+    expect_miso_empty_table(result$eigenvalues)
     expect_false(result$ordination$visible)
 })
 
@@ -434,6 +434,22 @@ test_that("unavailable PCoA ordination keeps its explanation without success pro
     expect_false(grepl(
         "Maps the main dimensions of dissimilarity among samples",
         description, fixed=TRUE))
+})
+
+test_that("unavailable fitted PCoA coordinates serialize as missing values", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
+    analysis <- run_pcoa_private(pcoa_small_data(), "feature_01",
+        distance="euclidean")
+    sites <- analysis$results$sites
+    expect_true(all(is.na(sites$asDF$PCoA2)))
+    expect_true(all(is.finite(sites$asDF$PCoA1)))
+    pcoa2 <- Filter(function(column) identical(column$name, "PCoA2"),
+        sites$asProtoBuf()$table$columns)[[1L]]
+    for (cell in pcoa2$cells) {
+        expect_true(cell$has("o"))
+        expect_false(cell$has("d"))
+    }
 })
 
 test_that("PCoA plot options do not change numerical results", {
