@@ -20,7 +20,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-WF="$ROOT/.github/workflows/build-windows.yml"
+WF="$ROOT/.github/workflows/build-jmo.yml"
 HELPER="$ROOT/.github/scripts/validate-jmo.sh"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/pr3-validate-tests.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
@@ -33,7 +33,9 @@ skipd() { printf 'SKIP %s\n' "$1"; skip=$((skip+1)); }
 # --- fixtures -----------------------------------------------------------------
 TARBALL="${JMVTOOLS_TARBALL:-/tmp/pr3-regression/jmvtools.tar.gz}"
 PIN_JMVTOOLS=$(awk -F"'" '/^[[:space:]]*JMVTOOLS_SHA256:/ {print $2}' "$WF")
-PIN_JAMOVI=$(awk -F"'" '/^[[:space:]]*JAMOVI_SHA256:/ {print $2}' "$WF")
+# the jamovi pin now lives in the matrix rows of the consolidated workflow;
+# extract the win-x64 row's hash (T15d verifies the Windows zip against it)
+PIN_JAMOVI=$(awk '/platform: win-x64/,/jamovi_sha256:/' "$WF" | awk -F"'" '/jamovi_sha256:/ {print $2}')
 
 [ -f "$TARBALL" ] || { echo "FATAL: jmvtools tarball not found at $TARBALL (set JMVTOOLS_TARBALL)"; exit 2; }
 ACTUAL_JMVTOOLS=$(sha256sum "$TARBALL" | awk '{print $1}')

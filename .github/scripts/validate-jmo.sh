@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# validate-jmo.sh — full artifact validation for .github/workflows/build-windows.yml.
+# validate-jmo.sh — full artifact validation for .github/workflows/build-jmo.yml.
 #
 # CI-only helper. Performs, in order:
 #   1. existence and size-floor check on the built .jmo
