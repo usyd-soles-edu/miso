@@ -1,7 +1,7 @@
 ---
 name: permanova
 title: PERMANOVA
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: PERMANOVA
 menuSubtitle: Test group differences
 version: '1.0.0'

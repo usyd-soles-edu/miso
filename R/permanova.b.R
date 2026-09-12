@@ -7,16 +7,23 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .state = list(),
         .lastStructuralKey = NULL,
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    table=TRUE, pairwise=isTRUE(self$options$permPairwise),
+                    companionPcoaSites=isTRUE(self$options$showCompanionPcoa),
+                    companionPcoaCentroids=isTRUE(self$options$showCompanionPcoa) &&
+                        (isTRUE(self$options$pcoaCentroids) || isTRUE(self$options$pcoaSpiders))))
+        },
+
         .preparePermanova = function() {
             if (length(self$options$vars) == 0) {
-                private$.showGuidance(
-                    paste(
-                        "To run PERMANOVA:",
-                        "1. Add one or more numeric Feature variables.",
-                        "2. Add one categorical Grouping variable with at least two groups.",
-                        "Results update automatically.",
-                        sep="\n"),
-                    title="Getting started")
+                if (!miso_is_missing_var(self$options$factor))
+                    private$.showGuidance("Add one or more numeric Feature variables.")
                 return(NULL)
             }
 
@@ -146,6 +153,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
@@ -194,6 +202,10 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .refreshDisplayOnly = function() {
+            if (is.null(private$.state$companion$prep)) {
+                private$.showEmptyTables()
+                return()
+            }
             requested <- isTRUE(self$options$showCompanionPcoa)
             companion <- private$.state$companion
             if (requested && !is.null(companion$prep) &&
@@ -239,8 +251,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "pairwise"
                     ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("table"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         # Destructive row removal for keyed result tables on rerun paths that

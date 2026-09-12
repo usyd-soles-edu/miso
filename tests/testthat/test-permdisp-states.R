@@ -37,12 +37,8 @@ permdisp_populate_test_ordination <- function(ordination) {
 expect_permdisp_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("anova", "distances")
     for (name in hidden)
-        if (name %in% fixed)
-            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
-        else
-            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 find_permdisp_yaml_node <- function(node, name) {
@@ -136,7 +132,7 @@ test_that("PERMDISP result schema hides every empty shell", {
     expect_identical(by_name$pairwise$title, "Pairwise Dispersion Comparisons")
 })
 
-test_that("new PERMDISP shows only complete getting-started guidance", {
+test_that("new permdisp shows empty tables without a tutorial", {
     options <- permdispOptions$new(
         vars=character(),
         factor=NULL)
@@ -144,18 +140,9 @@ test_that("new PERMDISP shows only complete getting-started guidance", {
     analysis$.__enclos_env__$private$.run()
     result <- analysis$results
 
-    expect_match(as.character(result$guidance$asString()), "max-width: 44em", fixed=TRUE)
-    expect_match(as.character(result$guidance$asString()), "PERMDISP tests whether groups differ in multivariate spread")
-    expect_match(as.character(result$guidance$asString()), "Feature variables")
-    expect_match(as.character(result$guidance$asString()), "Grouping variable")
-    expect_permdisp_visibility(
-        result,
-        visible="guidance",
-        hidden=c(
-            "warnings", "distances", "anova", "pairwise", "plot",
-            "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores")
-    )
+    expect_permdisp_visibility(result,
+        visible=c("distances", "anova"),
+        hidden=c("guidance", "warnings", "pairwise", "plot", "plotDescription", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 })
 
 test_that("incomplete PERMDISP inputs show one actionable correction", {
@@ -165,14 +152,9 @@ test_that("incomplete PERMDISP inputs show one actionable correction", {
         factor=NULL
     )
     expect_match(as.character(features_only$guidance$asString()), "Grouping variable")
-    expect_permdisp_visibility(
-        features_only,
-        visible="guidance",
-        hidden=c(
-            "warnings", "distances", "anova", "pairwise", "plot",
-            "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores")
-    )
+    expect_permdisp_visibility(features_only,
+        visible=c("guidance", "distances", "anova"),
+        hidden=c("warnings", "pairwise", "plot", "plotDescription", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 
     group_only <- permdisp(
         data=permdisp_state_data(),
@@ -180,14 +162,9 @@ test_that("incomplete PERMDISP inputs show one actionable correction", {
         factor="group"
     )
     expect_match(as.character(group_only$guidance$asString()), "Feature variables")
-    expect_permdisp_visibility(
-        group_only,
-        visible="guidance",
-        hidden=c(
-            "warnings", "distances", "anova", "pairwise", "plot",
-            "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores")
-    )
+    expect_permdisp_visibility(group_only,
+        visible=c("guidance", "distances", "anova"),
+        hidden=c("warnings", "pairwise", "plot", "plotDescription", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 })
 
 test_that("PERMDISP preparation failure hides every result shell", {
@@ -200,14 +177,9 @@ test_that("PERMDISP preparation failure hides every result shell", {
     )
 
     expect_match(as.character(result$guidance$asString()), "Negative values")
-    expect_permdisp_visibility(
-        result,
-        visible="guidance",
-        hidden=c(
-            "warnings", "distances", "anova", "pairwise", "plot",
-            "plotDescription", "ordinationPlot", "ordinationDescription",
-            "ordinationScores")
-    )
+    expect_permdisp_visibility(result,
+        visible=c("guidance", "distances", "anova"),
+        hidden=c("warnings", "pairwise", "plot", "plotDescription", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 })
 
 test_that("successful PERMDISP hides guidance warnings and pairwise shells", {
@@ -219,14 +191,9 @@ test_that("successful PERMDISP hides guidance warnings and pairwise shells", {
         seed=123
     )))
 
-    expect_permdisp_visibility(
-        result,
-        visible=c(
-            "distances", "anova", "plot"),
-        hidden=c(
-            "guidance", "warnings", "pairwise", "plotDescription", "ordinationPlot",
-            "ordinationDescription", "ordinationScores")
-    )
+    expect_permdisp_visibility(result,
+        visible=c("distances", "anova", "plot"),
+        hidden=c("guidance", "warnings", "pairwise", "plotDescription", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 })
 
 
@@ -264,14 +231,9 @@ test_that("PERMDISP preprocessing warnings accompany valid results", {
     )))
 
     expect_match(as.character(result$warnings$asString()), "rows excluded")
-    expect_permdisp_visibility(
-        result,
-        visible=c(
-            "warnings", "distances", "anova", "plot"),
-        hidden=c(
-            "guidance", "pairwise", "ordinationPlot",
-            "ordinationDescription", "ordinationScores")
-    )
+    expect_permdisp_visibility(result,
+        visible=c("warnings", "distances", "anova", "plot"),
+        hidden=c("guidance", "pairwise", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 })
 
 test_that("PERMDISP structural cells are blank but export as missing", {

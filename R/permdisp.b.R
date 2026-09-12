@@ -9,7 +9,20 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .lastStructuralKey = NULL,
         .lastDisplayKey = NULL,
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    anova=TRUE, distances=TRUE,
+                    pairwise=isTRUE(self$options$dispPairwise),
+                    ordinationScores=isTRUE(self$options$showOrdinationPlot)))
+        },
+
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("showDistancePlot", "showOrdinationPlot"),
@@ -38,14 +51,6 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             hasFactor <- private$.hasValue(self$options$factor)
             if (! hasVars && ! hasFactor) {
                 private$.discardKeyedRows()
-                private$.showGuidance(
-                    paste(
-                        "PERMDISP tests whether groups differ in multivariate spread.",
-                        "1. Add one or more numeric Feature variables.",
-                        "2. Add one categorical Grouping variable with at least two groups.",
-                        "Results update automatically.",
-                        sep="\n"),
-                    title="Getting started")
                 return()
             }
             if (! hasVars) {
@@ -103,6 +108,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .refreshDisplayOnly = function() {
+            if (is.null(private$.state$distanceDiagnostic)) {
+                private$.showEmptyTables()
+                return()
+            }
             showDistance <- isTRUE(self$options$showDistancePlot)
             requestedOrdination <- isTRUE(self$options$showOrdinationPlot)
             previousDisplay <- private$.lastDisplayKey
@@ -166,8 +175,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "ordinationScores"
                     ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("anova", "distances"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         # Destructive row removal for keyed result tables on rerun paths that

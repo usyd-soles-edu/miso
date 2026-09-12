@@ -11,14 +11,23 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .summaryRowNo = 0L,
         .rowCursors = list(),
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    sites=TRUE, stress=TRUE,
+                    shepardPairs=isTRUE(self$options$nmdsShepard),
+                    envfit=length(miso_clean_vars(self$options$nmdsEnv)) > 0L,
+                    features=isTRUE(self$options$nmdsSpecies)))
+        },
+
         .prepareNmds = function() {
             requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) < 2L) {
-                if (length(requestedVars) == 0L) {
-                    private$.showGuidance(
-                        "Getting started",
-                        "Add at least two numeric Feature variables.")
-                } else {
+                if (length(requestedVars) > 0L) {
                     private$.showGuidance(
                         "Action needed",
                         "Add at least two usable numeric Feature variables.")
@@ -212,6 +221,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- private$.structuralKey()
             private$.structuralChanged <- !identical(
                 private$.lastStructuralKey, structuralKey)
@@ -419,8 +429,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .refreshDisplayOnly = function() {
-            if (is.null(private$.state$fit))
+            if (is.null(private$.state$fit)) {
+                private$.showEmptyTables()
                 return()
+            }
             private$.prepareOverlays()
             private$.prepareShepardWarnings()
             private$.syncWarnings()
@@ -645,8 +657,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "features"
                     ))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("sites", "stress"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         .showGuidance = function(title, paragraphs) {

@@ -1,7 +1,7 @@
 ---
 name: nmds
 title: nMDS
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: nMDS
 menuSubtitle: Visualise sample patterns
 version: '1.0.0'

@@ -28,12 +28,8 @@ cluster_yaml_node <- function(node, name) {
 expect_cluster_visibility <- function(result, visible, hidden) {
     for (name in visible)
         expect_true(result[[name]]$visible, info=paste(name, "should be visible"))
-    fixed <- c("dendrogramStructure")
     for (name in hidden)
-        if (name %in% fixed)
-            expect_true(result[[name]]$visible, info=paste(name, "fixed shell should remain visible"))
-        else
-            expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
+        expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
 run_cluster_private <- function(data, ...) {
@@ -126,21 +122,15 @@ test_that("cluster JS enables only the relevant cut control", {
     expect_match(js, "setTimeout(() => refreshView(ui), 100)", fixed=TRUE)
 })
 
-test_that("new cluster analysis shows only complete getting-started guidance", {
+test_that("new cluster shows empty tables without a tutorial", {
     options <- clusterOptions$new(vars=character())
     analysis <- clusterClass$new(options=options, data=cluster_state_data())
     cluster_private(analysis)$.run()
     result <- analysis$results
 
-    expect_match(as.character(result$guidance$asString()), "max-width: 44em", fixed=TRUE)
-    expect_match(as.character(result$guidance$asString()), "groups samples with similar")
-    expect_match(as.character(result$guidance$asString()), "Feature variables")
-    expect_cluster_visibility(
-        result,
-        visible="guidance",
-        hidden=c(
-            "warnings", "dendrogram", "dendrogramDescription",
-            "membership"))
+    expect_cluster_visibility(result,
+        visible=c("dendrogramStructure"),
+        hidden=c("guidance", "warnings", "dendrogram", "dendrogramDescription", "membership"))
 })
 
 

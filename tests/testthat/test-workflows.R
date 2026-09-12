@@ -154,7 +154,7 @@ test_that("unsupported text features reject at the analysis top while shells rem
         fixed=FALSE)
     expect_true(analysis$results$table$visible)
     expect_false(analysis$results$guidance$visible)
-    expect_equal(nrow(analysis$results$table$asDF), 0L)
+    expect_miso_empty_table(analysis$results$table)
 })
 
 test_that("non-numeric feature variables are rejected by analysis validation", {
@@ -327,7 +327,7 @@ test_that("saturated PERMANOVA model reports a failure note instead of crashing"
     )
 
     expect_match(miso_squish_result(res$guidance), "PERMANOVA model is saturated \\(no residual degrees of freedom\\)\\.")
-    expect_equal(nrow(res$table$asDF), 0L)
+    expect_miso_empty_table(res$table)
 })
 
 test_that("PERMANOVA returns stable numeric results", {

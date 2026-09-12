@@ -1,7 +1,7 @@
 ---
 name: anosim
 title: ANOSIM
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: ANOSIM
 menuSubtitle: Rank-based alternative
 version: '1.0.0'

@@ -10,7 +10,19 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .structuralChanged = TRUE,
         .rowCursors = list(),
 
+        .init = function() {
+            if (is.null(private$.lastStructuralKey))
+                private$.showEmptyTables()
+        },
+
+        .showEmptyTables = function() {
+            miso_show_empty_tables(self$results, c(
+                    sites=TRUE, eigenvalues=TRUE,
+                    centroids=isTRUE(self$options$showCentroids) || isTRUE(self$options$showSpiders)))
+        },
+
         .run = function() {
+            on.exit(miso_finish_empty_tables(self$results), add=TRUE)
             structuralKey <- private$.structuralKey()
             private$.structuralChanged <- !identical(
                 private$.lastStructuralKey, structuralKey)
@@ -25,13 +37,8 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             requestedVars <- miso_clean_vars(self$options$vars)
             if (length(requestedVars) == 0L) {
-                private$.showGuidance(
-                    paste(
-                        "PCoA displays sites from their pairwise dissimilarities.",
-                        "Add two or more numeric Feature variables.",
-                        "Results update automatically.",
-                        sep="\n"),
-                    title="Getting started")
+                if (!miso_is_missing_var(self$options$factor))
+                    private$.showGuidance("Add one or more numeric Feature variables.")
                 return()
             }
 
@@ -86,7 +93,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .refreshDisplayOnly = function() {
             if (is.null(private$.state$pcoa)) {
-                private$.clearDisplayResults()
+                private$.showEmptyTables()
                 return()
             }
             plotData <- .misoPreparePcoaPlot(
@@ -111,8 +118,7 @@ pcoaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "ordination", "ordinationDescription", "sites",
                     "centroids", "eigenvalues"))
                 self$results[[name]]$setVisible(FALSE)
-            for (name in c("sites", "eigenvalues"))
-                self$results[[name]]$setVisible(TRUE)
+            private$.showEmptyTables()
         },
 
         .showGuidance = function(content, title="Action needed") {

@@ -1,7 +1,7 @@
 ---
 name: permdisp
 title: PERMDISP
-menuGroup: miso
+menuGroup: Multivariate
 menuTitle: PERMDISP
 menuSubtitle: Check group dispersion
 version: '1.0.0'

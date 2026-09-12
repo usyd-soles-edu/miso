@@ -26,3 +26,10 @@ miso_table_note <- function(table, key=NULL) {
         return("")
     notes[[key]]$note
 }
+
+# A native empty shell may have one blank row to refresh jamovi's table footer.
+# Check absence of results rather than requiring a rowless table.
+expect_miso_empty_table <- function(table) {
+    cells <- unlist(table$asDF, use.names=FALSE)
+    expect_true(all(is.na(cells) | cells == ""))
+}
