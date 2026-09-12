@@ -35,6 +35,28 @@ test_that("nMDS lifecycle seams retain the fitted state contract", {
     expect_equal(nrow(analysis$results$sites$asDF), nrow(nmds_state_data()))
 })
 
+test_that("two-dimensional nMDS serializes unavailable third coordinates as missing", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
+    analysis <- run_nmds_private(
+        nmds_state_data(),
+        vars=paste0("feature_0", 1:4),
+        nmdsSpecies=TRUE,
+        nmdsEnv="temperature",
+        seed=123,
+        nmdsTrymax=20)
+    for (name in c("sites", "features", "envfit")) {
+        table <- analysis$results[[name]]
+        expect_false(table$getColumn("NMDS3")$visible, info=name)
+        nmds3 <- Filter(function(column) identical(column$name, "NMDS3"),
+            table$asProtoBuf()$table$columns)[[1L]]
+        for (cell in nmds3$cells) {
+            expect_true(cell$has("o"), info=name)
+            expect_false(cell$has("d"), info=name)
+        }
+    }
+})
+
 nmds_squish <- function(value) {
     trimws(gsub("[[:space:]]+", " ", as.character(value)))
 }

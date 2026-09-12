@@ -1112,7 +1112,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             private$.state$effectiveK, 3L)) {
                             miso_num_or_na(endpoints[i, 3L])
                         } else {
-                            NA_real_
+                            miso_num_or_na(NA)
                         }))
             }
             self$results$envfit$setNote(
@@ -1262,7 +1262,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     NMDS3=if (isThreeDimensional)
                         miso_num_or_na(sites[i, 3L])
                     else
-                        NA_real_,
+                        miso_num_or_na(NA),
                     group=groupValue)
                 miso_add_or_set_row(
                     self$results$sites,
@@ -1283,7 +1283,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             NMDS3=if (isThreeDimensional)
                                 miso_num_or_na(features[i, 3L])
                             else
-                                NA_real_))
+                                miso_num_or_na(NA)))
             }
             self$results$sites$setNote(
                 key="method",
