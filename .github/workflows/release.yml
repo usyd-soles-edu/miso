@@ -5,17 +5,17 @@
 #                  resolves to a commit, its version matches DESCRIPTION and
 #                  jamovi/0000.yaml, and no release for the tag is already
 #                  PUBLISHED (draft is fine; reruns are safe).
-#   2. build-*   — the two platform build workflows (kept read-only), called
-#                  at the exact tagged commit.
-#   3. draft     — creates or refreshes a DRAFT release holding the two CI
+#   2. build     — the single matrix build workflow (win-x64, macos-x64,
+#                  macos-arm64; kept read-only), called at the exact tagged
+#                  commit.
+#   3. draft     — creates or refreshes a DRAFT release holding all three CI
 #                  .jmo assets. The draft is never published automatically:
-#                  after building/verifying the Apple-Silicon .jmo locally,
-#                  attach it (`gh release upload <tag> <file>`) and publish
-#                  (`gh release edit <tag> --draft=false`). Nothing is public
+#                  verify the draft, then publish with
+#                  `gh release edit <tag> --draft=false`. Nothing is public
 #                  until that manual publish step.
 #
 # Notes:
-#   * Idempotent: rerunning the same tag refreshes the two CI assets on the
+#   * Idempotent: rerunning the same tag refreshes the three CI assets on the
 #     existing draft (--clobber). A published release hard-fails instead of
 #     being overwritten.
 #   * Only tags from v1.0.0 onward contain the CI validation scripts; older
@@ -50,7 +50,7 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 1
@@ -106,23 +106,16 @@ jobs:
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-  build-windows:
-    name: Build .jmo (win-x64)
+  build:
+    name: Build .jmo (all platforms)
     needs: prepare
-    uses: ./.github/workflows/build-windows.yml
-    with:
-      sha: ${{ needs.prepare.outputs.sha }}
-
-  build-macos-intel:
-    name: Build .jmo (macos-x64)
-    needs: prepare
-    uses: ./.github/workflows/build-macos-intel.yml
+    uses: ./.github/workflows/build-jmo.yml
     with:
       sha: ${{ needs.prepare.outputs.sha }}
 
   draft:
     name: Create or refresh draft release
-    needs: [prepare, build-windows, build-macos-intel]
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -133,7 +126,7 @@ jobs:
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - name: Checkout the released tree
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 1
@@ -164,7 +157,7 @@ jobs:
           cat RELEASE_NOTES.md
 
       - name: Download built .jmo artifacts
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
           merge-multiple: true
@@ -175,6 +168,7 @@ jobs:
           ls -l dist
           test -f "dist/miso-${VERSION}-win-x64.jmo" || { echo "::error::missing dist/miso-${VERSION}-win-x64.jmo"; exit 1; }
           test -f "dist/miso-${VERSION}-macos-x64.jmo" || { echo "::error::missing dist/miso-${VERSION}-macos-x64.jmo"; exit 1; }
+          test -f "dist/miso-${VERSION}-macos-arm64.jmo" || { echo "::error::missing dist/miso-${VERSION}-macos-arm64.jmo"; exit 1; }
 
       - name: Create or refresh the draft release
         env:
@@ -182,7 +176,7 @@ jobs:
           SHA: ${{ needs.prepare.outputs.sha }}
         run: |
           set -euo pipefail
-          ASSETS=("dist/miso-${VERSION}-win-x64.jmo" "dist/miso-${VERSION}-macos-x64.jmo")
+          ASSETS=("dist/miso-${VERSION}-win-x64.jmo" "dist/miso-${VERSION}-macos-x64.jmo" "dist/miso-${VERSION}-macos-arm64.jmo")
           VIEW_ERR=$(gh release view "${TAG}" --json isDraft 2>&1) && VIEW_RC=0 || VIEW_RC=$?
           if [ "${VIEW_RC}" -eq 0 ]; then
             IS_DRAFT=$(printf '%s' "${VIEW_ERR}" | jq -e '.isDraft == true' >/dev/null 2>&1 && echo true || echo false)
@@ -199,6 +193,6 @@ jobs:
               --title "MISO ${TAG}" \
               --notes-file RELEASE_NOTES.md
           fi
-          echo "draft ready: attach the Apple-Silicon build, then publish with:"
-          echo "  gh release upload ${TAG} miso-${VERSION}-macos-arm64.jmo"
+          echo "draft ready with all three platform assets."
+          echo "verify the draft, then publish with:"
           echo "  gh release edit ${TAG} --draft=false"
