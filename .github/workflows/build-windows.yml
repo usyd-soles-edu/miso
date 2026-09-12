@@ -1,0 +1,145 @@
+# Manually triggered Windows x64 .jmo build.
+#
+# Builds a sideloadable miso .jmo for students while the module awaits jamovi
+# library acceptance. The build downloads the official jamovi Windows release
+# and runs the jamovi compiler (bundled in the jmvtools source package)
+# directly with the runner's Node.js — no R, jamovi, or jmvtools installation
+# happens on the runner. The .jmo is uploaded as a workflow artifact only:
+# no release is created and no write permissions are requested.
+#
+# Note: a workflow_dispatch workflow only appears in the Actions tab once this
+# file is present on the default branch (main).
+#
+# When a new jamovi series is released, bump JAMOVI_VERSION and
+# JMVTOOLS_VERSION together (jmvtools versions track jamovi releases on
+# repo.jamovi.org).
+
+name: Build Windows .jmo (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  JAMOVI_VERSION: '2.7.38.0'
+  JAMOVI_SHA256: '1a8c8f9ad8d4ef977e8e78d49fde31290126f0b322d24e64812e7129f21a2d83'
+  JMVTOOLS_VERSION: '28.3'
+  JMVTOOLS_SHA256: 'c34ec517fccc077ba5907d4d650c22d69bae1aac9de9242da3285e318523f730'
+
+jobs:
+  build-windows:
+    name: Build .jmo (win-x64)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check version metadata is consistent
+        run: |
+          set -euo pipefail
+          DESC_VERSION=$(sed -n 's/^Version:[[:space:]]*//p' DESCRIPTION | head -n1 | tr -d '\r')
+          YAML_VERSION=$(sed -n 's/^version:[[:space:]]*//p' jamovi/0000.yaml | head -n1 | tr -d "\r\"'")
+          echo "DESCRIPTION: ${DESC_VERSION}"
+          echo "jamovi/0000.yaml: ${YAML_VERSION}"
+          test -n "${DESC_VERSION}" || { echo '::error::DESCRIPTION has no Version field'; exit 1; }
+          test "${DESC_VERSION}" = "${YAML_VERSION}" || {
+            echo "::error::Version mismatch - DESCRIPTION is '${DESC_VERSION}' but jamovi/0000.yaml is '${YAML_VERSION}'. Bump both together."
+            exit 1
+          }
+          echo "MISO_VERSION=${DESC_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Cache jamovi download
+        id: cache-jamovi
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/jamovi-dist.zip
+          key: jamovi-${{ env.JAMOVI_VERSION }}-win-x64-${{ env.JAMOVI_SHA256 }}
+
+      - name: Download jamovi
+        if: steps.cache-jamovi.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          # dl-cdn.jamovi.org (Cloudflare) rejects requests without browser-like headers
+          curl -fL --retry 3 --max-time 900 \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            -H "Referer: https://www.jamovi.org/" \
+            -o "${RUNNER_TEMP}/jamovi-dist.zip" \
+            "https://dl-cdn.jamovi.org/jamovi-${JAMOVI_VERSION}-win-x64.zip"
+
+      - name: Extract jamovi
+        run: |
+          set -euo pipefail
+          # integrity pin: verified on every run, including cache hits, so a
+          # tampered or corrupted download/cache entry can never be extracted.
+          # The pinned hash is self-recorded from the version-addressed URL
+          # above (jamovi publishes no checksum for these archives).
+          # "*" selects sha256sum binary mode, which is the safe form on
+          # every platform Git Bash runs on.
+          echo "${JAMOVI_SHA256} *$(cygpath -u "${RUNNER_TEMP}")/jamovi-dist.zip" | sha256sum -c -
+          7z x -y -o"${RUNNER_TEMP}/jamovi-dist" "${RUNNER_TEMP}/jamovi-dist.zip" > /dev/null
+          # the zip contains a single top-level "jamovi/" directory
+          JAMOVI_HOME=$(cygpath -m "${RUNNER_TEMP}")/jamovi-dist/jamovi
+          test -f "${JAMOVI_HOME}/bin/jamovi.exe" || { echo '::error::bin/jamovi.exe not found in the extracted jamovi distribution'; exit 1; }
+          echo "JAMOVI_HOME=${JAMOVI_HOME}" >> "$GITHUB_ENV"
+
+      - name: Fetch jamovi compiler (bundled in the jmvtools source package)
+        run: |
+          set -euo pipefail
+          # git-bash tar parses "D:\..." paths as remote hosts; hand it a POSIX path instead
+          TMP_POSIX=$(cygpath -u "${RUNNER_TEMP}")
+          curl -fsSL --retry 3 -o "${TMP_POSIX}/jmvtools.tar.gz" \
+            "https://repo.jamovi.org/src/contrib/jmvtools_${JMVTOOLS_VERSION}.tar.gz"
+          # integrity pin: the tarball's code runs on this runner via node, so
+          # verify it before extraction. Self-recorded hash (repo.jamovi.org
+          # publishes no checksum for archived jmvtools source versions).
+          echo "${JMVTOOLS_SHA256} *${TMP_POSIX}/jmvtools.tar.gz" | sha256sum -c -
+          tar xzf "${TMP_POSIX}/jmvtools.tar.gz" -C "${TMP_POSIX}"
+          test -f "${TMP_POSIX}/jmvtools/inst/node_modules/jamovi-compiler/index.js" || {
+            echo "::error::jamovi-compiler not found in the jmvtools ${JMVTOOLS_VERSION} tarball - the package layout may have changed"
+            exit 1
+          }
+          # the manifest validator uses the js-yaml bundled inside this same
+          # checksum-verified tarball; confirm it is present so a layout
+          # change fails here rather than deep inside validation
+          test -f "${TMP_POSIX}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" || {
+            echo '::error::bundled js-yaml parser not found alongside jamovi-compiler'
+            exit 1
+          }
+
+      - name: Build module
+        run: |
+          set -euo pipefail
+          node "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/index.js" \
+            --build . --home "${JAMOVI_HOME}"
+
+      - name: Validate and collect artifact
+        run: |
+          set -euo pipefail
+          # all validation logic lives in the tracked CI helper so it is
+          # testable: size floor, archive-listing checks for every manifest
+          # dataset and analysis (derived with the js-yaml bundled in the
+          # checksum-verified jmvtools tarball), exact-line metadata checks,
+          # and the platform-suffixed rename with JMO_OUT export
+          bash .github/scripts/validate-jmo.sh \
+            --jmo "miso_${MISO_VERSION}.jmo" \
+            --manifest jamovi/0000.yaml \
+            --parser "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" \
+            --version "${MISO_VERSION}" \
+            --module miso \
+            --suffix win-x64 \
+            --tempdir "${RUNNER_TEMP}/validate" \
+            --github-env "${GITHUB_ENV}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: miso-win-x64-v${{ env.MISO_VERSION }}
+          path: ${{ env.JMO_OUT }}
+          retention-days: 14
+          if-no-files-found: error
