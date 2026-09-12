@@ -12,6 +12,18 @@ description: >-
   Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and cluster analysis
   workflows for multivariate abundance and community-style data using vegan and
   ggplot2.
+datasets:
+  - name: dune_meadows
+    path: dune_meadows.csv
+    description: >-
+      Cover of 30 plant species at 20 dune meadow sites in the Netherlands, with
+      management and environment variables (soil A1 horizon thickness, moisture,
+      management regime, land use, manuring). Classic community ecology data
+      from Batterink and Wijffels (1983), distributed with the vegan R package.
+    tags:
+      - PERMANOVA
+      - nMDS
+      - vegan
 analyses:
   - title: PERMANOVA
     name: permanova

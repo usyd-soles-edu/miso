@@ -55,10 +55,12 @@ dist/
 
 # Local jamovi submission-review material
 jamovi-review/
+miso-review-notes/
 
 # other files / folders
 temp/
 .DS_Store
+Rplots.pdf
 npm-debug.log
 inst/doc
 tests/testthat/Rplots.pdf
