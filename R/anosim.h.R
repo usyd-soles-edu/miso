@@ -19,7 +19,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             useParallel = FALSE,
             anosimPairwise = FALSE,
             anosimAdjust = "holm",
-            showRankPlot = TRUE, ...) {
+            showRankPlot = TRUE,
+            useFixedSeed = TRUE, ...) {
 
             super$initialize(
                 package="miso",
@@ -149,6 +150,10 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "showRankPlot",
                 showRankPlot,
                 default=TRUE)
+            private$..useFixedSeed <- jmvcore::OptionBool$new(
+                "useFixedSeed",
+                useFixedSeed,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -164,6 +169,7 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..anosimPairwise)
             self$.addOption(private$..anosimAdjust)
             self$.addOption(private$..showRankPlot)
+            self$.addOption(private$..useFixedSeed)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -179,7 +185,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         useParallel = function() private$..useParallel$value,
         anosimPairwise = function() private$..anosimPairwise$value,
         anosimAdjust = function() private$..anosimAdjust$value,
-        showRankPlot = function() private$..showRankPlot$value),
+        showRankPlot = function() private$..showRankPlot$value,
+        useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -194,7 +201,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..useParallel = NA,
         ..anosimPairwise = NA,
         ..anosimAdjust = NA,
-        ..showRankPlot = NA)
+        ..showRankPlot = NA,
+        ..useFixedSeed = NA)
 )
 
 anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -290,8 +298,7 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "strata",
                     "permRestriction",
                     "permScheme",
-                    "anosimN",
-                    "seed")))
+                    "anosimN")))
             self$add(jmvcore::Image$new(
                 options=options,
                 name="rankPlot",
@@ -305,8 +312,7 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "strata",
                     "permRestriction",
                     "permScheme",
-                    "anosimN",
-                    "seed"),
+                    "anosimN"),
                 width=600,
                 height=480,
                 renderFun=".plotRank"))
@@ -384,6 +390,8 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param anosimPairwise .
 #' @param anosimAdjust .
 #' @param showRankPlot .
+#' @param useFixedSeed Use a positive fixed seed for reproducible permutation
+#'   results; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
@@ -417,7 +425,8 @@ anosim <- function(
     useParallel = FALSE,
     anosimPairwise = FALSE,
     anosimAdjust = "holm",
-    showRankPlot = TRUE) {
+    showRankPlot = TRUE,
+    useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("anosim requires jmvcore to be installed (restart may be required)")
@@ -449,7 +458,8 @@ anosim <- function(
         useParallel = useParallel,
         anosimPairwise = anosimPairwise,
         anosimAdjust = anosimAdjust,
-        showRankPlot = showRankPlot)
+        showRankPlot = showRankPlot,
+        useFixedSeed = useFixedSeed)
 
     analysis <- anosimClass$new(
         options = options,

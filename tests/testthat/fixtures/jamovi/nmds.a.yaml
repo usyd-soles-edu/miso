@@ -121,7 +121,7 @@ options:
     hidden: true
 
   - name: seed
-    title: Random seed
+    title: Seed
     type: Number
     default: 0
     min: 0
@@ -190,5 +190,11 @@ options:
     type: Number
     default: 99
     min: 1
+
+  - name: useFixedSeed
+    title: Use fixed seed
+    type: Bool
+    default: true
+    description: Use a positive fixed seed for reproducible ordination and environmental-fit results; unchecked analyses use the random RNG stream.
 
 ...

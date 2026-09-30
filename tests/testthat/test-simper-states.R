@@ -76,7 +76,7 @@ test_that("SIMPER schema follows the approved required-first hierarchy", {
     )
     expect_identical(option_names[match("simperCum", option_names) + 1:4],
                      c("simperPlots", "simperHeatmap", "simperAssess", "simperAdjust"))
-    expect_identical(tail(option_names, 1L), "simperDetails")
+    expect_identical(tail(option_names, 2L), c("simperDetails", "useFixedSeed"))
     expect_false(by_name$simperAssess$default)
     expect_identical(by_name$simperAdjust$default, "holm")
     expect_false(by_name$simperDetails$default)
@@ -149,7 +149,8 @@ test_that("SIMPER UI nests assessment controls under its enabling checkbox", {
     expect_identical(assessment$style, "list")
     children <- setNames(assessment$children,
         vapply(assessment$children, `[[`, character(1), "name"))
-    expect_identical(names(children), c("simperN", "simperAdjust", "seed"))
+    expect_identical(names(children),
+        c("simperN", "simperAdjust", "useFixedSeed", "seed"))
     expect_true(all(vapply(children, function(child)
         identical(child$enable, "(simperAssess)"), logical(1))))
 })
@@ -161,7 +162,8 @@ test_that("SIMPER UI dependencies and progressive disclosure are explicit", {
 
     expect_match(source, "simperN\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
     expect_match(source, "simperAdjust\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
-    expect_match(source, "seed\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\)\\)")
+    expect_match(source,
+        "seed\\.setEnabled\\(ui\\.simperAssess\\.value\\(\\) && ui\\.useFixedSeed\\.value\\(\\)\\)")
     expect_match(source, "permutationAssessment\\.expand\\(\\)")
     expect_match(source, "plots\\.expand\\(\\)")
     expect_match(source, "List choices are fixed by the analysis schema", fixed=TRUE)

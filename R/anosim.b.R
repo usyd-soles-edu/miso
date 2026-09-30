@@ -21,8 +21,13 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             on.exit(miso_finish_empty_tables(self$results), add=TRUE)
+            effectiveSeed <- miso_effective_seed(
+                self$options$useFixedSeed, self$options$seed)
             structuralKey <- miso_options_signature(
-                self$options, excluded="showRankPlot", data=self$data)
+                self$options,
+                excluded=c("showRankPlot", "seed", "useFixedSeed"),
+                data=self$data,
+                extra=list(effectiveSeed=effectiveSeed))
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()
@@ -68,7 +73,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     factor=self$options$factor,
                     transform=self$options$transform,
                     distance=self$options$distance,
-                    seed=self$options$seed,
+                    seed=effectiveSeed,
                     strata=self$options$strata,
                     distBinary=self$options$distBinary),
                 error=function(e) e)
@@ -122,6 +127,8 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            # A new effective seed can refit without a raw-option clearWith hit.
+            self$results$rankPlot$.setPath(NULL)
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             miso_clear_fixed_table(self$results$global, 1L)

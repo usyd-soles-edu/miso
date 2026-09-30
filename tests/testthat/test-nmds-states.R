@@ -330,15 +330,28 @@ test_that("nMDS result schema contains no initially visible shell", {
 
     expect_true(all(vapply(items, function(x) identical(x$visible, FALSE), logical(1))))
     expected_clear_with <- c(
-        "vars", "factor", "transform", "distance", "distBinary", "seed",
+        "vars", "factor", "transform", "distance", "distBinary",
         "nmdsK", "nmdsTrymax", "nmdsMaxit", "nmdsEnv", "nmdsEnvPerm")
+    expected_structural_clear_with <- append(
+        expected_clear_with, "nmdsSpecies", after=match("nmdsEnv", expected_clear_with))
+    expected_cache_clear_with <- expected_structural_clear_with
+    expected_ordination_clear_with <- c(
+        expected_structural_clear_with, "nmdsOverlay", "nmdsHull",
+        "nmdsEllipse", "nmdsSpider")
+    expect_identical(by_name$analysisCache$clearWith,
+        expected_cache_clear_with)
+    expect_identical(by_name$ordination$clearWith,
+        expected_ordination_clear_with)
+    ordinary_items <- setdiff(names(by_name), c("analysisCache", "ordination"))
     expect_true(all(vapply(
-        items, function(x) identical(x$clearWith, expected_clear_with),
+        by_name[ordinary_items],
+        function(x) identical(x$clearWith, expected_clear_with),
         logical(1))))
+    expect_identical(by_name$analysisCache$type, "Html")
     expect_identical(
         vapply(items, `[[`, character(1), "name"),
         c(
-            "guidance", "warnings",
+            "analysisCache", "guidance", "warnings",
             "ordinationDescription", "ordination", "sites",
             "stress", "shepardDescription", "shepard",
             "shepardPairs",

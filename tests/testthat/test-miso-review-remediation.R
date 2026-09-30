@@ -227,7 +227,8 @@ test_that("all analyses expose only native titled result elements", {
         items <- miso_task6_result_items(analysisName)
         names <- vapply(items, `[[`, character(1), "name")
         expect_false(any(grepl("Purpose$|^summary$|^settings$", names)), info=analysisName)
-        titled <- !vapply(items, function(item) item$name %in% c("guidance", "warnings"), logical(1))
+        titled <- !vapply(items, function(item)
+            item$name %in% c("analysisCache", "guidance", "warnings"), logical(1))
         expect_true(all(vapply(items[titled], function(item) !is.null(item$title) && nzchar(item$title), logical(1))), info=analysisName)
     }
 })
@@ -273,7 +274,7 @@ test_that("display-only controls do not invalidate unrelated native tables", {
     displayOnly <- list(
         permanova=c("showCompanionPcoa", "pcoaDisplayFactor", "pcoaCentroids", "pcoaSpiders"),
         anosim="showRankPlot", permdisp=c("showDistancePlot", "showOrdinationPlot"),
-        nmds=c("nmdsShepard", "nmdsOverlay", "nmdsSpecies", "nmdsHull", "nmdsEllipse", "nmdsSpider"),
+        nmds="nmdsShepard",
         pcoa=c("showCentroids", "showSpiders"), cluster="sampleLabels",
         simper=c("simperDetails", "simperPlots", "simperHeatmap"))
     for (analysisName in names(displayOnly)) {

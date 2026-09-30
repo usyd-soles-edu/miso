@@ -19,7 +19,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             simperHeatmap = FALSE,
             simperAssess = FALSE,
             simperAdjust = "holm",
-            simperDetails = FALSE, ...) {
+            simperDetails = FALSE,
+            useFixedSeed = TRUE, ...) {
 
             super$initialize(
                 package="miso",
@@ -140,6 +141,10 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "simperDetails",
                 simperDetails,
                 default=FALSE)
+            private$..useFixedSeed <- jmvcore::OptionBool$new(
+                "useFixedSeed",
+                useFixedSeed,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -155,6 +160,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..simperAssess)
             self$.addOption(private$..simperAdjust)
             self$.addOption(private$..simperDetails)
+            self$.addOption(private$..useFixedSeed)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -170,7 +176,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         simperHeatmap = function() private$..simperHeatmap$value,
         simperAssess = function() private$..simperAssess$value,
         simperAdjust = function() private$..simperAdjust$value,
-        simperDetails = function() private$..simperDetails$value),
+        simperDetails = function() private$..simperDetails$value,
+        useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -185,7 +192,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..simperHeatmap = NA,
         ..simperAssess = NA,
         ..simperAdjust = NA,
-        ..simperDetails = NA)
+        ..simperDetails = NA,
+        ..useFixedSeed = NA)
 )
 
 simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -547,6 +555,8 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperAssess .
 #' @param simperAdjust .
 #' @param simperDetails .
+#' @param useFixedSeed Use a positive fixed seed for reproducible permutation
+#'   assessment; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
@@ -585,7 +595,8 @@ simper <- function(
     simperHeatmap = FALSE,
     simperAssess = FALSE,
     simperAdjust = "holm",
-    simperDetails = FALSE) {
+    simperDetails = FALSE,
+    useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("simper requires jmvcore to be installed (restart may be required)")
@@ -614,7 +625,8 @@ simper <- function(
         simperHeatmap = simperHeatmap,
         simperAssess = simperAssess,
         simperAdjust = simperAdjust,
-        simperDetails = simperDetails)
+        simperDetails = simperDetails,
+        useFixedSeed = useFixedSeed)
 
     analysis <- simperClass$new(
         options = options,

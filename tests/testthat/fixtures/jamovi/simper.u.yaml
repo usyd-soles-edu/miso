@@ -4,6 +4,8 @@ name: simper
 jus: '3.0'
 stage: 0
 compilerMode: tame
+events:
+  updated: view_updated
 children:
   - type: VariableSupplier
     persistentItems: false
@@ -142,9 +144,16 @@ children:
           - type: ComboBox
             name: simperAdjust
             enable: (simperAssess)
+          - type: CheckBox
+            name: useFixedSeed
+            enable: (simperAssess)
+            events:
+              change: fixed_seed_changed
           - type: TextBox
             name: seed
             format: number
             enable: (simperAssess)
+            events:
+              change: seed_changed
 
 ...

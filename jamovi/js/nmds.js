@@ -33,6 +33,20 @@ const focusControl = control => {
         element.focus();
 };
 
+const syncSeedControl = ui => {
+    ui.seed.setEnabled(ui.useFixedSeed.value());
+};
+
+const normaliseLegacySeedMode = ui => {
+    if (ui.useFixedSeed.value() && Number(ui.seed.value()) === 0)
+        ui.useFixedSeed.setValue(false);
+};
+
+const enforcePositiveSeed = ui => {
+    if (ui.useFixedSeed.value() && Number(ui.seed.value()) === 0)
+        ui.seed.setValue(123);
+};
+
 const updateControlStates = ui => {
     const hasGroup = hasValue(ui.factor.value());
     const hasEnvironment = hasValue(ui.nmdsEnv.value());
@@ -62,21 +76,31 @@ const revealActiveSections = ui => {
     if (hasValue(ui.nmdsEnv.value()) || Number(ui.nmdsEnvPerm.value()) !== 99)
         ui.environmentAssessment.expand();
 
-    if (Number(ui.seed.value()) !== 0 ||
+    if (ui.useFixedSeed.value() ||
         Number(ui.nmdsTrymax.value()) !== 20 ||
         Number(ui.nmdsMaxit.value()) !== 200)
         ui.reproducibility.expand();
 };
 
 const refreshView = ui => {
+    syncSeedControl(ui);
     updateControlStates(ui);
     revealActiveSections(ui);
 };
 
 module.exports = {
-    view_loaded(ui) {
+    // jamovi hydrates stored options after View.loaded, then calls updated.
+    view_updated(ui) {
+        normaliseLegacySeedMode(ui);
         refreshView(ui);
-        setTimeout(() => refreshView(ui), 100);
+    },
+    fixed_seed_changed(ui) {
+        enforcePositiveSeed(ui);
+        refreshView(ui);
+    },
+    seed_changed(ui) {
+        enforcePositiveSeed(ui);
+        refreshView(ui);
     },
     update_control_states(ui) {
         updateControlStates(ui);

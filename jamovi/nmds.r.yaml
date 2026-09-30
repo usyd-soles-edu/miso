@@ -6,6 +6,23 @@ refs:
   - vegan
 
 items:
+  - name: analysisCache
+    title: ''
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsEnvPerm
+
   - name: guidance
     title: Getting Started
     type: Html
@@ -16,7 +33,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -33,7 +49,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -50,7 +65,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -70,12 +84,16 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
       - nmdsEnv
+      - nmdsSpecies
       - nmdsEnvPerm
+      - nmdsOverlay
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
 
   - name: sites
     title: Site Scores
@@ -107,7 +125,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -132,7 +149,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -149,7 +165,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -169,7 +184,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -200,7 +214,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -248,7 +261,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -282,7 +294,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit

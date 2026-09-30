@@ -125,7 +125,7 @@ options:
     hidden: true
 
   - name: seed
-    title: Random seed (0 = random)
+    title: Seed
     type: Number
     default: 0
     min: 0
@@ -184,5 +184,11 @@ options:
     title: Detailed Statistics
     type: Bool
     default: false
+
+  - name: useFixedSeed
+    title: Use fixed seed
+    type: Bool
+    default: true
+    description: Use a positive fixed seed for reproducible permutation assessment; unchecked analyses use the random RNG stream.
 
 ...

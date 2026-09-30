@@ -27,7 +27,8 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             showCompanionPcoa = FALSE,
             pcoaDisplayFactor = NULL,
             pcoaCentroids = FALSE,
-            pcoaSpiders = FALSE, ...) {
+            pcoaSpiders = FALSE,
+            useFixedSeed = TRUE, ...) {
 
             super$initialize(
                 package="miso",
@@ -207,6 +208,10 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "pcoaSpiders",
                 pcoaSpiders,
                 default=FALSE)
+            private$..useFixedSeed <- jmvcore::OptionBool$new(
+                "useFixedSeed",
+                useFixedSeed,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -230,6 +235,7 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..pcoaDisplayFactor)
             self$.addOption(private$..pcoaCentroids)
             self$.addOption(private$..pcoaSpiders)
+            self$.addOption(private$..useFixedSeed)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -253,7 +259,8 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         showCompanionPcoa = function() private$..showCompanionPcoa$value,
         pcoaDisplayFactor = function() private$..pcoaDisplayFactor$value,
         pcoaCentroids = function() private$..pcoaCentroids$value,
-        pcoaSpiders = function() private$..pcoaSpiders$value),
+        pcoaSpiders = function() private$..pcoaSpiders$value,
+        useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -276,7 +283,8 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..showCompanionPcoa = NA,
         ..pcoaDisplayFactor = NA,
         ..pcoaCentroids = NA,
-        ..pcoaSpiders = NA)
+        ..pcoaSpiders = NA,
+        ..useFixedSeed = NA)
 )
 
 permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
@@ -357,7 +365,6 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "distSqrt",
                     "distAdd",
                     "permN",
-                    "seed",
                     "useParallel")))
             self$add(jmvcore::Html$new(
                 options=options,
@@ -563,6 +570,8 @@ permanovaBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   companion PCoA.
 #' @param pcoaSpiders Whether to connect displayed sites to their group
 #'   centroid; spiders also show centroids.
+#' @param useFixedSeed Use a positive fixed seed for reproducible permutation
+#'   results; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
@@ -605,7 +614,8 @@ permanova <- function(
     showCompanionPcoa = FALSE,
     pcoaDisplayFactor = NULL,
     pcoaCentroids = FALSE,
-    pcoaSpiders = FALSE) {
+    pcoaSpiders = FALSE,
+    useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("permanova requires jmvcore to be installed (restart may be required)")
@@ -652,7 +662,8 @@ permanova <- function(
         showCompanionPcoa = showCompanionPcoa,
         pcoaDisplayFactor = pcoaDisplayFactor,
         pcoaCentroids = pcoaCentroids,
-        pcoaSpiders = pcoaSpiders)
+        pcoaSpiders = pcoaSpiders,
+        useFixedSeed = useFixedSeed)
 
     analysis <- permanovaClass$new(
         options = options,

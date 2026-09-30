@@ -12,8 +12,120 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .rowCursors = list(),
 
         .init = function() {
-            if (is.null(private$.lastStructuralKey))
+            if (!is.null(private$.state$fit))
+                return()
+            cacheState <- self$results$analysisCache$state
+            restored <- FALSE
+            if (isTRUE(private$.dataProvided))
+                restored <- private$.restoreAnalysisCache()
+            if (!isTRUE(restored)) {
+                if (isTRUE(private$.dataProvided) && !is.null(cacheState))
+                    private$.clearResults()
+                else if (is.null(cacheState))
+                    private$.showEmptyTables()
+            }
+        },
+
+        .postInit = function() {
+            if (!is.null(private$.state$fit))
+                return()
+
+            cache <- self$results$analysisCache$state
+            if (!private$.validAnalysisCache(cache))
+                return()
+
+            restored <- private$.restoreAnalysisCache(validateData=FALSE)
+            if (!isTRUE(restored)) {
+                private$.clearResults()
                 private$.showEmptyTables()
+            }
+        },
+
+        .validAnalysisCache = function(cache) {
+            is.list(cache) &&
+                identical(cache$version, 1L) &&
+                is.raw(cache$key) && length(cache$key) > 0L &&
+                is.list(cache$state) &&
+                !is.null(cache$state$fit) &&
+                !is.null(cache$state$prep) &&
+                !is.null(cache$state$sites)
+        },
+
+        .restoreAnalysisCache = function(validateData=TRUE) {
+            cache <- self$results$analysisCache$state
+            if (!private$.validAnalysisCache(cache))
+                return(FALSE)
+
+            keyMatches <- tryCatch({
+                if (isTRUE(validateData))
+                    identical(cache$key, private$.structuralKey())
+                else {
+                    cachedKey <- unserialize(cache$key)
+                    if (!is.list(cachedKey) ||
+                            is.null(names(cachedKey)) ||
+                            ! "dataSignature" %in% names(cachedKey)) {
+                        FALSE
+                    }
+                    else {
+                        cachedKey$dataSignature <- NULL
+                        identical(
+                            serialize(cachedKey, NULL),
+                            serialize(private$.structuralOptions(), NULL))
+                    }
+                }
+            }, error=function(e) FALSE)
+            if (!isTRUE(keyMatches)) {
+                private$.clearAnalysisCache()
+                return(FALSE)
+            }
+
+            private$.state <- cache$state
+            private$.lastStructuralKey <- cache$key
+            private$.structuralChanged <- FALSE
+            private$.rowCursors <- list()
+            private$.summaryRowNo <- 0L
+
+            restored <- tryCatch({
+                private$.populateCoreResults()
+                private$.populateEnvironmentalResults()
+                self$results$ordination$setState(private$.nmdsPlotData())
+                self$results$shepard$setState(private$.shepardPlotData())
+                private$.showSuccessfulResults(
+                    showShepard=isTRUE(self$options$nmdsShepard) &&
+                        isTRUE(private$.state$shepardValid),
+                    showEnv=length(private$.state$envRows) > 0L,
+                    showFeatures=!is.null(private$.state$features))
+                private$.refreshDisplayOnly()
+                TRUE
+            }, error=function(e) FALSE)
+
+            if (!isTRUE(restored)) {
+                private$.state <- list()
+                private$.lastStructuralKey <- NULL
+                private$.structuralChanged <- TRUE
+                private$.clearAnalysisCache()
+                return(FALSE)
+            }
+
+            private$.saveAnalysisCache()
+            TRUE
+        },
+
+        .clearAnalysisCache = function() {
+            self$results$analysisCache$setState(NULL)
+        },
+
+        .saveAnalysisCache = function() {
+            if (is.null(private$.lastStructuralKey) ||
+                    is.null(private$.state$fit)) {
+                private$.clearAnalysisCache()
+                return(invisible(NULL))
+            }
+            self$results$analysisCache$setState(list(
+                version=1L,
+                key=private$.lastStructuralKey,
+                state=private$.state))
+            invisible(NULL)
         },
 
         .showEmptyTables = function() {
@@ -56,7 +168,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 vars=requestedVars,
                 transform=self$options$transform,
                 distance=preparationDistance,
-                seed=self$options$seed,
+                seed=miso_effective_seed(
+                    self$options$useFixedSeed, self$options$seed),
                 requireFactor=FALSE,
                 distBinary=FALSE)
             if (isTRUE(prep$error)) {
@@ -210,6 +323,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.prepareShepardWarnings()
             private$.state$baseWarnings <- unique(private$.state$warnings)
             private$.populateCoreResults()
+            private$.populateEnvironmentalResults()
             self$results$ordination$setState(private$.nmdsPlotData())
             self$results$shepard$setState(private$.shepardPlotData())
             showShepard <- isTRUE(self$options$nmdsShepard) &&
@@ -218,18 +332,23 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 showShepard=showShepard,
                 showEnv=length(private$.state$envRows) > 0L,
                 showFeatures=! is.null(private$.state$features))
+            private$.state$displaySettings <- private$.displaySettings()
         },
 
         .run = function() {
             on.exit(miso_finish_empty_tables(self$results), add=TRUE)
+            if (is.null(private$.state$fit))
+                private$.restoreAnalysisCache()
             structuralKey <- private$.structuralKey()
             private$.structuralChanged <- !identical(
                 private$.lastStructuralKey, structuralKey)
             if (!private$.structuralChanged) {
                 private$.refreshDisplayOnly()
+                private$.saveAnalysisCache()
                 return()
             }
-            private$.lastStructuralKey <- structuralKey
+            private$.clearAnalysisCache()
+            private$.lastStructuralKey <- NULL
             private$.rowCursors <- list()
             private$.summaryRowNo <- 0L
             private$.clearResults()
@@ -241,6 +360,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (!isTRUE(fit$success))
                 return()
             private$.assembleNmdsResults(prep)
+            private$.lastStructuralKey <- structuralKey
+            private$.saveAnalysisCache()
         },
 
         .htmlEscape = function(value) {
@@ -411,44 +532,77 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     },
 
 
-        .structuralKey = function() {
-            serialize(list(
+        .structuralOptions = function() {
+            list(
                 vars=self$options$vars,
                 factor=self$options$factor,
                 transform=self$options$transform,
                 distance=self$options$distance,
                 distBinary=self$options$distBinary,
-                seed=self$options$seed,
+                effectiveSeed=miso_effective_seed(
+                    self$options$useFixedSeed, self$options$seed),
                 nmdsK=self$options$nmdsK,
                 nmdsTrymax=self$options$nmdsTrymax,
                 nmdsMaxit=self$options$nmdsMaxit,
                 nmdsEnv=self$options$nmdsEnv,
                 nmdsSpecies=self$options$nmdsSpecies,
-                nmdsEnvPerm=self$options$nmdsEnvPerm,
-                dataSignature=miso_data_signature(self$data)), NULL)
+                nmdsEnvPerm=self$options$nmdsEnvPerm)
+        },
+
+        .structuralKey = function() {
+            serialize(c(
+                private$.structuralOptions(),
+                list(dataSignature=miso_data_signature(self$data))), NULL)
         },
 
         .refreshDisplayOnly = function() {
             if (is.null(private$.state$fit)) {
+                private$.state$displaySettings <- NULL
                 private$.showEmptyTables()
                 return()
             }
-            private$.prepareOverlays()
-            private$.prepareShepardWarnings()
-            private$.syncWarnings()
-            self$results$ordination$setState(private$.nmdsPlotData())
+
+            previous <- private$.state$displaySettings
+            current <- private$.displaySettings()
+            groupNames <- c("nmdsOverlay", "nmdsHull", "nmdsEllipse", "nmdsSpider")
+            groupChanged <- is.null(previous) || !identical(
+                previous[groupNames], current[groupNames])
+            shepardChanged <- is.null(previous) || !identical(
+                previous$nmdsShepard, current$nmdsShepard)
+
+            if (groupChanged) {
+                private$.prepareOverlays()
+                self$results$ordination$.setPath(NULL)
+                self$results$ordination$setState(private$.nmdsPlotData())
+            }
+            if (shepardChanged)
+                private$.prepareShepardWarnings()
+            if (groupChanged || shepardChanged)
+                private$.syncWarnings()
+
             showShepard <- isTRUE(self$options$nmdsShepard) &&
                 isTRUE(private$.state$shepardValid)
-            if (showShepard) {
-                miso_clear_table(self$results$shepardPairs)
-                private$.populateShepardPairs()
-                self$results$shepard$setState(private$.shepardPlotData())
-            } else {
-                miso_clear_table(self$results$shepardPairs)
+            if (shepardChanged) {
+                if (showShepard && length(self$results$shepardPairs$rowKeys) == 0L)
+                    private$.populateShepardPairs()
+                self$results$shepard$setVisible(showShepard)
+                self$results$shepardPairs$setVisible(showShepard)
             }
-            self$results$shepard$setVisible(showShepard)
-            self$results$shepardDescription$setVisible(FALSE)
-            self$results$shepardPairs$setVisible(showShepard)
+            if (groupChanged || shepardChanged) {
+                self$results$warnings$setVisible(
+                    length(private$.state$warnings) > 0L)
+                self$results$shepardDescription$setVisible(FALSE)
+            }
+            private$.state$displaySettings <- current
+        },
+
+        .displaySettings = function() {
+            list(
+                nmdsOverlay=isTRUE(self$options$nmdsOverlay),
+                nmdsHull=isTRUE(self$options$nmdsHull),
+                nmdsEllipse=isTRUE(self$options$nmdsEllipse),
+                nmdsSpider=isTRUE(self$options$nmdsSpider),
+                nmdsShepard=isTRUE(self$options$nmdsShepard))
         },
 
         .populateShepardPairs = function() {
@@ -617,8 +771,12 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            private$.clearAnalysisCache()
+            self$results$ordination$.setPath(NULL)
+            self$results$shepard$.setPath(NULL)
             private$.state <- list(
                 warnings=character(), baseWarnings=character(),
+                warningHtml=NULL,
                 overlayWarnings=character(), shepardWarnings=character(),
                 fit=NULL, prep=NULL, sites=NULL,
                 features=NULL, group=NULL, groupLabels=NULL,
@@ -673,10 +831,16 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$overlayWarnings,
                 private$.state$shepardWarnings))
             hasWarnings <- length(private$.state$warnings) > 0L
-            if (hasWarnings)
-                self$results$warnings$setContent(miso_warning_block(
-                    private$.state$warnings))
-            self$results$warnings$setVisible(hasWarnings)
+            content <- if (hasWarnings)
+                miso_warning_block(private$.state$warnings)
+            else
+                ""
+            if (! identical(private$.state$warningHtml, content)) {
+                self$results$warnings$setContent(content)
+                private$.state$warningHtml <- content
+            }
+            if (! identical(self$results$warnings$visible, hasWarnings))
+                self$results$warnings$setVisible(hasWarnings)
         },
 
         .prepareShepardWarnings = function() {
@@ -934,11 +1098,16 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     levels=assignedLevels)
                 ellipseWarnings <- character()
                 ellipseItems <- tryCatch(withCallingHandlers(
+                    # Older bundled vegan queries par() defaults even for draw="none".
                     vegan::ordiellipse(
                         private$.state$fit,
                         ellipseGroup,
                         kind="sd",
-                        draw="none"),
+                        draw="none",
+                        col=1,
+                        border=1,
+                        lty=1,
+                        lwd=1),
                     warning=function(w) {
                         ellipseWarnings <<- c(
                             ellipseWarnings, conditionMessage(w))
@@ -1094,7 +1263,18 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 "NMDS", seq_len(private$.state$effectiveK))
             private$.state$envRows <- rows
             private$.state$vectorEndpoints <- endpoints
+        },
 
+        .populateEnvironmentalResults = function() {
+            private$.clearTable(self$results$envfit)
+            rows <- private$.state$envRows
+            if (length(rows) == 0L) {
+                self$results$envfit$setNote(
+                    key="method", note="", init=FALSE)
+                return()
+            }
+
+            endpoints <- private$.state$vectorEndpoints
             for (i in seq_along(rows)) {
                 row <- rows[[i]]
                 miso_add_or_set_row(
@@ -1313,6 +1493,49 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             list(x=paddedRange(x), y=paddedRange(y))
         },
 
+        .nmdsArrowMultiplier = function(sites, vectors, labelExpansion=1.12) {
+            sites <- as.matrix(sites)
+            vectors <- as.matrix(vectors)
+            if (ncol(sites) < 2L || ncol(vectors) < 2L || nrow(vectors) == 0L)
+                return(1)
+
+            finiteVectors <- is.finite(vectors[, 1L]) & is.finite(vectors[, 2L])
+            if (! any(finiteVectors))
+                return(1)
+
+            coordinateExtent <- function(values) {
+                values <- values[is.finite(values)]
+                if (length(values) < 2L)
+                    return(0)
+                span <- diff(range(values))
+                if (is.finite(span))
+                    span
+                else
+                    max(abs(values))
+            }
+            siteExtent <- max(
+                coordinateExtent(sites[, 1L]),
+                coordinateExtent(sites[, 2L]))
+            if (! is.finite(siteExtent) || siteExtent <= 0)
+                siteExtent <- 1
+
+            vectorExtent <- max(abs(vectors[finiteVectors, 1:2, drop=FALSE]))
+            if (! is.finite(vectorExtent) || vectorExtent <= 0)
+                return(1)
+
+            targetExtent <- siteExtent * 0.75 / labelExpansion
+            if (! is.finite(targetExtent) || targetExtent <= 0)
+                targetExtent <- 0.75 / labelExpansion
+            multiplier <- targetExtent / vectorExtent
+            if (is.na(multiplier))
+                multiplier <- 1
+            else if (is.infinite(multiplier))
+                multiplier <- .Machine$double.xmax
+            else if (multiplier <= 0)
+                multiplier <- .Machine$double.xmin * .Machine$double.eps
+            multiplier
+        },
+
         .overlayPathData = function(items, layer) {
             if (length(items) == 0L)
                 return(data.frame())
@@ -1450,11 +1673,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     finiteVectors <- is.finite(vectors[, 1L]) & is.finite(vectors[, 2L])
                     if (any(finiteVectors)) {
                         labelExpansion <- 1.12
-                        arrowMultiplier <- suppressWarnings(tryCatch(vegan::ordiArrowMul(vectors[finiteVectors,
-                          1:2, drop = FALSE], fill = 0.75/labelExpansion), error = function(e) NA_real_))
-                        if (length(arrowMultiplier) != 1L || !is.finite(arrowMultiplier) || arrowMultiplier <=
-                          0)
-                          arrowMultiplier <- 1
+                        arrowMultiplier <- private$.nmdsArrowMultiplier(
+                            sites, vectors, labelExpansion=labelExpansion)
                         displayVectors <- matrix(NA_real_, nrow = nrow(vectors), ncol = 2L)
                         displayVectors[finiteVectors, ] <- vectors[finiteVectors, 1:2, drop = FALSE] * arrowMultiplier
                         vectorData <- data.frame(x = 0, y = 0, xend = displayVectors[finiteVectors, 1L], yend = displayVectors[finiteVectors,

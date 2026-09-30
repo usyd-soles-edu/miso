@@ -4,7 +4,7 @@ jus: '3.0'
 stage: 0
 compilerMode: tame
 events:
-  loaded: view_loaded
+  updated: view_updated
 children:
   - type: VariableSupplier
     persistentItems: false
@@ -134,8 +134,15 @@ children:
       - type: TextBox
         name: permN
         format: number
+      - type: CheckBox
+        name: useFixedSeed
+        events:
+          change: fixed_seed_changed
       - type: TextBox
         name: seed
         format: number
+        enable: (useFixedSeed)
+        events:
+          change: seed_changed
       - type: CheckBox
         name: useParallel

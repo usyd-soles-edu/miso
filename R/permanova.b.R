@@ -42,7 +42,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 factor=self$options$factor,
                 transform=self$options$transform,
                 distance=self$options$distance,
-                seed=self$options$seed,
+                seed=miso_effective_seed(
+                    self$options$useFixedSeed, self$options$seed),
                 extraVars=self$options$permFactors,
                 strata=self$options$strata,
                 covariates=self$options$covariates,
@@ -154,11 +155,14 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             on.exit(miso_finish_empty_tables(self$results), add=TRUE)
+            effectiveSeed <- miso_effective_seed(
+                self$options$useFixedSeed, self$options$seed)
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
-                    "pcoaCentroids", "pcoaSpiders"),
-                data=self$data)
+                    "pcoaCentroids", "pcoaSpiders", "seed", "useFixedSeed"),
+                data=self$data,
+                extra=list(effectiveSeed=effectiveSeed))
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()
@@ -230,6 +234,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            # A new effective seed can refit without a raw-option clearWith hit.
+            self$results$companionPcoa$.setPath(NULL)
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             self$results$companionPcoaDescription$setContent("")

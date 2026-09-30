@@ -56,7 +56,6 @@ items:
       - distSqrt
       - distAdd
       - permN
-      - seed
       - useParallel
 
   - name: companionPcoaDescription
