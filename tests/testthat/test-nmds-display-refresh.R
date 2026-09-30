@@ -456,3 +456,38 @@ test_that("NMDS first Shepard display populates from a cached fit", {
     expect_true(analysis$results$shepard$visible)
     expect_gt(length(analysis$results$shepardPairs$rowKeys), 0L)
 })
+
+test_that("Shepard batch restoration matches public row construction", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(
+        file=system.file("jamovi.proto", package="jmvcore"))
+    analysis <- nmdsClass$new(options=nmdsOptions$new(), data=data.frame())
+    reference <- nmdsClass$new(options=nmdsOptions$new(), data=data.frame())
+    private <- analysis$.__enclos_env__$private
+    count <- 1001L
+    pairs <- data.frame(
+        dissimilarity=seq_len(count) / count,
+        ordinationDistance=seq_len(count) / (count + 1L),
+        monotonicFit=seq_len(count) / (count + 2L))
+    pairs$monotonicFit[[count]] <- NA_real_
+    private$.state$shepardDisplayData <- pairs
+    expected <- reference$results$shepardPairs
+    for (i in seq_len(count))
+        expected$addRow(as.character(i), values=lapply(pairs, function(x)
+            miso_num_or_na(x[[i]])))
+    private$.populateShepardPairs()
+    actual <- analysis$results$shepardPairs
+    expect_identical(actual$rowKeys, expected$rowKeys)
+    expect_identical(actual$names, expected$names)
+    expect_equal(actual$rowCount, expected$rowCount)
+    expect_identical(actual$asDF, expected$asDF)
+    expect_identical(
+        actual$asProtoBuf()$table$serialize(NULL),
+        expected$asProtoBuf()$table$serialize(NULL))
+    # Replacing the table must discard surplus cells and reset row metadata.
+    private$.state$shepardDisplayData <- pairs[1:3, ]
+    private$.populateShepardPairs()
+    expect_identical(actual$rowKeys, as.list(as.character(1:3)))
+    expect_equal(actual$rowCount, 3L)
+    expect_identical(actual$asDF, expected$asDF[1:3, ])
+})

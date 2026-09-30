@@ -609,17 +609,26 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             shepardPairs <- private$.state$shepardDisplayData
             if (is.null(shepardPairs) || nrow(shepardPairs) == 0L)
                 return()
-            for (i in seq_len(nrow(shepardPairs)))
-                miso_add_or_set_row(
-                    self$results$shepardPairs,
-                    rowKey=as.character(i),
-                    values=list(
-                        dissimilarity=miso_num_or_na(
-                            shepardPairs$dissimilarity[[i]]),
-                        ordinationDistance=miso_num_or_na(
-                            shepardPairs$ordinationDistance[[i]]),
-                        monotonicFit=miso_num_or_na(
-                            shepardPairs$monotonicFit[[i]])))
+            table <- self$results$shepardPairs
+            keys <- as.character(seq_len(nrow(shepardPairs)))
+            # Table$addRow() re-encodes every existing row key for each append.
+            # Restoring 1,001 Shepard rows therefore does quadratic JSON work.
+            # This table has sequential string keys and three literal columns;
+            # initialise its row metadata once, using the same Cell API as
+            # addRow(). jmvcore has no public bulk-row API.
+            private$.clearTable(table)
+            tablePrivate <- table$.__enclos_env__$private
+            tablePrivate$.rowKeys <- as.list(keys)
+            tablePrivate$.rowCount <- length(keys)
+            tablePrivate$.rowNames <- paste0('"', keys, '"')
+            for (name in c(
+                    "dissimilarity", "ordinationDistance", "monotonicFit")) {
+                column <- table$getColumn(name)
+                for (i in seq_along(keys))
+                    column$addCell(
+                        miso_num_or_na(shepardPairs[[name]][[i]]),
+                        .key=keys[[i]], .index=i)
+            }
         },
 
         .clearDisplayResults = function() {
