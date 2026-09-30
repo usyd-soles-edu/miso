@@ -751,8 +751,8 @@ test_that("group overlays use unique styles and cached validated geometry", {
     expect_identical(length(overlays$spider), 5L)
     expect_identical(
         overlays$lineTypes,
-        c(hull=1L, ellipse=2L, spider=3L))
-    expect_identical(length(unique(overlays$lineTypes)), 3L)
+        c(hull=2L, ellipse=3L, spider=3L))
+    expect_identical(length(unique(overlays$lineTypes)), 2L)
     expect_true(all(vapply(
         overlays$hull,
         function(x) is.matrix(x) && ncol(x) == 2L && nrow(x) >= 4L,
@@ -924,14 +924,14 @@ test_that("overlay-only plots use independent group and layer encodings", {
     expect_true(all(overlays$styles$assigned))
     expect_identical(nrow(assignedStyles), 5L)
     expect_identical(length(unique(assignedStyles$lineType)), 5L)
-    expect_identical(length(unique(overlays$lineWidths)), 3L)
+    expect_identical(length(unique(overlays$lineWidths)), 2L)
     expect_true("GeomSegment" %in% geomClasses)
     expect_gte(sum(geomClasses == "GeomPath"), 2L)
     expect_identical(
         stats::setNames(assignedStyles$colour, assignedStyles$group),
         shared$colour[assignedStyles$group])
     expect_identical(colourScale$name, "Group")
-    expect_identical(linetypeScale$name, "Group")
+    expect_identical(linetypeScale$name, "Layer")
     expect_identical(linewidthScale$name, "Layer")
     expect_identical(colourScale$guide, "legend")
     expect_identical(linetypeScale$guide, "legend")

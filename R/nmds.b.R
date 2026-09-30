@@ -1029,11 +1029,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     lineType=character(), assigned=logical(),
                     stringsAsFactors=FALSE),
                 hull=list(), ellipse=list(), spider=list(),
-                lineTypes=c(hull=1L, ellipse=2L, spider=3L),
+                lineTypes=c(hull=2L, ellipse=3L, spider=3L),
                 lineWidths=if (requested[["points"]])
-                    c(hull=1.5, ellipse=1.5, spider=1)
+                    c(hull=1, ellipse=1, spider=1)
                 else
-                    c(hull=2.5, ellipse=1.5, spider=0.75))
+                    c(hull=1, ellipse=1, spider=0.75))
             private$.state$overlays <- overlays
 
             groupLabels <- private$.state$groupLabels
@@ -1637,12 +1637,17 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     yValues <- c(yValues, geometry$yend)
                 }
             }
-            lineMapping <- if (pointsStyled) {
-                ggplot2::aes(colour = group, linetype = layer, linewidth = layer)
-            }
-            else {
-                ggplot2::aes(colour = group, linetype = group, linewidth = layer)
-            }
+            if (nrow(ellipseData) > 0L)
+                plot <- plot + ggplot2::geom_polygon(
+                    data = ellipseData,
+                    mapping = ggplot2::aes(x = x, y = y, group = pathGroup,
+                        fill = group),
+                    colour = NA, alpha = 0.08, show.legend = FALSE) +
+                    ggplot2::scale_fill_manual(
+                        values = stats::setNames(styles$colour, styles$group),
+                        guide = "none")
+            lineMapping <- ggplot2::aes(
+                colour = group, linetype = layer, linewidth = layer)
             if (nrow(spiderData) > 0L)
                 plot <- plot + ggplot2::geom_segment(data = spiderData, mapping = utils::modifyList(lineMapping,
                     ggplot2::aes(x = x, y = y, xend = xend, yend = yend)), alpha = 0.72, show.legend = TRUE)
@@ -1739,15 +1744,9 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 lineLabels <- unname(layerLabels[effectiveLineLayers])
                 plot <- plot + ggplot2::scale_linewidth_manual(name = "Layer", values = stats::setNames(unname(overlays$lineWidths[effectiveLineLayers]),
                     lineLabels))
-                if (pointsStyled) {
-                    plot <- plot + ggplot2::scale_linetype_manual(name = "Layer", values = stats::setNames(unname(overlays$lineTypes[effectiveLineLayers]),
-                        lineLabels))
-                }
-                else {
-                    assigned <- styles[styles$assigned, , drop = FALSE]
-                    plot <- plot + ggplot2::scale_linetype_manual(name = "Group", values = stats::setNames(assigned$lineType,
-                        assigned$group), drop = FALSE)
-                }
+                plot <- plot + ggplot2::scale_linetype_manual(
+                    name = "Layer", values = stats::setNames(
+                        unname(overlays$lineTypes[effectiveLineLayers]), lineLabels))
                 plot <- plot + ggplot2::guides(linetype = ggplot2::guide_legend(nrow = 2, byrow = TRUE))
             }
             limits <- private$.plotLimits(xValues, yValues)
