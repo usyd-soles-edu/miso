@@ -93,8 +93,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.showSuccessfulResults(
                     showShepard=isTRUE(self$options$nmdsShepard) &&
                         isTRUE(private$.state$shepardValid),
-                    showEnv=length(private$.state$envRows) > 0L,
-                    showFeatures=!is.null(private$.state$features))
+                    showEnv=length(private$.state$envRows) > 0L)
                 private$.refreshDisplayOnly()
                 TRUE
             }, error=function(e) FALSE)
@@ -130,10 +129,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .showEmptyTables = function() {
             miso_show_empty_tables(self$results, c(
-                    sites=TRUE, stress=TRUE,
-                    shepardPairs=isTRUE(self$options$nmdsShepard),
+                    sites=isTRUE(self$options$nmdsSiteTable), stress=TRUE,
+                    shepardPairs=isTRUE(self$options$nmdsShepardTable),
                     envfit=length(miso_clean_vars(self$options$nmdsEnv)) > 0L,
-                    features=isTRUE(self$options$nmdsSpecies)))
+                    features=isTRUE(self$options$nmdsFeatureTable) &&
+                        isTRUE(self$options$nmdsSpecies)))
         },
 
         .prepareNmds = function() {
@@ -330,8 +330,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$shepardValid
             private$.showSuccessfulResults(
                 showShepard=showShepard,
-                showEnv=length(private$.state$envRows) > 0L,
-                showFeatures=! is.null(private$.state$features))
+                showEnv=length(private$.state$envRows) > 0L)
             private$.state$displaySettings <- private$.displaySettings()
         },
 
@@ -586,13 +585,13 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 if (showShepard && length(self$results$shepardPairs$rowKeys) == 0L)
                     private$.populateShepardPairs()
                 self$results$shepard$setVisible(showShepard)
-                self$results$shepardPairs$setVisible(showShepard)
             }
             if (groupChanged || shepardChanged) {
                 self$results$warnings$setVisible(
                     length(private$.state$warnings) > 0L)
                 self$results$shepardDescription$setVisible(FALSE)
             }
+            private$.showOptionalTables()
             private$.state$displaySettings <- current
         },
 
@@ -603,6 +602,19 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 nmdsEllipse=isTRUE(self$options$nmdsEllipse),
                 nmdsSpider=isTRUE(self$options$nmdsSpider),
                 nmdsShepard=isTRUE(self$options$nmdsShepard))
+        },
+
+        .showOptionalTables = function() {
+            self$results$sites$setVisible(isTRUE(self$options$nmdsSiteTable))
+            self$results$features$setVisible(
+                isTRUE(self$options$nmdsFeatureTable) &&
+                isTRUE(self$options$nmdsSpecies) &&
+                !is.null(private$.state$features))
+            showPairs <- isTRUE(self$options$nmdsShepardTable) &&
+                isTRUE(private$.state$shepardValid)
+            if (showPairs && length(self$results$shepardPairs$rowKeys) == 0L)
+                private$.populateShepardPairs()
+            self$results$shepardPairs$setVisible(showPairs)
         },
 
         .populateShepardPairs = function() {
@@ -862,19 +874,18 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "values were unavailable.")
         },
 
-        .showSuccessfulResults = function(showShepard, showEnv, showFeatures) {
+        .showSuccessfulResults = function(showShepard, showEnv) {
             self$results$guidance$setVisible(FALSE)
             private$.syncWarnings()
             for (name in c(
                     "ordination",
-                    "stress", "sites"))
+                    "stress"))
                 self$results[[name]]$setVisible(TRUE)
             self$results$ordinationDescription$setVisible(FALSE)
             self$results$shepard$setVisible(showShepard)
             self$results$shepardDescription$setVisible(FALSE)
-            self$results$shepardPairs$setVisible(showShepard)
             self$results$envfit$setVisible(showEnv)
-            self$results$features$setVisible(showFeatures)
+            private$.showOptionalTables()
         },
 
 
@@ -1423,7 +1434,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         item=diagnosticRows[[i]][[1L]],
                         value=diagnosticRows[[i]][[2L]]))
 
-            if (isTRUE(self$options$nmdsShepard))
+            if (isTRUE(self$options$nmdsShepard) ||
+                    isTRUE(self$options$nmdsShepardTable))
                 private$.populateShepardPairs()
 
             isThreeDimensional <- identical(k, 3L)

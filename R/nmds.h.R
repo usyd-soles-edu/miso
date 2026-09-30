@@ -23,6 +23,9 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             nmdsEllipse = FALSE,
             nmdsSpider = FALSE,
             nmdsEnvPerm = 99,
+            nmdsSiteTable = FALSE,
+            nmdsFeatureTable = FALSE,
+            nmdsShepardTable = FALSE,
             useFixedSeed = TRUE, ...) {
 
             super$initialize(
@@ -156,6 +159,18 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 nmdsEnvPerm,
                 default=99,
                 min=1)
+            private$..nmdsSiteTable <- jmvcore::OptionBool$new(
+                "nmdsSiteTable",
+                nmdsSiteTable,
+                default=FALSE)
+            private$..nmdsFeatureTable <- jmvcore::OptionBool$new(
+                "nmdsFeatureTable",
+                nmdsFeatureTable,
+                default=FALSE)
+            private$..nmdsShepardTable <- jmvcore::OptionBool$new(
+                "nmdsShepardTable",
+                nmdsShepardTable,
+                default=FALSE)
             private$..useFixedSeed <- jmvcore::OptionBool$new(
                 "useFixedSeed",
                 useFixedSeed,
@@ -178,6 +193,9 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..nmdsEllipse)
             self$.addOption(private$..nmdsSpider)
             self$.addOption(private$..nmdsEnvPerm)
+            self$.addOption(private$..nmdsSiteTable)
+            self$.addOption(private$..nmdsFeatureTable)
+            self$.addOption(private$..nmdsShepardTable)
             self$.addOption(private$..useFixedSeed)
         }),
     active = list(
@@ -198,6 +216,9 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         nmdsEllipse = function() private$..nmdsEllipse$value,
         nmdsSpider = function() private$..nmdsSpider$value,
         nmdsEnvPerm = function() private$..nmdsEnvPerm$value,
+        nmdsSiteTable = function() private$..nmdsSiteTable$value,
+        nmdsFeatureTable = function() private$..nmdsFeatureTable$value,
+        nmdsShepardTable = function() private$..nmdsShepardTable$value,
         useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
@@ -217,6 +238,9 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..nmdsEllipse = NA,
         ..nmdsSpider = NA,
         ..nmdsEnvPerm = NA,
+        ..nmdsSiteTable = NA,
+        ..nmdsFeatureTable = NA,
+        ..nmdsShepardTable = NA,
         ..useFixedSeed = NA)
 )
 
@@ -609,6 +633,9 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param nmdsEllipse .
 #' @param nmdsSpider .
 #' @param nmdsEnvPerm .
+#' @param nmdsSiteTable .
+#' @param nmdsFeatureTable .
+#' @param nmdsShepardTable .
 #' @param useFixedSeed Use a positive fixed seed for reproducible ordination
 #'   and environmental-fit results; unchecked analyses use the random RNG
 #'   stream.
@@ -654,6 +681,9 @@ nmds <- function(
     nmdsEllipse = FALSE,
     nmdsSpider = FALSE,
     nmdsEnvPerm = 99,
+    nmdsSiteTable = FALSE,
+    nmdsFeatureTable = FALSE,
+    nmdsShepardTable = FALSE,
     useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
@@ -689,6 +719,9 @@ nmds <- function(
         nmdsEllipse = nmdsEllipse,
         nmdsSpider = nmdsSpider,
         nmdsEnvPerm = nmdsEnvPerm,
+        nmdsSiteTable = nmdsSiteTable,
+        nmdsFeatureTable = nmdsFeatureTable,
+        nmdsShepardTable = nmdsShepardTable,
         useFixedSeed = useFixedSeed)
 
     analysis <- nmdsClass$new(

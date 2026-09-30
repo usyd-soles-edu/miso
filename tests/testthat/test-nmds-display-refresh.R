@@ -33,6 +33,7 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
         nmdsEnv=c("temperature", "pH"),
         nmdsSpecies=TRUE,
         nmdsShepard=TRUE,
+        nmdsSiteTable=TRUE, nmdsFeatureTable=TRUE, nmdsShepardTable=TRUE,
         seed=123,
         nmdsTrymax=5)
     statePath <- tempfile()

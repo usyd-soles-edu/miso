@@ -22,6 +22,9 @@ const defaults = {
     nmdsEllipse: false,
     nmdsSpider: false,
     nmdsShepard: true,
+    nmdsSiteTable: false,
+    nmdsFeatureTable: false,
+    nmdsShepardTable: false,
     nmdsTrymax: 20,
     nmdsMaxit: 200,
     simperAssess: false,
@@ -74,7 +77,7 @@ const createUi = overrides => {
     }
 
     for (const name of [
-        'groupOptions', 'environmentAssessment', 'reproducibility',
+        'groupOptions', 'environmentAssessment', 'reproducibility', 'tables',
         'studyDesign', 'plots', 'advancedOptions', 'permutationAssessment',
     ])
         ui[name] = { expand() {} };
@@ -160,3 +163,12 @@ for (const analysis of ['permanova', 'anosim', 'permdisp', 'simper', 'nmds'])
     exercise(analysis);
 
 console.log('seed UI controller contracts pass');
+
+// Saved table preferences should remain discoverable when reopening the panel.
+for (const option of ['nmdsSiteTable', 'nmdsFeatureTable', 'nmdsShepardTable']) {
+    const { ui } = createUi({ [option]: true });
+    let expanded = false;
+    ui.tables.expand = () => { expanded = true; };
+    require(path.join(root, 'jamovi/js/nmds.js')).view_updated(ui);
+    assert.strictEqual(expanded, true, `${option}: Tables section expands`);
+}

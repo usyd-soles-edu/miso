@@ -22,7 +22,11 @@ nmds(
   nmdsHull = FALSE,
   nmdsEllipse = FALSE,
   nmdsSpider = FALSE,
-  nmdsEnvPerm = 99
+  nmdsEnvPerm = 99,
+  nmdsSiteTable = FALSE,
+  nmdsFeatureTable = FALSE,
+  nmdsShepardTable = FALSE,
+  useFixedSeed = TRUE
 )
 }
 \arguments{
@@ -61,10 +65,21 @@ nmds(
 \item{nmdsSpider}{.}
 
 \item{nmdsEnvPerm}{.}
+
+\item{nmdsSiteTable}{.}
+
+\item{nmdsFeatureTable}{.}
+
+\item{nmdsShepardTable}{.}
+
+\item{useFixedSeed}{Use a positive fixed seed for reproducible ordination
+and environmental-fit results; unchecked analyses use the random RNG
+stream.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
+  \code{results$analysisCache} \tab \tab \tab \tab \tab a html \cr
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$ordinationDescription} \tab \tab \tab \tab \tab a html \cr

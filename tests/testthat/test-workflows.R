@@ -497,7 +497,7 @@ test_that("nMDS can run without an overlay grouping variable", {
         as.character(res$warnings$asString()),
         ignore.case=TRUE))
     expect_true(res$ordination$visible)
-    expect_true(res$sites$visible)
+    expect_false(res$sites$visible)
     expect_identical(names(res$sites$asDF), c("row", "NMDS1", "NMDS2"))
 }
 )

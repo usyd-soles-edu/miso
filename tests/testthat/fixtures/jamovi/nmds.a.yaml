@@ -191,6 +191,21 @@ options:
     default: 99
     min: 1
 
+  - name: nmdsSiteTable
+    title: Site scores
+    type: Bool
+    default: false
+
+  - name: nmdsFeatureTable
+    title: Feature scores
+    type: Bool
+    default: false
+
+  - name: nmdsShepardTable
+    title: Shepard diagram values
+    type: Bool
+    default: false
+
   - name: useFixedSeed
     title: Use fixed seed
     type: Bool

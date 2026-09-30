@@ -58,6 +58,22 @@ children:
         name: nmdsSpecies
 
   - type: CollapseBox
+    name: tables
+    label: Tables
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: nmdsSiteTable
+      - type: CheckBox
+        name: nmdsFeatureTable
+        enable: (nmdsSpecies)
+      - type: CheckBox
+        name: nmdsShepardTable
+      - type: Label
+        label: Feature scores require the Feature Scores plot option.
+
+  - type: CollapseBox
     name: groupOptions
     label: Group Display
     collapsed: true

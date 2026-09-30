@@ -10,9 +10,11 @@ startup_cases <- list(
     simper=list(core=c("contrasts", "contributions"), extra=list(),
         enabled=list(simperDetails=TRUE, simperAssess=TRUE, simperHeatmap=TRUE),
         optional=c("variability", "means", "assessment", "heatmapValues")),
-    nmds=list(core=c("sites", "stress", "shepardPairs"),
+    nmds=list(core="stress",
         extra=list(seed=123, nmdsTrymax=5),
-        enabled=list(nmdsSpecies=TRUE, nmdsEnv="x"), optional=c("features", "envfit")),
+        enabled=list(nmdsSpecies=TRUE, nmdsEnv="x", nmdsSiteTable=TRUE,
+            nmdsFeatureTable=TRUE, nmdsShepardTable=TRUE),
+        optional=c("sites", "features", "shepardPairs", "envfit")),
     pcoa=list(core=c("sites", "eigenvalues"), extra=list(),
         enabled=list(showCentroids=TRUE), optional="centroids"),
     cluster=list(core="dendrogramStructure", extra=list(),
@@ -118,7 +120,7 @@ test_that("optional empty tables track toggles before and after fitting", {
         anosim=list(option="anosimPairwise", tables="pairwise"),
         permdisp=list(option="showOrdinationPlot", tables="ordinationScores"),
         simper=list(option="simperDetails", tables=c("variability","means")),
-        nmds=list(option="nmdsShepard", tables="shepardPairs"),
+        nmds=list(option="nmdsShepardTable", tables="shepardPairs"),
         pcoa=list(option="showCentroids", tables="centroids"),
         cluster=list(option="defineClusters", tables="membership"))
     for (name in names(toggles)) {

@@ -242,8 +242,8 @@ expect_nmds_visibility <- function(result, visible, hidden) {
 
 expect_nmds_correction_with_tables <- function(result) {
     expect_nmds_visibility(result,
-        visible=c("guidance", "stress", "sites"),
-        hidden=c("warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
+        visible=c("guidance", "stress"),
+        hidden=c("sites", "shepardPairs", "warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
 }
 
 find_nmds_yaml_node <- function(node, name) {
@@ -384,8 +384,9 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
     noneAnalysis <- run_nmds_private(data, vars=character())
     none <- noneAnalysis$results
     expect_false(none$guidance$visible)
-    for (name in c("sites", "stress", "shepardPairs"))
-        expect_true(none[[name]]$visible)
+    expect_true(none$stress$visible)
+    for (name in c("sites", "features", "shepardPairs"))
+        expect_false(none[[name]]$visible)
     expect_null(noneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 
     oneAnalysis <- run_nmds_private(data, vars="feature_01")
@@ -1087,7 +1088,7 @@ test_that("no usable environmental variable leaves only envfit hidden", {
     expect_false(result$envfit$visible)
     expect_identical(nrow(result$envfit$asDF), 0L)
     expect_true(result$ordination$visible)
-    expect_true(result$sites$visible)
+    expect_false(result$sites$visible)
     expect_true(result$warnings$visible)
 })
 
@@ -1208,7 +1209,7 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     expect_true(isTRUE(rendered))
     expect_true(shown$results$shepard$visible)
     expect_false(shown$results$shepardDescription$visible)
-    expect_true(shown$results$shepardPairs$visible)
+    expect_false(shown$results$shepardPairs$visible)
     shownPairs <- shown$results$shepardPairs$asDF
     rownames(shownPairs) <- NULL
     expect_equal(shownPairs, expectedData, tolerance=0)
@@ -1490,7 +1491,8 @@ test_that("structural environmental inputs rebuild fit rows while display toggle
 
 test_that("nMDS reports effective choices in surviving table notes", {
     analysis <- run_nmds_private(nmds_state_data(),
-        vars=paste0("feature_0", 1:4), factor="group", nmdsTrymax=5, seed=123)
+        vars=paste0("feature_0", 1:4), factor="group", nmdsTrymax=5,
+        seed=123, nmdsSiteTable=TRUE)
     expect_true(analysis$results$sites$visible)
     expect_match(miso_table_note(analysis$results$sites, "method"), "Bray")
     expect_identical(miso_table_note(analysis$results$stress, "method"), "")
