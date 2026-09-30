@@ -342,7 +342,7 @@ test_that("nMDS result schema contains no initially visible shell", {
         expected_cache_clear_with)
     expect_identical(by_name$ordination$clearWith,
         expected_ordination_clear_with)
-    ordinary_items <- setdiff(names(by_name), c("analysisCache", "ordination"))
+    ordinary_items <- setdiff(names(by_name), c("seedState", "analysisCache", "ordination"))
     expect_true(all(vapply(
         by_name[ordinary_items],
         function(x) identical(x$clearWith, expected_clear_with),
@@ -351,7 +351,7 @@ test_that("nMDS result schema contains no initially visible shell", {
     expect_identical(
         vapply(items, `[[`, character(1), "name"),
         c(
-            "analysisCache", "guidance", "warnings",
+            "seedState", "analysisCache", "guidance", "warnings",
             "ordinationDescription", "ordination", "sites",
             "stress", "shepardDescription", "shepard",
             "shepardPairs",
@@ -638,7 +638,8 @@ test_that("diagnostics report fitted-object fields rather than requested setting
             "Random starts tried",
             "Best solution first found",
             "Iterations in retained solution",
-            "Engine"))
+            "Engine",
+            "Random seed"))
 })
 
 

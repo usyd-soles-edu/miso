@@ -256,7 +256,7 @@ test_that("PERMANOVA output names and suffixes remain stable", {
     schema <- yaml::read_yaml(miso_fixture_path("jamovi", "permanova.r.yaml"))
     names <- vapply(schema$items, `[[`, character(1), "name")
     expect_identical(names, c(
-        "guidance", "warnings", "table", "companionPcoaDescription",
+        "seedState", "guidance", "warnings", "table", "companionPcoaDescription",
         "companionPcoa", "companionPcoaSites", "companionPcoaCentroids",
         "pairwise"))
     table <- schema$items[[match("table", names)]]

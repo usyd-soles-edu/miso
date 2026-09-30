@@ -228,7 +228,7 @@ test_that("all analyses expose only native titled result elements", {
         names <- vapply(items, `[[`, character(1), "name")
         expect_false(any(grepl("Purpose$|^summary$|^settings$", names)), info=analysisName)
         titled <- !vapply(items, function(item)
-            item$name %in% c("analysisCache", "guidance", "warnings"), logical(1))
+            item$name %in% c("seedState", "analysisCache", "guidance", "warnings"), logical(1))
         expect_true(all(vapply(items[titled], function(item) !is.null(item$title) && nzchar(item$title), logical(1))), info=analysisName)
     }
 })

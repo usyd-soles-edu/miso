@@ -198,7 +198,7 @@ test_that("SIMPER result schema hides every empty shell and uses approved order"
     expect_identical(
         vapply(results, `[[`, character(1), "name"),
         c(
-            "guidance", "warnings",
+            "seedState", "guidance", "warnings",
             "contrasts",
             "contributions", "variability",
             "means", "table", "contributionPlots",

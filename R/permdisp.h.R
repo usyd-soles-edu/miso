@@ -242,6 +242,7 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permdispResults",
     inherit = jmvcore::Group,
     active = list(
+        seedState = function() private$.items[["seedState"]],
         guidance = function() private$.items[["guidance"]],
         warnings = function() private$.items[["warnings"]],
         anova = function() private$.items[["anova"]],
@@ -262,6 +263,12 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 refs=list(
                     "vegan",
                     "anderson2006"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="seedState",
+                title="",
+                visible=FALSE,
+                clearWith=list()))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
@@ -493,6 +500,7 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   results; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
+#'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$anova} \tab \tab \tab \tab \tab a table \cr

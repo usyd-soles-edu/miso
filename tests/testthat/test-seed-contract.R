@@ -15,32 +15,32 @@ seed_analysis <- function(name, useFixedSeed=TRUE, seed=0) {
     if (identical(name, "permanova")) {
         options <- permanovaOptions$new(vars=vars, factor="group",
             permN=11, seed=seed, useFixedSeed=useFixedSeed)
-        analysis <- permanovaClass$new(options=options, data=data)
+        analysis <- permanovaClass$new(options=options, data=data, analysisId=1L)
         table <- "table"
     }
     else if (identical(name, "anosim")) {
         options <- anosimOptions$new(vars=vars, factor="group",
             anosimN=11, seed=seed, useFixedSeed=useFixedSeed)
-        analysis <- anosimClass$new(options=options, data=data)
+        analysis <- anosimClass$new(options=options, data=data, analysisId=1L)
         table <- "global"
     }
     else if (identical(name, "permdisp")) {
         options <- permdispOptions$new(vars=vars, factor="group",
             permN=11, seed=seed, useFixedSeed=useFixedSeed)
-        analysis <- permdispClass$new(options=options, data=data)
+        analysis <- permdispClass$new(options=options, data=data, analysisId=1L)
         table <- "anova"
     }
     else if (identical(name, "simper")) {
         options <- simperOptions$new(vars=vars, factor="group",
             simperAssess=TRUE, simperN=11, seed=seed,
             useFixedSeed=useFixedSeed)
-        analysis <- simperClass$new(options=options, data=data)
+        analysis <- simperClass$new(options=options, data=data, analysisId=1L)
         table <- "contrasts"
     }
     else if (identical(name, "nmds")) {
         options <- nmdsOptions$new(vars=vars, seed=seed,
             useFixedSeed=useFixedSeed, nmdsTrymax=2)
-        analysis <- nmdsClass$new(options=options, data=data)
+        analysis <- nmdsClass$new(options=options, data=data, analysisId=1L)
         table <- "sites"
     }
     else {
@@ -223,4 +223,153 @@ test_that("seed UI controllers distinguish load defaults from user changes", {
         status <- 0L
     expect_identical(status, 0L, info=paste(output, collapse="\n"))
     expect_match(paste(output, collapse="\n"), "seed UI controller contracts pass")
+})
+
+seed_result_label <- function(state, name) {
+    if (name == "nmds") {
+        diagnostics <- state$analysis$results$stress$asDF
+        return(diagnostics$value[diagnostics$item == "Random seed"])
+    }
+    table <- switch(name, permanova="table", anosim="global",
+        permdisp="anova", simper="assessment")
+    miso_table_note(state$analysis$results[[table]], "seed")
+}
+
+test_that("reported automatic seeds reproduce randomised analyses and pairwise results", {
+    for (name in c("permanova", "anosim", "permdisp", "simper", "nmds")) {
+        automatic <- seed_analysis(name, useFixedSeed=FALSE, seed=123)
+        configure <- function(state) {
+            pairOption <- switch(name, permanova="permPairwise",
+                anosim="anosimPairwise", permdisp="dispPairwise", NULL)
+            if (!is.null(pairOption))
+                seed_set_option(state, pairOption, TRUE)
+            if (name == "nmds") {
+                seed_set_option(state, "nmdsEnv", "feature_a")
+                seed_set_option(state, "nmdsEnvPerm", 11)
+            }
+        }
+        configure(automatic)
+        seed_rerun(automatic)
+        label <- seed_result_label(automatic, name)
+        expect_match(label, "[0-9]+ \\(automatic\\)", info=name)
+        recorded <- as.integer(sub(".*?([0-9]+) \\(automatic\\).*", "\\1", label))
+        expect_true(recorded > 0L, info=name)
+        expect_identical(automatic$options$seed, 123, info=name)
+        expect_false(automatic$options$useFixedSeed, info=name)
+
+        fixed <- seed_analysis(name, seed=recorded)
+        configure(fixed)
+        seed_rerun(fixed)
+        expect_match(seed_result_label(fixed, name), "\\(fixed\\)", info=name)
+        tables <- switch(name, permanova=c("table", "pairwise"),
+            anosim=c("global", "pairwise"), permdisp=c("anova", "pairwise"),
+            simper=c("assessment", "contributions"), nmds=c("sites", "envfit"))
+        for (table in tables)
+            expect_equal(automatic$analysis$results[[table]]$asDF,
+                fixed$analysis$results[[table]]$asDF, tolerance=0,
+                info=paste(name, table))
+
+        display <- switch(name, permanova="showCompanionPcoa",
+            anosim="showRankPlot", permdisp="showDistancePlot",
+            simper="simperHeatmap", nmds="nmdsHull")
+        rng <- .Random.seed
+        seed_set_option(automatic, display, !automatic$options[[display]])
+        seed_rerun(automatic)
+        expect_identical(seed_result_label(automatic, name), label, info=name)
+        expect_identical(.Random.seed, rng, info=name)
+    }
+})
+
+test_that("descriptive SIMPER does not allocate or report a random seed", {
+    state <- seed_analysis("simper", useFixedSeed=FALSE)
+    seed_set_option(state, "simperAssess", FALSE)
+    set.seed(591)
+    rng <- .Random.seed
+    seed_rerun(state)
+    expect_identical(.Random.seed, rng)
+    expect_identical(seed_result_label(state, "simper"), "")
+})
+
+test_that("NMDS seed provenance survives serialization and obsolete caches are refitted", {
+    state <- run_seed_analysis("nmds", useFixedSeed=FALSE)
+    label <- seed_result_label(state, "nmds")
+    cache <- unserialize(serialize(state$analysis$results$analysisCache$state, NULL))
+    restore <- function(cache) {
+        nextState <- seed_analysis("nmds", useFixedSeed=FALSE)
+        nextState$analysis$results$analysisCache$setState(cache)
+        seed_rerun(nextState)
+        nextState
+    }
+    rng <- .Random.seed
+    restored <- restore(cache)
+    expect_identical(seed_result_label(restored, "nmds"), label)
+    expect_identical(restored$private$.state$fit, state$private$.state$fit)
+    expect_identical(.Random.seed, rng)
+
+    cache$version <- 1L
+    cache$state$prep$actualSeed <- NULL
+    cache$state$prep$seedSource <- NULL
+    expect_false(state$private$.validAnalysisCache(cache))
+    refitted <- restore(cache)
+    expect_match(seed_result_label(refitted, "nmds"), "\\(automatic\\)")
+    expect_false(identical(.Random.seed, rng))
+})
+
+test_that("reported seeds persist in saved jamovi results", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
+    for (name in c("permanova", "anosim", "permdisp", "simper", "nmds")) {
+        original <- run_seed_analysis(name, useFixedSeed=FALSE)
+        label <- seed_result_label(original, name)
+        statePath <- tempfile()
+        original$analysis$.setStatePathSource(function() statePath)
+        original$analysis$.save()
+        restored <- seed_analysis(name, useFixedSeed=FALSE)
+        restored$analysis$.setStatePathSource(function() statePath)
+        restored$analysis$init()
+        restored$analysis$.load()
+        restored$analysis$postInit()
+        expect_identical(seed_result_label(restored, name), label, info=name)
+        tables <- switch(name, permanova="table", anosim="global",
+            permdisp="anova", simper="assessment", nmds=c("sites", "stress"))
+        seed_rerun(restored)
+        expect_identical(seed_result_label(restored, name), label, info=name)
+        for (table in tables)
+            expect_equal(restored$analysis$results[[table]]$asDF,
+                original$analysis$results[[table]]$asDF, tolerance=0,
+                info=paste(name, table, "reopened and recalculated"))
+        unlink(statePath)
+    }
+})
+
+
+test_that("analysis seeds remain stable through refits until manually replaced", {
+    for (name in c("permanova", "anosim", "permdisp", "simper", "nmds")) {
+        state <- run_seed_analysis(name, useFixedSeed=FALSE)
+        label <- seed_result_label(state, name)
+        setting <- switch(name, permanova="permN", anosim="anosimN",
+            permdisp="permN", simper="simperN", nmds="nmdsMaxit")
+        seed_set_option(state, setting, state$options[[setting]] + 1)
+        seed_rerun(state)
+        expect_identical(seed_result_label(state, name), label, info=name)
+        seed_set_option(state, "seed", 867)
+        seed_set_option(state, "useFixedSeed", TRUE)
+        seed_rerun(state)
+        expect_match(seed_result_label(state, name), "867 \\(fixed\\)", info=name)
+        seed_set_option(state, "useFixedSeed", FALSE)
+        seed_rerun(state)
+        expect_match(seed_result_label(state, name), "867 \\(automatic\\)", info=name)
+        expect_false(state$analysis$results$seedState$visible, info=name)
+    }
+})
+
+
+test_that("seed records are hidden and survive every option change", {
+    for (name in c("permanova", "anosim", "permdisp", "simper", "nmds")) {
+        schema <- yaml::read_yaml(miso_fixture_path("jamovi", paste0(name, ".r.yaml")))
+        seed <- Filter(function(item) identical(item$name, "seedState"), schema$items)[[1L]]
+        expect_identical(seed$type, "Html", info=name)
+        expect_false(seed$visible, info=name)
+        expect_length(seed$clearWith, 0L)
+    }
 })

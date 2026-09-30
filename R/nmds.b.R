@@ -43,7 +43,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .validAnalysisCache = function(cache) {
             is.list(cache) &&
-                identical(cache$version, 1L) &&
+                identical(cache$version, 2L) &&
                 is.raw(cache$key) && length(cache$key) > 0L &&
                 is.list(cache$state) &&
                 !is.null(cache$state$fit) &&
@@ -121,7 +121,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(invisible(NULL))
             }
             self$results$analysisCache$setState(list(
-                version=1L,
+                version=2L,
                 key=private$.lastStructuralKey,
                 state=private$.state))
             invisible(NULL)
@@ -230,6 +230,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .fitNmds = function(prep) {
+            prep <- miso_record_seed(prep, self$results$seedState)
+            private$.state$prep <- prep
             private$.state$fitArguments <- list(
                 distance=self$options$distance,
                 k=private$.state$effectiveK,
@@ -493,10 +495,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .seedLabel = function(prep) {
-            if (is.na(prep$seed))
-                "Random (0)"
-            else
-                sprintf("Fixed (%d)", prep$seed)
+            miso_seed_label(prep)
         },
 
         .groupAssignmentSummary = function() {
@@ -818,7 +817,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             self$results$ordinationDescription$setContent("")
             self$results$shepardDescription$setContent("")
-            miso_clear_fixed_table(self$results$stress, 8L)
+            miso_clear_fixed_table(self$results$stress, 9L)
             private$.clearTable(self$results$shepardPairs)
             private$.clearTable(self$results$envfit)
             self$results$envfit$setNote(
@@ -1426,7 +1425,8 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 c(
                     "Iterations in retained solution",
                     private$.fitValue(fit, "iters")),
-                c("Engine", private$.fitValue(fit, "engine")))
+                c("Engine", private$.fitValue(fit, "engine")),
+                c("Random seed", private$.seedLabel(prep)))
             for (i in seq_along(diagnosticRows))
                 miso_set_fixed_row(
                     self$results$stress, i,

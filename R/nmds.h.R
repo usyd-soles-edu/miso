@@ -248,6 +248,7 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "nmdsResults",
     inherit = jmvcore::Group,
     active = list(
+        seedState = function() private$.items[["seedState"]],
         analysisCache = function() private$.items[["analysisCache"]],
         guidance = function() private$.items[["guidance"]],
         warnings = function() private$.items[["warnings"]],
@@ -269,6 +270,12 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 title="nMDS",
                 refs=list(
                     "vegan"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="seedState",
+                title="",
+                visible=FALSE,
+                clearWith=list()))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="analysisCache",
@@ -403,7 +410,7 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 options=options,
                 name="stress",
                 title="Stress and Convergence Diagnostics",
-                rows=8,
+                rows=9,
                 visible=FALSE,
                 columns=list(
                     list(
@@ -641,6 +648,7 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
+#'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$analysisCache} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr

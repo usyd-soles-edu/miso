@@ -6,6 +6,12 @@ refs:
   - vegan
 
 items:
+  - name: seedState
+    title: ''
+    type: Html
+    visible: false
+    clearWith: []
+
   - name: analysisCache
     title: ''
     type: Html
@@ -134,7 +140,7 @@ items:
   - name: stress
     title: Stress and Convergence Diagnostics
     type: Table
-    rows: 8
+    rows: 9
     visible: false
     columns:
       - name: item

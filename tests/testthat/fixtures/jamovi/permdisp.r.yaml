@@ -7,6 +7,12 @@ refs:
   - anderson2006
 
 items:
+  - name: seedState
+    title: ''
+    type: Html
+    visible: false
+    clearWith: []
+
   - name: guidance
     title: Getting Started
     type: Html

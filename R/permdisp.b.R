@@ -102,6 +102,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$warnings,
                 private$.state$restriction$warning)
 
+            prep <- miso_record_seed(prep, self$results$seedState)
             outcome <- private$.runDispersion(prep)
             if (! isTRUE(outcome$success)) {
                 private$.discardKeyedRows()
@@ -109,6 +110,9 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(outcome$pairwiseShown)
+            self$results$anova$setNote(key="seed",
+                note=paste0("Random seed: ", miso_seed_label(prep), "."),
+                init=FALSE)
         },
 
         .refreshDisplayOnly = function() {
@@ -152,6 +156,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            self$results$anova$setNote(key="seed", note="", init=FALSE)
             # A new effective seed can refit without a raw-option clearWith hit.
             self$results$plot$.setPath(NULL)
             self$results$ordinationPlot$.setPath(NULL)

@@ -383,9 +383,28 @@ miso_reconcile_table_rows <- function(table, rows) {
     invisible(TRUE)
 }
 
+# The analysis owns its seed: retain it through refits and saved-file reloads.
+miso_record_seed <- function(prep, seedState) {
+    saved <- seedState$state
+    prep$actualSeed <- if (!is.na(prep$seed))
+        prep$seed
+    else if (!is.null(saved))
+        saved$seed
+    else
+        sample.int(.Machine$integer.max, 1L)
+    prep$seedSource <- if (is.na(prep$seed)) "automatic" else "fixed"
+    seedState$setState(list(seed=prep$actualSeed))
+    prep
+}
+
+miso_seed_label <- function(prep) {
+    sprintf("%d (%s)", prep$actualSeed, prep$seedSource)
+}
+
 miso_set_seed <- function(prep) {
-    if (! is.na(prep$seed))
-        set.seed(prep$seed)
+    seed <- if (!is.null(prep$actualSeed)) prep$actualSeed else prep$seed
+    if (! is.na(seed))
+        set.seed(seed)
 }
 
 miso_num_or_na <- function(x) {

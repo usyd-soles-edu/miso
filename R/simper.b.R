@@ -134,12 +134,18 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.populateDescriptive(descriptive)
 
             assessmentShown <- FALSE
-            if (isTRUE(self$options$simperAssess))
+            if (isTRUE(self$options$simperAssess)) {
+                prep <- miso_record_seed(prep, self$results$seedState)
                 assessmentShown <- private$.runAssessment(prep, descriptive$displayRows)
+            }
             if (! assessmentShown)
                 miso_clear_table(self$results$assessment)
 
             private$.setTableNotes(prep)
+            if (assessmentShown)
+                self$results$assessment$setNote(key="seed",
+                    note=paste0("Random seed: ", miso_seed_label(prep), "."),
+                    init=FALSE)
             if (! isTRUE(self$options$simperDetails)) {
                 miso_clear_table(self$results$variability)
                 miso_clear_table(self$results$means)
@@ -240,6 +246,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            self$results$assessment$setNote(key="seed", note="", init=FALSE)
             # A new effective seed can refit without a raw-option clearWith hit.
             self$results$heatmap$.setPath(NULL)
             self$results$guidance$setContent("")

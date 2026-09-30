@@ -188,6 +188,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
 
+            prep <- miso_record_seed(prep, self$results$seedState)
             main <- private$.fitPermanova(prep)
             if (! main$success) {
                 private$.discardKeyedRows()
@@ -203,6 +204,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             private$.assemblePermanovaResults(prep, main)
+            self$results$table$setNote(key="seed",
+                note=paste0("Random seed: ", miso_seed_label(prep), "."),
+                init=FALSE)
         },
 
         .refreshDisplayOnly = function() {
@@ -234,6 +238,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            self$results$table$setNote(key="seed", note="", init=FALSE)
             # A new effective seed can refit without a raw-option clearWith hit.
             self$results$companionPcoa$.setPath(NULL)
             self$results$guidance$setContent("")

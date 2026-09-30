@@ -209,6 +209,7 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "anosimResults",
     inherit = jmvcore::Group,
     active = list(
+        seedState = function() private$.items[["seedState"]],
         guidance = function() private$.items[["guidance"]],
         warnings = function() private$.items[["warnings"]],
         global = function() private$.items[["global"]],
@@ -226,6 +227,12 @@ anosimResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 refs=list(
                     "vegan",
                     "clarke1993"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="seedState",
+                title="",
+                visible=FALSE,
+                clearWith=list()))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
@@ -394,6 +401,7 @@ anosimBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   results; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
+#'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$global} \tab \tab \tab \tab \tab a table \cr
