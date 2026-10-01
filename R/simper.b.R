@@ -44,7 +44,9 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 simperPlots=isTRUE(self$options$simperPlots),
                 simperHeatmap=isTRUE(self$options$simperHeatmap))
             private$.state <- list(
-                warnings=character(),
+                operationalWarnings=character(),
+                assessmentShown=FALSE,
+                assessmentSeedNote=NULL,
                 plotData=NULL,
                 contrastTotals=integer(),
                 contrastLabels=character(),
@@ -112,16 +114,16 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
 
-            private$.state$warnings <- prep$warnings
+            private$.state$operationalWarnings <- prep$warnings
             if (! identical(self$options$distance, "bray"))
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     sprintf(
                         "Saved distance '%s' was ignored; SIMPER used Bray-Curtis.",
                         private$.distanceLabel(self$options$distance)))
             if (isTRUE(self$options$distBinary))
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     paste(
                         "The saved binary-distance setting was ignored; Bray-Curtis used the selected transformation."))
 
@@ -141,18 +143,16 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (! assessmentShown)
                 miso_clear_table(self$results$assessment)
 
-            private$.setTableNotes(prep)
-            if (assessmentShown)
-                self$results$assessment$setNote(key="seed",
-                    note=paste0("Random seed: ", miso_seed_label(prep), "."),
-                    init=FALSE)
+            private$.state$assessmentShown <- assessmentShown
+            private$.state$assessmentSeedNote <- if (assessmentShown)
+                paste0("Random seed: ", miso_seed_label(prep), ".") else NULL
             if (! isTRUE(self$options$simperDetails)) {
                 miso_clear_table(self$results$variability)
                 miso_clear_table(self$results$means)
             }
             if (! isTRUE(self$options$simperHeatmap))
                 miso_clear_table(self$results$heatmapValues)
-            private$.setWarnings(private$.state$warnings)
+            private$.refreshPresentation()
             private$.showSuccessfulResults(assessmentShown)
         },
 
@@ -201,6 +201,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$heatmap$setVisible(heatmap && !is.null(descriptive))
             self$results$heatmapDescription$setVisible(FALSE)
             self$results$heatmapValues$setVisible(heatmap && !is.null(descriptive))
+            private$.refreshPresentation()
         },
 
         .populateOptionalDetailRows = function(descriptive) {
@@ -358,6 +359,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             displayRows <- list()
             fullRows <- list()
             contrastTotals <- integer()
+            diagnostics <- list()
             failed <- character()
 
             for (index in seq_along(pairs)) {
@@ -385,14 +387,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
                 tab$contribution <- tab$average / total
                 tab$cumulative <- cumsum(tab$contribution)
-                unavailable <- ! is.finite(tab$sd) | ! is.finite(tab$ratio)
-                if (any(unavailable))
-                    private$.state$warnings <- c(
-                        private$.state$warnings,
-                        sprintf(
-                            "%s has unavailable Contribution SD or Average divided by SD for: %s. Replication is insufficient for those values, so blank cells are shown.",
-                            label,
-                            paste(tab$feature[unavailable], collapse=", ")))
+                diagnostics <- c(diagnostics,
+                    private$.classifyDetailDiagnostics(tab, prep, pair, index))
                 crossing <- which(tab$cumulative >= threshold)[1L]
                 if (is.na(crossing))
                     crossing <- nrow(tab)
@@ -427,8 +423,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             if (length(failed) > 0L)
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     paste0(
                         "No usable descriptive contributions were returned for: ",
                         paste(failed, collapse=", "), "."))
@@ -445,7 +441,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 contrastRows=contrastRows,
                 fullRows=fullRows,
                 displayRows=displayRows,
-                contrastTotals=contrastTotals)
+                contrastTotals=contrastTotals,
+                diagnostics=diagnostics)
         },
 
 
@@ -556,8 +553,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     permutations=private$.state$requestedPermutations),
                 error=function(e) e)
             if (inherits(fit, "error")) {
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     paste0(
                         "Exploratory permutation assessment could not be calculated: ",
                         fit$message))
@@ -566,8 +563,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             pairs <- private$.contrastPairs(prep$group)
             if (length(fit) != length(pairs)) {
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     "Exploratory permutation assessment returned an unexpected set of contrasts and was omitted.")
                 return(FALSE)
             }
@@ -621,27 +618,99 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_reconcile_table_rows(self$results$assessment, assessmentRows)
 
             if (length(missingContrasts) > 0L)
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     paste0(
                         "Permutation values were unavailable for: ",
                         paste(missingContrasts, collapse=", "), "."))
             if (row == 1L) {
-                private$.state$warnings <- c(
-                    private$.state$warnings,
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
                     "No usable permutation p-values were available; descriptive SIMPER output is retained.")
                 return(FALSE)
             }
             TRUE
         },
 
-        .setTableNotes = function(prep) {
+        .classifyDetailDiagnostics = function(tab, prep, pair, contrastIndex) {
+            group <- as.character(prep$group)
+            pairRows <- group %in% pair
+            pairCount <- sum(group == pair[[1L]]) * sum(group == pair[[2L]])
+            diagnostics <- list()
+            for (i in seq_len(nrow(tab))) {
+                sd <- tab$sd[[i]]
+                ratio <- tab$ratio[[i]]
+                if (is.finite(sd) && is.finite(ratio))
+                    next
+                reason <- "unexpected"
+                if (!is.finite(sd) && pairCount < 2L) {
+                    reason <- "single_pair"
+                } else if (is.finite(sd) && sd == 0 && !is.finite(ratio)) {
+                    if (tab$average[[i]] == 0) {
+                        # Range can map positive abundances to zero; absence
+                        # must be established before transformation.
+                        absent <- all(prep$comm[pairRows, tab$feature[[i]]] == 0)
+                        reason <- if (absent) "absent" else "zero_present"
+                    } else if (tab$average[[i]] > 0) {
+                        reason <- "constant_positive"
+                    }
+                }
+                diagnostics[[length(diagnostics) + 1L]] <- list(
+                    contrastIndex=contrastIndex, feature=tab$feature[[i]],
+                    pairCount=pairCount, reason=reason)
+            }
+            diagnostics
+        },
+
+        .detailNote = function() {
+            reasons <- vapply(private$.state$descriptive$diagnostics,
+                function(issue) issue$reason, character(1))
+            paste(c(
+                "SD describes variation in contributions across between-group sample pairs.",
+                "Average divided by SD describes consistency and is not a significance test.",
+                if (any(reasons %in% c("absent", "zero_present", "constant_positive")))
+                    "A blank ratio can occur when SD is zero.",
+                if ("absent" %in% reasons)
+                    "Features absent in the retained samples from both groups have zero contribution; their ratio is undefined.",
+                if ("zero_present" %in% reasons)
+                    "Zero contribution can also occur when the transformed feature values are identical across sample pairs.",
+                if ("constant_positive" %in% reasons)
+                    "A feature can have a positive contribution with SD zero when its contribution is the same across all sample pairs.",
+                if ("single_pair" %in% reasons)
+                    "SD and Average divided by SD are blank when a contrast has fewer than two between-group sample pairs.",
+                if ("unexpected" %in% reasons)
+                    "Other blank SD or ratio cells indicate that a finite value could not be calculated."),
+                collapse=" ")
+        },
+
+        .refreshPresentation = function() {
+            warnings <- private$.state$operationalWarnings
+            if (isTRUE(self$options$simperDetails)) {
+                diagnostics <- private$.state$descriptive$diagnostics
+                singlePairs <- Filter(function(issue)
+                    identical(issue$reason, "single_pair"), diagnostics)
+                count <- length(unique(vapply(singlePairs,
+                    function(issue) issue$contrastIndex, integer(1))))
+                if (count > 0L)
+                    warnings <- c(warnings, sprintf(
+                        "Contribution SD could not be calculated for %d %s with only one between-group sample pair. See Contribution Variability for details.",
+                        count, if (count == 1L) "contrast" else "contrasts"))
+                unexpected <- sum(vapply(diagnostics,
+                    function(issue) identical(issue$reason, "unexpected"), logical(1)))
+                if (unexpected > 0L)
+                    warnings <- c(warnings, sprintf(
+                        "A finite SD or ratio could not be calculated for %d %s. See Contribution Variability for details.",
+                        unexpected, if (unexpected == 1L) "feature row" else "feature rows"))
+            }
+            private$.setWarnings(warnings)
+            private$.setTableNotes()
+        },
+
+        .setTableNotes = function() {
             transformation <- if (identical(self$options$transform, "none")) NULL else
                 sprintf("Transformation: %s.", private$.transformLabel(self$options$transform))
             descriptive <- private$.state$descriptive
             filtered <- length(descriptive$displayRows) < length(descriptive$fullRows)
-            unavailable <- any(vapply(descriptive$fullRows, function(row)
-                !is.finite(row$sd) || !is.finite(row$ratio), logical(1)))
             self$results$contrasts$setNote(
                 key="meaning", note=transformation, init=FALSE)
             self$results$contributions$setNote(
@@ -650,31 +719,28 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "Percentages use all usable features before display filtering and are not renormalised."), collapse=" ")
                     else transformation, init=FALSE)
             self$results$variability$setNote(
-                key="meaning",
-                note=paste0(
-                    "SD describes variation in contributions across between-group sample pairs.",
-                    if (unavailable) " Blank SD or ratio cells indicate unavailable values." else ""),
-                init=FALSE)
+                key="meaning", note=if (isTRUE(self$options$simperDetails))
+                    private$.detailNote() else NULL, init=FALSE)
             self$results$means$setNote(
-                key="meaning", note=transformation, init=FALSE)
+                key="meaning", note=if (isTRUE(self$options$simperDetails))
+                    transformation else NULL, init=FALSE)
             self$results$table$setNote(
                 key="meaning",
                 note=paste(
                     "Average contribution is the mean feature contribution to Bray-Curtis dissimilarity.",
-                    "Contribution SD describes variation across sample pairs; Average divided by SD describes consistency and is not a significance test.",
+                    private$.detailNote(),
                     "First- and second-group means follow the named contrast and use the transformed scale.",
-                    "Percentages use all usable features before display filtering; retained rows are not renormalised.",
-                    "Blank SD or ratio cells mean that a finite value was unavailable."),
+                    "Percentages use all usable features before display filtering; retained rows are not renormalised."),
                 init=FALSE)
-            if (isTRUE(self$options$simperAssess))
-                self$results$assessment$setNote(
-                    key="scope",
-                    note=paste(
-                        "Group-label permutation tests of average contributions.",
-                        if (identical(self$options$simperAdjust, "none")) "P-values are unadjusted." else sprintf(
-                            "%s adjustment across all finite feature p-values within each contrast, before display filtering.",
-                            private$.adjustLabel(self$options$simperAdjust))),
-                    init=FALSE)
+            self$results$assessment$setNote(
+                key="scope", note=if (isTRUE(private$.state$assessmentShown)) paste(
+                    "Group-label permutation tests of average contributions.",
+                    if (identical(self$options$simperAdjust, "none")) "P-values are unadjusted." else sprintf(
+                        "%s adjustment across all finite feature p-values within each contrast, before display filtering.",
+                        private$.adjustLabel(self$options$simperAdjust))) else NULL,
+                init=FALSE)
+            self$results$assessment$setNote(key="seed",
+                note=private$.state$assessmentSeedNote, init=FALSE)
         },
 
         .plotDescription = function(contrast) "",

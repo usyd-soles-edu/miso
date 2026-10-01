@@ -494,7 +494,7 @@ test_that("assessment failure preserves valid descriptive output", {
         "simulated assessment failure")
 })
 
-test_that("insufficient replication preserves descriptive blanks without NaN", {
+test_that("single-pair blanks remain descriptive without hidden detail warnings", {
     result <- suppressWarnings(suppressMessages(simper(
         data=simper_state_data(counts=c(3L, 1L, 1L)),
         vars=c("sp1", "sp2", "sp3"),
@@ -506,7 +506,7 @@ test_that("insufficient replication preserves descriptive blanks without NaN", {
     expect_false(result$table$visible)
     expect_gt(nrow(table), 0L)
     expect_true(any(is.na(table$sd) | is.na(table$ratio)))
-    expect_match(as.character(result$warnings$asString()), "Replication is insufficient")
+    expect_false(result$warnings$visible)
     expect_false(grepl("NaN|Inf", as.character(result$table$asString())))
     numeric <- table[vapply(table, is.numeric, logical(1))]
     expect_true(all(vapply(numeric, function(x) all(is.na(x) | is.finite(x)), logical(1))))
@@ -1246,7 +1246,8 @@ test_that("SIMPER publication notes follow transformation and actual filtering",
     for (name in c("contrasts", "means", "contributions"))
         expect_identical(miso_table_note(result[[name]], "meaning"), "")
     expect_identical(miso_table_note(result$variability, "meaning"),
-        "SD describes variation in contributions across between-group sample pairs.")
+        paste("SD describes variation in contributions across between-group sample pairs.",
+            "Average divided by SD describes consistency and is not a significance test."))
     expect_false(result$heatmapDescription$visible)
     for (item in result$contributionPlots$items) {
         expect_false(item$description$visible)
@@ -1287,7 +1288,7 @@ test_that("SIMPER publication notes follow transformation and actual filtering",
 test_that("SIMPER caption filtering survives saved state and legacy states", {
     analysis <- simperClass$new(options=simperOptions$new(
         vars=c("sp1", "sp2", "sp3"), factor="group", simperTop=1,
-        simperPlots=TRUE),
+        simperPlots=TRUE, simperDetails=TRUE),
         data=simper_state_data())
     suppressWarnings(suppressMessages(analysis$run()))
     private <- analysis$.__enclos_env__$private
@@ -1303,10 +1304,14 @@ test_that("SIMPER caption filtering survives saved state and legacy states", {
     legacy <- private$.buildContributionPlot(state$rows, "A vs B",
         top=state$simperTop, cumulative=state$simperCum)
     expect_identical(legacy$labels$subtitle, plot$labels$subtitle)
+    row <- private$.state$descriptive$fullRows[[1L]]
     private$.state$descriptive$fullRows[[1L]]$sd <- NA_real_
-    private$.setTableNotes(NULL)
+    private$.state$descriptive$diagnostics <- c(private$.state$descriptive$diagnostics,
+        list(list(contrastIndex=row$contrastIndex,feature=row$feature,
+            pairCount=9L,reason="unexpected")))
+    private$.setTableNotes()
     expect_match(miso_table_note(analysis$results$variability, "meaning"),
-        "Blank SD or ratio cells indicate unavailable values.", fixed=TRUE)
+        "Other blank SD or ratio cells indicate that a finite value could not be calculated.", fixed=TRUE)
 })
 
 
@@ -1323,13 +1328,16 @@ test_that("SIMPER variability notes describe full detail rows even when plots om
         paste(row$contrast, row$feature) %in% displayed, logical(1)))[[1L]]
     row <- descriptive$fullRows[[omitted]]
     descriptive$fullRows[[omitted]]$sd <- NA_real_
+    descriptive$diagnostics <- c(descriptive$diagnostics,
+        list(list(contrastIndex=row$contrastIndex,feature=row$feature,
+            pairCount=9L,reason="unexpected")))
     private$.state$descriptive <- descriptive
     private$.populateOptionalDetailRows(descriptive)
-    private$.setTableNotes(NULL)
+    private$.setTableNotes()
     variability <- analysis$results$variability$asDF
     expect_true(any(variability$contrast == row$contrast & variability$feature == row$feature))
     expect_match(miso_table_note(analysis$results$variability, "meaning"),
-        "Blank SD or ratio cells indicate unavailable values.", fixed=TRUE)
+        "Other blank SD or ratio cells indicate that a finite value could not be calculated.", fixed=TRUE)
 })
 
 test_that("SIMPER empty default footers leave no exported Note marker", {
