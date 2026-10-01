@@ -1,0 +1,250 @@
+# Manually triggered multi-platform .jmo build.
+#
+# Consolidates the three former per-platform build workflows (retired in git
+# history) into one matrix build:
+#   * win-x64     — Windows zip, 7-Zip extraction, GNU sha256sum
+#   * macos-x64   — Intel dmg, hdiutil mount, shasum
+#   * macos-arm64 — Apple Silicon dmg, hdiutil mount, shasum
+# Each platform builds a sideloadable miso .jmo for students while the module
+# awaits jamovi library acceptance. Every job downloads the official jamovi
+# release for its platform and runs the jamovi compiler (bundled in the
+# jmvtools source package) with the runner's Node.js — no R, jamovi, or
+# jmvtools installation happens on the runner. The .jmo is uploaded as a
+# workflow artifact only: no release is created and no write permissions are
+# requested.
+#
+# Per-platform jamovi SHA-256 pins live in the matrix rows below; the shared
+# jmvtools pin lives in env. All hashes are self-recorded from the
+# version-addressed URLs (jamovi and repo.jamovi.org publish no checksums).
+#
+# Platform differences handled inside this file:
+#   * jamovi ships as a .zip on Windows and a .dmg on macOS; macOS mounts it
+#     read-only with hdiutil, copies jamovi.app to runner temp, detaches.
+#   * macOS ships `shasum` (not GNU `sha256sum`): pin checks use the
+#     equivalent `shasum -a 256 -c -` form.
+#   * 7-Zip is not preinstalled on macOS: installed via Homebrew so the exact
+#     same validated .github/scripts/validate-jmo.sh helper runs unchanged.
+#   * Windows Git Bash needs cygpath'd POSIX paths for tar and sha256sum.
+#
+# Note: a workflow_dispatch workflow only appears in the Actions tab once this
+# file is present on the default branch (main).
+#
+# When a new jamovi series is released, bump JAMOVI_VERSION and
+# JMVTOOLS_VERSION together (jmvtools versions track jamovi releases on
+# repo.jamovi.org) and re-record the per-platform JAMOVI_SHA256 matrix pins.
+
+name: Build .jmo (manual)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      sha:
+        description: 'Exact commit SHA to build (defaults to the dispatched ref)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  JAMOVI_VERSION: '2.7.38.0'
+  JMVTOOLS_VERSION: '28.3'
+  JMVTOOLS_SHA256: 'c34ec517fccc077ba5907d4d650c22d69bae1aac9de9242da3285e318523f730'
+
+jobs:
+  build:
+    name: Build .jmo (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: win-x64
+            os: windows-latest
+            dist-ext: zip
+            jamovi_sha256: '1a8c8f9ad8d4ef977e8e78d49fde31290126f0b322d24e64812e7129f21a2d83'
+          - platform: macos-x64
+            os: macos-15-intel
+            dist-ext: dmg
+            jamovi_sha256: 'b1e9a1ae8dbee6bf1e56a3ad8e0c1d0a902c4dbd0ef969ff518f1e5a56cba6b5'
+          - platform: macos-arm64
+            os: macos-latest
+            dist-ext: dmg
+            jamovi_sha256: 'b694ec11eba6693586304b697d5a7ecfe7ae1e7295b6e84002f9da837a5d85fc'
+    # lifted from the matrix so step bodies stay identical across platforms
+    env:
+      JAMOVI_SHA256: ${{ matrix.jamovi_sha256 }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+
+      - name: Check version metadata is consistent
+        run: |
+          set -euo pipefail
+          DESC_VERSION=$(sed -n 's/^Version:[[:space:]]*//p' DESCRIPTION | head -n1 | tr -d '\r')
+          YAML_VERSION=$(sed -n 's/^version:[[:space:]]*//p' jamovi/0000.yaml | head -n1 | tr -d "\r\"'")
+          echo "DESCRIPTION: ${DESC_VERSION}"
+          echo "jamovi/0000.yaml: ${YAML_VERSION}"
+          test -n "${DESC_VERSION}" || { echo '::error::DESCRIPTION has no Version field'; exit 1; }
+          test "${DESC_VERSION}" = "${YAML_VERSION}" || {
+            echo "::error::Version mismatch - DESCRIPTION is '${DESC_VERSION}' but jamovi/0000.yaml is '${YAML_VERSION}'. Bump both together."
+            exit 1
+          }
+          echo "MISO_VERSION=${DESC_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Cache jamovi download
+        id: cache-jamovi
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ runner.temp }}/jamovi-dist.${{ matrix.dist-ext }}
+          key: jamovi-${{ env.JAMOVI_VERSION }}-${{ matrix.platform }}-${{ matrix.jamovi_sha256 }}
+
+      - name: Download jamovi
+        if: steps.cache-jamovi.outputs.cache-hit != 'true'
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          DIST_EXT: ${{ matrix.dist-ext }}
+        run: |
+          set -euo pipefail
+          # dl-cdn.jamovi.org (Cloudflare) rejects requests without browser-like headers
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          else
+            UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          fi
+          curl -fL --retry 3 --max-time 900 \
+            -A "${UA}" \
+            -H "Referer: https://www.jamovi.org/" \
+            -o "${RUNNER_TEMP}/jamovi-dist.${DIST_EXT}" \
+            "https://dl-cdn.jamovi.org/jamovi-${JAMOVI_VERSION}-${PLATFORM}.${DIST_EXT}"
+
+      - name: Install 7-Zip (for the validation helper)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          command -v 7z >/dev/null 2>&1 || brew install p7zip
+          command -v 7z >/dev/null 2>&1 || { echo '::error::7z unavailable after brew install p7zip'; exit 1; }
+
+      - name: Verify and extract jamovi (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          # integrity pin: verified on every run, including cache hits, so a
+          # tampered or corrupted download/cache entry can never be extracted.
+          # The pinned hash is self-recorded from the version-addressed URL
+          # above (jamovi publishes no checksum for these archives).
+          # "*" selects sha256sum binary mode, which is the safe form on
+          # every platform Git Bash runs on.
+          echo "${JAMOVI_SHA256} *$(cygpath -u "${RUNNER_TEMP}")/jamovi-dist.zip" | sha256sum -c -
+          7z x -y -o"${RUNNER_TEMP}/jamovi-dist" "${RUNNER_TEMP}/jamovi-dist.zip" > /dev/null
+          # the zip contains a single top-level "jamovi/" directory
+          JAMOVI_HOME=$(cygpath -m "${RUNNER_TEMP}")/jamovi-dist/jamovi
+          test -f "${JAMOVI_HOME}/bin/jamovi.exe" || { echo '::error::bin/jamovi.exe not found in the extracted jamovi distribution'; exit 1; }
+          echo "JAMOVI_HOME=${JAMOVI_HOME}" >> "$GITHUB_ENV"
+
+      - name: Verify and mount jamovi (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          # integrity pin: verified on every run, including cache hits, so a
+          # tampered or corrupted download/cache entry can never be mounted.
+          # The pinned hash is self-recorded from the version-addressed URL
+          # above (jamovi publishes no checksum for these disk images).
+          echo "${JAMOVI_SHA256} *${RUNNER_TEMP}/jamovi-dist.dmg" | shasum -a 256 -c -
+          MNT=$(hdiutil attach -nobrowse -readonly "${RUNNER_TEMP}/jamovi-dist.dmg" | grep -o '/Volumes/.*' | head -1)
+          cp -R "${MNT}/jamovi.app" "${RUNNER_TEMP}/jamovi.app"
+          hdiutil detach "${MNT}" -quiet || true
+          JAMOVI_HOME="${RUNNER_TEMP}/jamovi.app"
+          test -d "${JAMOVI_HOME}/Contents" || { echo '::error::jamovi.app/Contents not found in the mounted disk image'; exit 1; }
+          echo "JAMOVI_HOME=${JAMOVI_HOME}" >> "$GITHUB_ENV"
+
+      - name: Fetch jamovi compiler (bundled in the jmvtools source package)
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          # git-bash tar parses "D:\..." paths as remote hosts; hand it a POSIX path instead
+          TMP_POSIX=$(cygpath -u "${RUNNER_TEMP}")
+          curl -fsSL --retry 3 -o "${TMP_POSIX}/jmvtools.tar.gz" \
+            "https://repo.jamovi.org/src/contrib/jmvtools_${JMVTOOLS_VERSION}.tar.gz"
+          # integrity pin: the tarball's code runs on this runner via node, so
+          # verify it before extraction. Self-recorded hash (repo.jamovi.org
+          # publishes no checksum for archived jmvtools source versions).
+          echo "${JMVTOOLS_SHA256} *${TMP_POSIX}/jmvtools.tar.gz" | sha256sum -c -
+          tar xzf "${TMP_POSIX}/jmvtools.tar.gz" -C "${TMP_POSIX}"
+          test -f "${TMP_POSIX}/jmvtools/inst/node_modules/jamovi-compiler/index.js" || {
+            echo "::error::jamovi-compiler not found in the jmvtools ${JMVTOOLS_VERSION} tarball - the package layout may have changed"
+            exit 1
+          }
+          # the manifest validator uses the js-yaml bundled inside this same
+          # checksum-verified tarball; confirm it is present so a layout
+          # change fails here rather than deep inside validation
+          test -f "${TMP_POSIX}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" || {
+            echo '::error::bundled js-yaml parser not found alongside jamovi-compiler'
+            exit 1
+          }
+
+      - name: Fetch jamovi compiler (bundled in the jmvtools source package)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/jmvtools.tar.gz" \
+            "https://repo.jamovi.org/src/contrib/jmvtools_${JMVTOOLS_VERSION}.tar.gz"
+          # integrity pin: the tarball's code runs on this runner via node, so
+          # verify it before extraction. Self-recorded hash (repo.jamovi.org
+          # publishes no checksum for archived jmvtools source versions).
+          echo "${JMVTOOLS_SHA256} *${RUNNER_TEMP}/jmvtools.tar.gz" | shasum -a 256 -c -
+          tar xzf "${RUNNER_TEMP}/jmvtools.tar.gz" -C "${RUNNER_TEMP}"
+          test -f "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/index.js" || {
+            echo "::error::jamovi-compiler not found in the jmvtools ${JMVTOOLS_VERSION} tarball - the package layout may have changed"
+            exit 1
+          }
+          # the manifest validator uses the js-yaml bundled inside this same
+          # checksum-verified tarball; confirm it is present so a layout
+          # change fails here rather than deep inside validation
+          test -f "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" || {
+            echo '::error::bundled js-yaml parser not found alongside jamovi-compiler'
+            exit 1
+          }
+
+      - name: Build module
+        run: |
+          set -euo pipefail
+          node "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/index.js" \
+            --build . --home "${JAMOVI_HOME}"
+
+      - name: Validate and collect artifact
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          # all validation logic lives in the tracked CI helper so it is
+          # testable: size floor, archive-listing checks for every manifest
+          # dataset and analysis (derived with the js-yaml bundled in the
+          # checksum-verified jmvtools tarball), exact-line metadata checks,
+          # and the platform-suffixed rename with JMO_OUT export. The helper
+          # normalises Windows 7z backslash listings itself, so one call
+          # serves every platform.
+          bash .github/scripts/validate-jmo.sh \
+            --jmo "miso_${MISO_VERSION}.jmo" \
+            --manifest jamovi/0000.yaml \
+            --parser "${RUNNER_TEMP}/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js" \
+            --version "${MISO_VERSION}" \
+            --module miso \
+            --suffix "${PLATFORM}" \
+            --tempdir "${RUNNER_TEMP}/validate" \
+            --github-env "${GITHUB_ENV}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: miso-${{ matrix.platform }}-v${{ env.MISO_VERSION }}
+          path: ${{ env.JMO_OUT }}
+          retention-days: 14
+          if-no-files-found: error
