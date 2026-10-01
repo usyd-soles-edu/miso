@@ -19,7 +19,10 @@ simper(
   simperHeatmap = FALSE,
   simperAssess = FALSE,
   simperAdjust = "holm",
-  simperDetails = FALSE
+  simperDetails = FALSE,
+  simperPlotValues = FALSE,
+  simperHeatmapValues = FALSE,
+  useFixedSeed = TRUE
 )
 }
 \arguments{
@@ -52,17 +55,24 @@ simper(
 \item{simperAdjust}{.}
 
 \item{simperDetails}{.}
+
+\item{simperPlotValues}{.}
+
+\item{simperHeatmapValues}{.}
+
+\item{useFixedSeed}{Use a positive fixed seed for reproducible permutation
+assessment; unchecked analyses use the random RNG stream.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
+  \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
   \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
   \code{results$variability} \tab \tab \tab \tab \tab a table \cr
   \code{results$means} \tab \tab \tab \tab \tab a table \cr
-  \code{results$table} \tab \tab \tab \tab \tab a table \cr
   \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
   \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr

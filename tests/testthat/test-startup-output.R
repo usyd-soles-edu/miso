@@ -8,7 +8,7 @@ startup_cases <- list(
         enabled=list(dispPairwise=TRUE, showOrdinationPlot=TRUE),
         optional=c("pairwise", "ordinationScores")),
     simper=list(core=c("contrasts", "contributions"), extra=list(),
-        enabled=list(simperDetails=TRUE, simperAssess=TRUE, simperHeatmap=TRUE),
+        enabled=list(simperDetails=TRUE, simperAssess=TRUE, simperHeatmapValues=TRUE),
         optional=c("variability", "means", "assessment", "heatmapValues")),
     nmds=list(core="stress",
         extra=list(seed=123, nmdsTrymax=5),

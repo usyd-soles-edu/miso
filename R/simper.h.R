@@ -20,6 +20,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             simperAssess = FALSE,
             simperAdjust = "holm",
             simperDetails = FALSE,
+            simperPlotValues = FALSE,
+            simperHeatmapValues = FALSE,
             useFixedSeed = TRUE, ...) {
 
             super$initialize(
@@ -141,6 +143,14 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "simperDetails",
                 simperDetails,
                 default=FALSE)
+            private$..simperPlotValues <- jmvcore::OptionBool$new(
+                "simperPlotValues",
+                simperPlotValues,
+                default=FALSE)
+            private$..simperHeatmapValues <- jmvcore::OptionBool$new(
+                "simperHeatmapValues",
+                simperHeatmapValues,
+                default=FALSE)
             private$..useFixedSeed <- jmvcore::OptionBool$new(
                 "useFixedSeed",
                 useFixedSeed,
@@ -160,6 +170,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..simperAssess)
             self$.addOption(private$..simperAdjust)
             self$.addOption(private$..simperDetails)
+            self$.addOption(private$..simperPlotValues)
+            self$.addOption(private$..simperHeatmapValues)
             self$.addOption(private$..useFixedSeed)
         }),
     active = list(
@@ -177,6 +189,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         simperAssess = function() private$..simperAssess$value,
         simperAdjust = function() private$..simperAdjust$value,
         simperDetails = function() private$..simperDetails$value,
+        simperPlotValues = function() private$..simperPlotValues$value,
+        simperHeatmapValues = function() private$..simperHeatmapValues$value,
         useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
@@ -193,6 +207,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..simperAssess = NA,
         ..simperAdjust = NA,
         ..simperDetails = NA,
+        ..simperPlotValues = NA,
+        ..simperHeatmapValues = NA,
         ..useFixedSeed = NA)
 )
 
@@ -207,7 +223,6 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         contributions = function() private$.items[["contributions"]],
         variability = function() private$.items[["variability"]],
         means = function() private$.items[["means"]],
-        table = function() private$.items[["table"]],
         contributionPlots = function() private$.items[["contributionPlots"]],
         heatmapDescription = function() private$.items[["heatmapDescription"]],
         heatmap = function() private$.items[["heatmap"]],
@@ -337,53 +352,11 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="meanSecond",
                         `title`="Second mean",
                         `type`="number"))))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="table",
-                title="Descriptive Feature Contributions",
-                visible=FALSE,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="contrast",
-                        `title`="Contrast",
-                        `type`="text"),
-                    list(
-                        `name`="feature",
-                        `title`="Feature",
-                        `type`="text"),
-                    list(
-                        `name`="average",
-                        `title`="Average contribution",
-                        `type`="number"),
-                    list(
-                        `name`="sd",
-                        `title`="Contribution SD",
-                        `type`="number"),
-                    list(
-                        `name`="ratio",
-                        `title`="Average divided by SD",
-                        `type`="number"),
-                    list(
-                        `name`="meanFirst",
-                        `title`="Mean in first group",
-                        `type`="number"),
-                    list(
-                        `name`="meanSecond",
-                        `title`="Mean in second group",
-                        `type`="number"),
-                    list(
-                        `name`="contribution",
-                        `title`="Contribution (%)",
-                        `type`="number"),
-                    list(
-                        `name`="cumulative",
-                        `title`="Cumulative contribution (%)",
-                        `type`="number"))))
             self$add(jmvcore::Array$new(
                 options=options,
                 name="contributionPlots",
                 title="Contribution Plots by Contrast",
+                clearWith=list(),
                 visible=FALSE,
                 template=R6::R6Class(
                     inherit = jmvcore::Group,
@@ -397,7 +370,8 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                             super$initialize(
                                 options=options,
                                 name="undefined",
-                                title="Contrast contribution")
+                                title="Contrast contribution",
+                                clearWith=list())
                             self$add(jmvcore::Html$new(
                                 options=options,
                                 name="description",
@@ -406,6 +380,7 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                                 options=options,
                                 name="plot",
                                 title="Contribution Plot",
+                                clearWith=list(),
                                 width=580,
                                 height=430,
                                 renderFun=".plotContribution"))
@@ -413,6 +388,8 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                                 options=options,
                                 name="values",
                                 title="Contribution Values",
+                                clearWith=list(),
+                                visible=FALSE,
                                 rows=0,
                                 columns=list(
                                     list(
@@ -562,6 +539,8 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperAssess .
 #' @param simperAdjust .
 #' @param simperDetails .
+#' @param simperPlotValues .
+#' @param simperHeatmapValues .
 #' @param useFixedSeed Use a positive fixed seed for reproducible permutation
 #'   assessment; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
@@ -573,7 +552,6 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$variability} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$means} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
 #'   \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
@@ -604,6 +582,8 @@ simper <- function(
     simperAssess = FALSE,
     simperAdjust = "holm",
     simperDetails = FALSE,
+    simperPlotValues = FALSE,
+    simperHeatmapValues = FALSE,
     useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
@@ -634,6 +614,8 @@ simper <- function(
         simperAssess = simperAssess,
         simperAdjust = simperAdjust,
         simperDetails = simperDetails,
+        simperPlotValues = simperPlotValues,
+        simperHeatmapValues = simperHeatmapValues,
         useFixedSeed = useFixedSeed)
 
     analysis <- simperClass$new(

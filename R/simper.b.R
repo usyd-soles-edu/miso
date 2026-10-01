@@ -6,11 +6,17 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
     private = list(
         .state = list(),
         .lastStructuralKey = NULL,
-        .lastDisplayKey = NULL,
 
         .init = function() {
             if (is.null(private$.lastStructuralKey))
                 private$.showEmptyTables()
+        },
+
+        .postInit = function() {
+            # Header-only loads can recover scalar image state without a fit.
+            if (identical(private$.dataProvided, FALSE))
+                self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap) &&
+                    !is.null(self$results$heatmap$state))
         },
 
         .showEmptyTables = function() {
@@ -19,7 +25,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     variability=isTRUE(self$options$simperDetails),
                     means=isTRUE(self$options$simperDetails),
                     assessment=isTRUE(self$options$simperAssess),
-                    heatmapValues=isTRUE(self$options$simperHeatmap)))
+                    heatmapValues=isTRUE(self$options$simperHeatmapValues)))
         },
 
         .run = function() {
@@ -30,6 +36,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("simperDetails", "simperPlots", "simperHeatmap",
+                    "simperPlotValues", "simperHeatmapValues",
                     "seed", "useFixedSeed"),
                 data=self$data,
                 extra=list(effectiveSeed=effectiveSeed))
@@ -39,10 +46,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             private$.lastStructuralKey <- structuralKey
-            private$.lastDisplayKey <- list(
-                simperDetails=isTRUE(self$options$simperDetails),
-                simperPlots=isTRUE(self$options$simperPlots),
-                simperHeatmap=isTRUE(self$options$simperHeatmap))
             private$.state <- list(
                 operationalWarnings=character(),
                 assessmentShown=FALSE,
@@ -52,6 +55,13 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 contrastLabels=character(),
                 requestedPermutations=NA_integer_,
                 effectivePermutations=NA_integer_,
+                detailsReady=FALSE,
+                contributionPlotsReady=FALSE,
+                plotValuesReady=FALSE,
+                heatmapReady=FALSE,
+                heatmapValuesReady=FALSE,
+                heatmapDataReady=FALSE,
+                heatmapData=NULL,
                 descriptive=NULL)
             private$.clearResults()
 
@@ -146,62 +156,81 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state$assessmentShown <- assessmentShown
             private$.state$assessmentSeedNote <- if (assessmentShown)
                 paste0("Random seed: ", miso_seed_label(prep), ".") else NULL
-            if (! isTRUE(self$options$simperDetails)) {
-                miso_clear_table(self$results$variability)
-                miso_clear_table(self$results$means)
-            }
-            if (! isTRUE(self$options$simperHeatmap))
-                miso_clear_table(self$results$heatmapValues)
-            private$.refreshPresentation()
-            private$.showSuccessfulResults(assessmentShown)
+            private$.refreshDisplayOnly()
         },
 
         .refreshDisplayOnly = function() {
-            if (is.null(private$.state$descriptive)) {
+            descriptive <- private$.state$descriptive
+            if (is.null(descriptive)) {
                 private$.showEmptyTables()
                 return()
             }
-            descriptive <- private$.state$descriptive
             details <- isTRUE(self$options$simperDetails)
             plots <- isTRUE(self$options$simperPlots)
+            plotValues <- isTRUE(self$options$simperPlotValues)
             heatmap <- isTRUE(self$options$simperHeatmap)
-            previousDisplay <- private$.lastDisplayKey
-            private$.lastDisplayKey <- list(
-                simperDetails=details,
-                simperPlots=plots,
-                simperHeatmap=heatmap)
-            detailsChanged <- is.null(previousDisplay) ||
-                !identical(previousDisplay$simperDetails, details)
-            plotsChanged <- is.null(previousDisplay) ||
-                !identical(previousDisplay$simperPlots, plots)
-            heatmapChanged <- is.null(previousDisplay) ||
-                !identical(previousDisplay$simperHeatmap, heatmap)
-
-            if (detailsChanged) {
-                miso_clear_table(self$results$variability)
-                miso_clear_table(self$results$means)
-                if (details && !is.null(descriptive))
-                    private$.populateOptionalDetailRows(descriptive)
+            heatmapValues <- isTRUE(self$options$simperHeatmapValues)
+            if (details && !private$.state$detailsReady) {
+                private$.populateOptionalDetailRows(descriptive)
+                private$.state$detailsReady <- TRUE
             }
-            self$results$variability$setVisible(details && !is.null(descriptive))
-            self$results$means$setVisible(details && !is.null(descriptive))
-
-            if (plotsChanged) {
-                self$results$contributionPlots$clear()
-                if (plots && !is.null(descriptive))
-                    private$.populateContributionPlots(descriptive)
+            self$results$variability$setVisible(details)
+            self$results$means$setVisible(details)
+            if ((plots || plotValues) && !private$.state$contributionPlotsReady) {
+                private$.populateContributionPlots(descriptive)
+                private$.state$contributionPlotsReady <- TRUE
             }
-            self$results$contributionPlots$setVisible(plots && !is.null(descriptive))
-
-            if (heatmapChanged) {
-                miso_clear_table(self$results$heatmapValues)
-                if (heatmap && !is.null(descriptive))
-                    private$.populateOptionalHeatmap()
+            if (plotValues && !private$.state$plotValuesReady) {
+                private$.populateContributionValues()
+                private$.state$plotValuesReady <- TRUE
             }
-            self$results$heatmap$setVisible(heatmap && !is.null(descriptive))
+            for (item in self$results$contributionPlots$items) {
+                item$plot$setVisible(plots)
+                item$values$setVisible(plotValues)
+            }
+            self$results$contributionPlots$setVisible(plots || plotValues)
+            if ((heatmap || heatmapValues) && !private$.state$heatmapDataReady) {
+                private$.state$heatmapData <- private$.heatmapData()
+                private$.state$heatmapDataReady <- TRUE
+            }
+            if (heatmap && !private$.state$heatmapReady) {
+                self$results$heatmap$setState(private$.state$heatmapData)
+                private$.state$heatmapReady <- TRUE
+            }
+            if (heatmapValues && !private$.state$heatmapValuesReady) {
+                private$.populateOptionalHeatmapValues(private$.state$heatmapData)
+                private$.state$heatmapValuesReady <- TRUE
+            }
+            self$results$heatmap$setVisible(heatmap)
             self$results$heatmapDescription$setVisible(FALSE)
-            self$results$heatmapValues$setVisible(heatmap && !is.null(descriptive))
+            self$results$heatmapValues$setVisible(heatmapValues)
+            self$results$contrasts$setVisible(TRUE)
+            self$results$contributions$setVisible(TRUE)
+            self$results$assessment$setVisible(private$.state$assessmentShown)
             private$.refreshPresentation()
+        },
+
+        # These native tables have sequential string keys and literal columns.
+        # addRow() re-encodes all previous keys per append; initialize metadata
+        # once on rebuild, following the NMDS Shepard table implementation.
+        .populateRows = function(table, rows) {
+            keys <- as.character(seq_along(rows))
+            if (length(rows) > 0L && identical(
+                    as.character(unlist(table$rowKeys, use.names=FALSE)), keys)) {
+                for (i in seq_along(rows))
+                    table$setRow(rowNo=i, values=rows[[i]]$values)
+                return()
+            }
+            miso_clear_table(table)
+            metadata <- table$.__enclos_env__$private
+            metadata$.rowKeys <- as.list(keys)
+            metadata$.rowCount <- length(keys)
+            metadata$.rowNames <- if (length(keys)) paste0('"', keys, '"') else character()
+            for (column in table$columns) {
+                for (i in seq_along(rows))
+                    column$addCell(rows[[i]]$values[[column$name]],
+                        .key=keys[[i]], .index=i)
+            }
         },
 
         .populateOptionalDetailRows = function(descriptive) {
@@ -219,15 +248,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     key=as.character(index),
                     values=values[c("contrast", "feature", "meanFirst", "meanSecond")])
             }
-            miso_reconcile_table_rows(self$results$variability, variabilityRows)
-            miso_reconcile_table_rows(self$results$means, meansRows)
+            private$.populateRows(self$results$variability, variabilityRows)
+            private$.populateRows(self$results$means, meansRows)
         },
 
-        .populateOptionalHeatmap = function() {
-            self$results$heatmapDescription$setContent(
-                private$.heatmapDescription())
-            heatmapData <- private$.heatmapData()
-            self$results$heatmap$setState(heatmapData)
+        .populateOptionalHeatmapValues = function(heatmapData) {
             if (is.null(heatmapData))
                 return()
             heatmapRows <- lapply(seq_len(nrow(heatmapData)), function(row) {
@@ -243,7 +268,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         selected=if (isTRUE(heatmapData$missing[[row]]))
                             "No" else "Yes"))
             })
-            miso_reconcile_table_rows(self$results$heatmapValues, heatmapRows)
+            private$.populateRows(self$results$heatmapValues, heatmapRows)
         },
 
         .clearResults = function() {
@@ -256,7 +281,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_clear_table_values(self$results$contributions)
             miso_clear_table_values(self$results$variability)
             miso_clear_table_values(self$results$means)
-            miso_clear_table_values(self$results$table)
             miso_clear_table_values(self$results$assessment)
             miso_clear_table_values(self$results$heatmapValues)
             self$results$contributionPlots$clear()
@@ -264,7 +288,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$contributions$setNote(key="meaning", note=NULL, init=FALSE)
             self$results$variability$setNote(key="meaning", note=NULL, init=FALSE)
             self$results$means$setNote(key="meaning", note=NULL, init=FALSE)
-            self$results$table$setNote(key="meaning", note=NULL, init=FALSE)
             self$results$assessment$setNote(key="scope", note=NULL, init=FALSE)
             self$results$heatmapDescription$setContent("")
             self$results$heatmap$setSize(600, 500)
@@ -273,7 +296,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "guidance", "warnings",
                     "contrasts", "contributions",
                     "variability",
-                    "means", "table",
+                    "means",
                     "contributionPlots", "heatmap", "heatmapDescription",
                     "heatmapValues", "assessment"
                     ))
@@ -289,7 +312,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_clear_table(self$results$contributions)
             miso_clear_table(self$results$variability)
             miso_clear_table(self$results$means)
-            miso_clear_table(self$results$table)
             miso_clear_table(self$results$assessment)
             miso_clear_table(self$results$heatmapValues)
         },
@@ -299,26 +321,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$guidance$setContent(miso_html_block(content))
             self$results$guidance$setVisible(TRUE)
         },
-
-        .showSuccessfulResults = function(assessmentShown=FALSE) {
-            self$results$guidance$setVisible(FALSE)
-            details <- isTRUE(self$options$simperDetails)
-            self$results$variability$setVisible(details)
-            self$results$means$setVisible(details)
-            for (name in c(
-                    "contrasts",
-                    "contributions"
-                    ))
-                self$results[[name]]$setVisible(TRUE)
-            self$results$contributionPlots$setVisible(
-                isTRUE(self$options$simperPlots))
-            self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap))
-            self$results$heatmapDescription$setVisible(FALSE)
-            self$results$heatmapValues$setVisible(
-                isTRUE(self$options$simperHeatmap))
-            self$results$assessment$setVisible(isTRUE(assessmentShown))
-        },
-
 
         .setWarnings = function(warnings) {
             warnings <- unique(warnings[! is.na(warnings) & nzchar(warnings)])
@@ -451,33 +453,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 list(
                     key=as.character(index),
                     values=descriptive$contrastRows[[index]]))
-            miso_reconcile_table_rows(self$results$contrasts, contrastRows)
-
-            tableRows <- list()
-            variabilityRows <- list()
-            meansRows <- list()
-            for (index in seq_along(descriptive$fullRows)) {
-                values <- descriptive$fullRows[[index]]
-                values$contrastIndex <- NULL
-                values$firstGroup <- NULL
-                values$secondGroup <- NULL
-                tableRows[[index]] <- list(key=as.character(index), values=values)
-                if (isTRUE(self$options$simperDetails)) {
-                    variabilityRows[[index]] <- list(
-                        key=as.character(index),
-                        values=values[c(
-                            "contrast", "feature", "average", "sd", "ratio")])
-                    meansRows[[index]] <- list(
-                        key=as.character(index),
-                        values=values[c(
-                            "contrast", "feature", "meanFirst", "meanSecond")])
-                }
-            }
-            miso_reconcile_table_rows(self$results$table, tableRows)
-            if (length(variabilityRows) > 0L) {
-                miso_reconcile_table_rows(self$results$variability, variabilityRows)
-                miso_reconcile_table_rows(self$results$means, meansRows)
-            }
+            private$.populateRows(self$results$contrasts, contrastRows)
 
             contributionRows <- lapply(
                 seq_along(descriptive$displayRows), function(index) {
@@ -487,17 +463,13 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         values=values[c(
                             "contrast", "feature", "contribution", "cumulative")])
                 })
-            miso_reconcile_table_rows(self$results$contributions, contributionRows)
+            private$.populateRows(self$results$contributions, contributionRows)
 
             private$.state$plotData <- do.call(
                 rbind,
                 lapply(descriptive$displayRows, as.data.frame, stringsAsFactors=FALSE))
             private$.state$contrastLabels <- unique(private$.state$plotData$contrast)
             private$.state$contrastTotals <- descriptive$contrastTotals
-            if (isTRUE(self$options$simperPlots))
-                private$.populateContributionPlots(descriptive)
-            if (isTRUE(self$options$simperHeatmap))
-                private$.populateOptionalHeatmap()
         },
 
         .populateContributionPlots = function(descriptive) {
@@ -515,6 +487,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     simperTop=self$options$simperTop,
                     simperCum=self$options$simperCum,
                     isFiltered=nrow(rows) < descriptive$contrastTotals[[contrast]]))
+            }
+        },
+
+        .populateContributionValues = function() {
+            for (item in self$results$contributionPlots$items) {
+                rows <- private$.state$plotData[
+                    private$.state$plotData$contrast == item$key, , drop=FALSE]
+                valueRows <- list()
                 for (row in seq_len(nrow(rows))) {
                     direction <- if (!is.finite(rows$meanFirst[[row]]) ||
                             !is.finite(rows$meanSecond[[row]])) {
@@ -526,7 +506,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     } else {
                         "Equal means"
                     }
-                    item$values$addRow(
+                    valueRows[[row]] <- list(
                         rowKey=as.character(row),
                         values=list(
                             feature=as.character(rows$feature[[row]]),
@@ -540,6 +520,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             meanSecond=miso_num_or_na(rows$meanSecond[[row]]),
                             direction=direction))
                 }
+                private$.populateRows(item$values, valueRows)
             }
         },
 
@@ -615,7 +596,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         padj=padj))
                 row <- row + 1L
             }
-            miso_reconcile_table_rows(self$results$assessment, assessmentRows)
+            private$.populateRows(self$results$assessment, assessmentRows)
 
             if (length(missingContrasts) > 0L)
                 private$.state$operationalWarnings <- c(
@@ -724,14 +705,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$means$setNote(
                 key="meaning", note=if (isTRUE(self$options$simperDetails))
                     transformation else NULL, init=FALSE)
-            self$results$table$setNote(
-                key="meaning",
-                note=paste(
-                    "Average contribution is the mean feature contribution to Bray-Curtis dissimilarity.",
-                    private$.detailNote(),
-                    "First- and second-group means follow the named contrast and use the transformed scale.",
-                    "Percentages use all usable features before display filtering; retained rows are not renormalised."),
-                init=FALSE)
             self$results$assessment$setNote(
                 key="scope", note=if (isTRUE(private$.state$assessmentShown)) paste(
                     "Group-label permutation tests of average contributions.",

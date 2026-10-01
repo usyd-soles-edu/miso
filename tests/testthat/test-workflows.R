@@ -420,7 +420,7 @@ test_that("ANOSIM returns stable numeric results", {
 
 test_that("SIMPER returns stable contribution results and plot output", {
     res <- suppressMessages(
-        simper(
+        simper_test_run(
             data = workflow_data(),
             vars = c("sp1", "sp2", "sp3"),
             factor = "group",
@@ -430,7 +430,7 @@ test_that("SIMPER returns stable contribution results and plot output", {
         )
     )
 
-    tab <- res$table$asDF
+    tab <- simper_test_full(res)
     expect_match(
         miso_table_note(res$contributions, "meaning"),
         "Percentages use all usable features before display filtering",
@@ -438,7 +438,7 @@ test_that("SIMPER returns stable contribution results and plot output", {
     expect_true(nrow(tab) >= 1L)
     expect_equal(tab$contribution[1], 48.47328, tolerance = 1e-5)
     expect_equal(names(tab)[names(tab) == "feature"], "feature")
-    expect_false(res$table$visible)
+    expect_error(res$table,"does not exist",fixed=TRUE)
     expect_true(res$contributions$visible)
     compact <- res$contributions$asDF
     complete <- tab[c("contrast", "feature", "contribution", "cumulative")]

@@ -43,7 +43,7 @@ test_that("zero SD explanations distinguish absence and positive contributions",
     expect_true(all(c("x","y","z") %in% analysis$results$variability$asDF$feature))
     compact <- subset(analysis$results$contributions$asDF, contrast == "A vs B")
     expect_identical(compact$feature, "x")
-    expect_false(any(grepl("reason|pairCount|diagnostic", names(analysis$results$table$asDF))))
+    expect_false(any(grepl("reason|pairCount|diagnostic", names(analysis$results$variability$asDF))))
     expect_false(any(grepl("reason|pairCount|diagnostic",
         names(simper_diagnostic_private(analysis)$.state$plotData))))
 })
@@ -115,7 +115,7 @@ test_that("detail presentation preserves numerical tables plots p-values and RNG
         seed=123, simperPlots=TRUE, simperHeatmap=TRUE, simperDetails=FALSE)
     private <- simper_diagnostic_private(analysis)
     expect_identical(calls, 2L)
-    snapshots <- lapply(c("table","contributions","assessment"),
+    snapshots <- lapply(c("contributions","assessment"),
         function(name) analysis$results[[name]]$asDF)
     fit <- private$.state$descriptive$fit
     plots <- lapply(analysis$results$contributionPlots$items, function(item) item$plot$state)
@@ -130,7 +130,7 @@ test_that("detail presentation preserves numerical tables plots p-values and RNG
         expect_identical(.Random.seed,rng)
         expect_identical(private$.state$descriptive$fit,fit)
         for (i in seq_along(snapshots))
-            expect_identical(analysis$results[[c("table","contributions","assessment")[[i]]]]$asDF,
+            expect_identical(analysis$results[[c("contributions","assessment")[[i]]]]$asDF,
                 snapshots[[i]])
         expect_identical(lapply(analysis$results$contributionPlots$items,
             function(item) item$plot$state),plots)
@@ -240,7 +240,7 @@ test_that("diagnostic output survives R serialization and native save-load rerun
     restored$.setStatePathSource(function() path)
     restored$init(); restored$.load(); restored$postInit()
     suppressWarnings(suppressMessages(restored$run()))
-    for (name in c("table","contributions","variability","assessment"))
+    for (name in c("contributions","variability","assessment"))
         expect_identical(restored$results[[name]]$asDF,original$results[[name]]$asDF)
     expect_identical(restored$results$warnings$content,original$results$warnings$content)
     expect_identical(miso_table_note(restored$results$variability,"meaning"),

@@ -104,47 +104,15 @@ items:
         title: Second mean
         type: number
 
-  - name: table
-    title: Descriptive Feature Contributions
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: contrast
-        title: Contrast
-        type: text
-      - name: feature
-        title: Feature
-        type: text
-      - name: average
-        title: Average contribution
-        type: number
-      - name: sd
-        title: Contribution SD
-        type: number
-      - name: ratio
-        title: Average divided by SD
-        type: number
-      - name: meanFirst
-        title: Mean in first group
-        type: number
-      - name: meanSecond
-        title: Mean in second group
-        type: number
-      - name: contribution
-        title: Contribution (%)
-        type: number
-      - name: cumulative
-        title: Cumulative contribution (%)
-        type: number
-
   - name: contributionPlots
     title: Contribution Plots by Contrast
     type: Array
+    clearWith: []
     visible: false
     template:
       type: Group
       title: Contrast contribution
+      clearWith: []
       items:
         - name: description
           title: Contribution Plot
@@ -152,12 +120,15 @@ items:
         - name: plot
           title: Contribution Plot
           type: Image
+          clearWith: []
           width: 580
           height: 430
           renderFun: .plotContribution
         - name: values
           title: Contribution Values
           type: Table
+          clearWith: []
+          visible: false
           rows: 0
           columns:
             - name: feature

@@ -76,8 +76,6 @@ children:
             margin: none
       - type: Label
         label: "Dissimilarity: Bray-Curtis"
-      - type: CheckBox
-        name: simperDetails
 
   - type: CollapseBox
     name: plots
@@ -124,6 +122,19 @@ children:
                 margin: none
       - type: CheckBox
         name: simperHeatmap
+
+  - type: CollapseBox
+    name: tables
+    label: Tables
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: simperDetails
+      - type: CheckBox
+        name: simperPlotValues
+      - type: CheckBox
+        name: simperHeatmapValues
 
   - type: CollapseBox
     name: permutationAssessment
