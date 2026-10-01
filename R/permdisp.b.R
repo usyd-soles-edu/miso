@@ -23,10 +23,14 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             on.exit(miso_finish_empty_tables(self$results), add=TRUE)
+            effectiveSeed <- miso_effective_seed(
+                self$options$useFixedSeed, self$options$seed)
             structuralKey <- miso_options_signature(
                 self$options,
-                excluded=c("showDistancePlot", "showOrdinationPlot"),
-                data=self$data)
+                excluded=c("showDistancePlot", "showOrdinationPlot", "seed",
+                    "useFixedSeed"),
+                data=self$data,
+                extra=list(effectiveSeed=effectiveSeed))
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()
@@ -78,7 +82,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     factor=self$options$factor,
                     transform=self$options$transform,
                     distance=self$options$distance,
-                    seed=self$options$seed,
+                    seed=effectiveSeed,
                     distBinary=self$options$distBinary),
                 error=function(e) e)
             if (inherits(prep, "error")) {
@@ -98,6 +102,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.state$warnings,
                 private$.state$restriction$warning)
 
+            prep <- miso_record_seed(prep, self$results$seedState)
             outcome <- private$.runDispersion(prep)
             if (! isTRUE(outcome$success)) {
                 private$.discardKeyedRows()
@@ -105,6 +110,9 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(outcome$pairwiseShown)
+            self$results$anova$setNote(key="seed",
+                note=paste0("Random seed: ", miso_seed_label(prep), "."),
+                init=FALSE)
         },
 
         .refreshDisplayOnly = function() {
@@ -148,6 +156,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            self$results$anova$setNote(key="seed", note="", init=FALSE)
+            # A new effective seed can refit without a raw-option clearWith hit.
+            self$results$plot$.setPath(NULL)
+            self$results$ordinationPlot$.setPath(NULL)
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             miso_clear_table_values(self$results$distances)

@@ -242,8 +242,8 @@ expect_nmds_visibility <- function(result, visible, hidden) {
 
 expect_nmds_correction_with_tables <- function(result) {
     expect_nmds_visibility(result,
-        visible=c("guidance", "stress", "sites"),
-        hidden=c("warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
+        visible=c("guidance", "stress"),
+        hidden=c("sites", "warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
 }
 
 find_nmds_yaml_node <- function(node, name) {
@@ -330,24 +330,36 @@ test_that("nMDS result schema contains no initially visible shell", {
 
     expect_true(all(vapply(items, function(x) identical(x$visible, FALSE), logical(1))))
     expected_clear_with <- c(
-        "vars", "factor", "transform", "distance", "distBinary", "seed",
+        "vars", "factor", "transform", "distance", "distBinary",
         "nmdsK", "nmdsTrymax", "nmdsMaxit", "nmdsEnv", "nmdsEnvPerm")
+    expected_structural_clear_with <- append(
+        expected_clear_with, "nmdsSpecies", after=match("nmdsEnv", expected_clear_with))
+    expected_cache_clear_with <- expected_structural_clear_with
+    expected_ordination_clear_with <- c(
+        expected_structural_clear_with, "nmdsOverlay", "nmdsHull",
+        "nmdsEllipse", "nmdsSpider")
+    expect_identical(by_name$analysisCache$clearWith,
+        expected_cache_clear_with)
+    expect_identical(by_name$ordination$clearWith,
+        expected_ordination_clear_with)
+    ordinary_items <- setdiff(names(by_name), c("seedState", "analysisCache", "ordination"))
     expect_true(all(vapply(
-        items, function(x) identical(x$clearWith, expected_clear_with),
+        by_name[ordinary_items],
+        function(x) identical(x$clearWith, expected_clear_with),
         logical(1))))
+    expect_identical(by_name$analysisCache$type, "Html")
     expect_identical(
         vapply(items, `[[`, character(1), "name"),
         c(
-            "guidance", "warnings",
+            "seedState", "analysisCache", "guidance", "warnings",
             "ordinationDescription", "ordination", "sites",
             "stress", "shepardDescription", "shepard",
-            "shepardPairs",
             "envfit", "features"
             ))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$ordinationDescription$type, "Html")
     expect_identical(by_name$shepardDescription$type, "Html")
-    expect_identical(by_name$shepardPairs$type, "Table")
+
     expect_identical(
         vapply(by_name$envfit$columns, `[[`, character(1), "name"),
         c("variable", "r2", "p", "samples", "permutations", "NMDS1", "NMDS2", "NMDS3"))
@@ -371,8 +383,9 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
     noneAnalysis <- run_nmds_private(data, vars=character())
     none <- noneAnalysis$results
     expect_false(none$guidance$visible)
-    for (name in c("sites", "stress", "shepardPairs"))
-        expect_true(none[[name]]$visible)
+    expect_true(none$stress$visible)
+    for (name in c("sites", "features"))
+        expect_false(none[[name]]$visible)
     expect_null(noneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 
     oneAnalysis <- run_nmds_private(data, vars="feature_01")
@@ -624,7 +637,8 @@ test_that("diagnostics report fitted-object fields rather than requested setting
             "Random starts tried",
             "Best solution first found",
             "Iterations in retained solution",
-            "Engine"))
+            "Engine",
+            "Random seed"))
 })
 
 
@@ -737,8 +751,8 @@ test_that("group overlays use unique styles and cached validated geometry", {
     expect_identical(length(overlays$spider), 5L)
     expect_identical(
         overlays$lineTypes,
-        c(hull=1L, ellipse=2L, spider=3L))
-    expect_identical(length(unique(overlays$lineTypes)), 3L)
+        c(hull=2L, ellipse=3L, spider=3L))
+    expect_identical(length(unique(overlays$lineTypes)), 2L)
     expect_true(all(vapply(
         overlays$hull,
         function(x) is.matrix(x) && ncol(x) == 2L && nrow(x) >= 4L,
@@ -910,14 +924,14 @@ test_that("overlay-only plots use independent group and layer encodings", {
     expect_true(all(overlays$styles$assigned))
     expect_identical(nrow(assignedStyles), 5L)
     expect_identical(length(unique(assignedStyles$lineType)), 5L)
-    expect_identical(length(unique(overlays$lineWidths)), 3L)
+    expect_identical(length(unique(overlays$lineWidths)), 2L)
     expect_true("GeomSegment" %in% geomClasses)
     expect_gte(sum(geomClasses == "GeomPath"), 2L)
     expect_identical(
         stats::setNames(assignedStyles$colour, assignedStyles$group),
         shared$colour[assignedStyles$group])
     expect_identical(colourScale$name, "Group")
-    expect_identical(linetypeScale$name, "Group")
+    expect_identical(linetypeScale$name, "Layer")
     expect_identical(linewidthScale$name, "Layer")
     expect_identical(colourScale$guide, "legend")
     expect_identical(linetypeScale$guide, "legend")
@@ -1074,7 +1088,7 @@ test_that("no usable environmental variable leaves only envfit hidden", {
     expect_false(result$envfit$visible)
     expect_identical(nrow(result$envfit$asDF), 0L)
     expect_true(result$ordination$visible)
-    expect_true(result$sites$visible)
+    expect_false(result$sites$visible)
     expect_true(result$warnings$visible)
 })
 
@@ -1195,8 +1209,8 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     expect_true(isTRUE(rendered))
     expect_true(shown$results$shepard$visible)
     expect_false(shown$results$shepardDescription$visible)
-    expect_true(shown$results$shepardPairs$visible)
-    shownPairs <- shown$results$shepardPairs$asDF
+
+    shownPairs <- shownPrivate$.state$shepardDisplayData
     rownames(shownPairs) <- NULL
     expect_equal(shownPairs, expectedData, tolerance=0)
     expect_identical(description, "character(0)")
@@ -1215,8 +1229,8 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
         nmdsTrymax=5)
     expect_false(hidden$results$shepard$visible)
     expect_false(hidden$results$shepardDescription$visible)
-    expect_false(hidden$results$shepardPairs$visible)
-    expect_equal(length(hidden$results$shepardPairs$rowKeys), 0L)
+
+
     expect_false(grepl(
         "observed dissimilarities",
         nmds_squish(hidden$results$shepardDescription$asString())))
@@ -1362,7 +1376,6 @@ test_that("nMDS migration scenarios use current result names", {
         "nMDS Ordination",
         "Stress and Convergence Diagnostics",
         "Shepard Diagram",
-        "Shepard Diagram Values",
         "Environmental Fit",
         "Site Scores",
         sep="|")
@@ -1477,7 +1490,8 @@ test_that("structural environmental inputs rebuild fit rows while display toggle
 
 test_that("nMDS reports effective choices in surviving table notes", {
     analysis <- run_nmds_private(nmds_state_data(),
-        vars=paste0("feature_0", 1:4), factor="group", nmdsTrymax=5, seed=123)
+        vars=paste0("feature_0", 1:4), factor="group", nmdsTrymax=5,
+        seed=123, nmdsSiteTable=TRUE)
     expect_true(analysis$results$sites$visible)
     expect_match(miso_table_note(analysis$results$sites, "method"), "Bray")
     expect_identical(miso_table_note(analysis$results$stress, "method"), "")

@@ -56,7 +56,7 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_identical(
         names(by_name),
         c(
-            "data", "vars", "labels", "transform", "distance",
+            "data", "vars", "labels", "contextVars", "showSampleOrder", "showMergeHistory", "transform", "distance",
             "sampleLabels", "showLabels", "defineClusters", "cutMode",
             "numberClusters", "cutHeight"))
     expect_identical(by_name$vars$title, "Feature Variables")
@@ -89,8 +89,7 @@ test_that("cluster schema exposes a compact plots workflow", {
         c(
             "guidance", "warnings",
             "dendrogramDescription", "dendrogram",
-            "dendrogramStructure",
-            "membership"
+            "membership", "sampleOrder", "mergeHistory"
             ))
     expect_true(all(vapply(
         results, function(item) identical(item$visible, FALSE), logical(1))))
@@ -99,7 +98,12 @@ test_that("cluster schema exposes a compact plots workflow", {
     expect_identical(result_by_name$dendrogram$height, 500L)
     expect_lte(result_by_name$dendrogram$height, 650L)
     expect_identical(result_by_name$membership$type, "Table")
-    expect_identical(result_by_name$dendrogramStructure$type, "Table")
+    expect_identical(result_by_name$sampleOrder$type, "Table")
+    expect_identical(result_by_name$mergeHistory$type, "Table")
+    expect_false(by_name$showSampleOrder$default)
+    expect_false(by_name$showMergeHistory$default)
+    expect_identical(by_name$contextVars$permitted, c("numeric", "factor", "id"))
+    expect_true(cluster_yaml_node(ui, "tables")$collapsed)
     expect_identical(
         vapply(result_by_name$membership$columns, `[[`, character(1), "name"),
         c("sample", "cluster"))
@@ -129,8 +133,8 @@ test_that("new cluster shows empty tables without a tutorial", {
     result <- analysis$results
 
     expect_cluster_visibility(result,
-        visible=c("dendrogramStructure"),
-        hidden=c("guidance", "warnings", "dendrogram", "dendrogramDescription", "membership"))
+        visible=character(),
+        hidden=c("guidance", "warnings", "dendrogram", "dendrogramDescription", "membership", "sampleOrder", "mergeHistory"))
 })
 
 
@@ -650,7 +654,7 @@ test_that("full labels are preserved while plot labels are collision safe", {
     expect_length(unique(plotData$leaf$plotLabel), nrow(data))
     expect_match(
         miso_squish_result(analysis$results$warnings),
-        "full labels are retained")
+        "full labels are available")
 })
 
 test_that("missing and duplicate labels never change clustering", {
@@ -747,46 +751,28 @@ test_that("ggplot builder and callback render bounded read-only output", {
     expect_identical(serialize(private$.state, NULL), before)
 })
 
-test_that("dendrogram structure is a complete exact table alternative", {
-    data <- cluster_state_data(18L, long_labels=TRUE)
-    analysis <- run_cluster_private(
-        data,
-        vars=paste0("feature_0", 1:4),
-        labels="sample")
+test_that("separate technical tables exactly reconstruct the dendrogram", {
+    analysis <- run_cluster_private(cluster_state_data(18L, long_labels=TRUE),
+        vars=paste0("feature_0", 1:4), labels="sample",
+        showSampleOrder=TRUE, showMergeHistory=TRUE)
     private <- cluster_private(analysis)
     fit <- private$.state$fit
-    structure <- analysis$results$dendrogramStructure$asDF
-    leaves <- structure[structure$recordType == "Leaf", , drop=FALSE]
-    merges <- structure[structure$recordType == "Merge", , drop=FALSE]
-
-    expect_true(analysis$results$dendrogramStructure$visible)
-    expect_identical(nrow(structure), 2L * length(fit$order) - 1L)
-    expect_identical(leaves$displayOrder, seq_along(fit$order))
+    leaves <- analysis$results$sampleOrder$asDF
+    merges <- analysis$results$mergeHistory$asDF
+    expect_true(analysis$results$sampleOrder$visible)
+    expect_true(analysis$results$mergeHistory$visible)
+    expect_false(analysis$results$membership$visible)
+    expect_identical(nrow(leaves), length(fit$order))
+    expect_identical(nrow(merges), nrow(fit$merge))
+    expect_identical(leaves$position, seq_along(fit$order))
     expect_identical(leaves$sample, private$.state$labels[fit$order])
-    expect_identical(merges$mergeStep, seq_len(nrow(fit$merge)))
+    expect_identical(merges$step, seq_len(nrow(fit$merge)))
     expect_equal(merges$height, fit$height, tolerance=0)
-    expect_identical(
-        analysis$results$dendrogramStructure$getCell(
-            rowKey="1", col="mergeStep")$value,
-        "")
-    expect_identical(
-        analysis$results$dendrogramStructure$getCell(
-            rowKey="1", col="height")$value,
-        "")
-    expect_identical(
-        analysis$results$dendrogramStructure$getCell(
-            rowKey=as.character(length(fit$order) + 1L),
-            col="displayOrder")$value,
-        "")
-
     childLabel <- function(value) if (value < 0L)
-        private$.state$labels[[-value]] else paste0("Merge ", value)
-    expect_identical(merges$leftChild,
-        vapply(fit$merge[, 1L], childLabel, character(1)))
-    expect_identical(merges$rightChild,
-        vapply(fit$merge[, 2L], childLabel, character(1)))
-    expect_false(grepl("NaN", as.character(
-        analysis$results$dendrogramStructure$asString())))
+        paste0("Sample: ", private$.state$labels[[-value]]) else paste0("Merge ", value)
+    expect_identical(merges$first, vapply(fit$merge[, 1L], childLabel, character(1)))
+    expect_identical(merges$second, vapply(fit$merge[, 2L], childLabel, character(1)))
+    expect_false(grepl("NaN", as.character(analysis$results$mergeHistory$asString())))
 })
 
 
@@ -870,12 +856,12 @@ test_that("structural feature inputs rebuild membership and structure rows", {
     options <- clusterOptions$new(
         vars=paste0("feature_0", 1:5),
         labels="sample",
-        defineClusters=TRUE,
+        showSampleOrder=TRUE, defineClusters=TRUE,
         cutMode="number",
         numberClusters=3)
     analysis <- clusterClass$new(options=options, data=data)
     suppressWarnings(suppressMessages(analysis$run()))
-    structureKeys <- analysis$results$dendrogramStructure$rowKeys
+    structureKeys <- analysis$results$sampleOrder$rowKeys
     membershipKeys <- analysis$results$membership$rowKeys
     rowsUsed <- nrow(analysis$results$membership$asDF)
 
@@ -883,22 +869,22 @@ test_that("structural feature inputs rebuild membership and structure rows", {
     varsOption$.__enclos_env__$private$.value <- paste0("feature_0", 1:4)
     suppressWarnings(suppressMessages(analysis$run()))
     expect_false(identical(
-        analysis$results$dendrogramStructure$rowKeys, structureKeys))
+        analysis$results$sampleOrder$rowKeys, structureKeys))
     expect_false(identical(
         analysis$results$membership$rowKeys, membershipKeys))
     expect_gt(nrow(analysis$results$membership$asDF), rowsUsed)
     expect_gt(
-        nrow(analysis$results$dendrogramStructure$asDF),
-        2L * rowsUsed - 1L)
+        nrow(analysis$results$sampleOrder$asDF),
+        rowsUsed)
 })
 
 test_that("cluster reports transformation and actual cut rule in table notes", {
     result <- run_cluster_private(cluster_state_data(),
         vars=paste0("feature_0", 1:4), labels="sample",
-        transform="fourthroot", defineClusters=TRUE, cutMode="number",
+        transform="fourthroot", showSampleOrder=TRUE, defineClusters=TRUE, cutMode="number",
         numberClusters=3)
-    expect_true(result$results$dendrogramStructure$visible)
-    expect_match(miso_table_note(result$results$dendrogramStructure, "method"), "transformation")
+    expect_true(result$results$sampleOrder$visible)
+    expect_match(miso_table_note(result$results$sampleOrder, "method"), "transformation")
     expect_match(miso_table_note(result$results$membership, "method"), "Cut rule")
 })
 
@@ -906,14 +892,14 @@ test_that("sample-label reruns refresh shortening warnings without changing clus
     analysis <- run_cluster_private(
         cluster_state_data(18L, long_labels=TRUE),
         vars=paste0("feature_0", 1:4), labels="sample",
-        sampleLabels="hide", defineClusters=TRUE, numberClusters=3)
+        sampleLabels="hide", showSampleOrder=TRUE, defineClusters=TRUE, numberClusters=3)
     private <- cluster_private(analysis)
     fit <- private$.state$fit
     labels <- private$.state$labels
     membership <- analysis$results$membership$asDF
-    structure <- analysis$results$dendrogramStructure$asDF
+    structure <- analysis$results$sampleOrder$asDF
     membershipKeys <- analysis$results$membership$rowKeys
-    structureKeys <- analysis$results$dendrogramStructure$rowKeys
+    structureKeys <- analysis$results$sampleOrder$rowKeys
     option <- analysis$options$option("sampleLabels")
 
     for (mode in c("show", "hide", "auto")) {
@@ -926,18 +912,18 @@ test_that("sample-label reruns refresh shortening warnings without changing clus
         expect_identical(private$.state$fit, fit)
         expect_identical(private$.state$labels, labels)
         expect_identical(analysis$results$membership$asDF, membership)
-        expect_identical(analysis$results$dendrogramStructure$asDF, structure)
+        expect_identical(analysis$results$sampleOrder$asDF, structure)
         expect_identical(analysis$results$membership$rowKeys, membershipKeys)
-        expect_identical(analysis$results$dendrogramStructure$rowKeys, structureKeys)
+        expect_identical(analysis$results$sampleOrder$rowKeys, structureKeys)
     }
 })
 
 test_that("publication output omits routine explanatory prose", {
     analysis <- run_cluster_private(cluster_state_data(),
-        vars=paste0("feature_0", 1:4), defineClusters=TRUE, numberClusters=3)
+        vars=paste0("feature_0", 1:4), showSampleOrder=TRUE, defineClusters=TRUE, numberClusters=3)
     expect_false(analysis$results$dendrogramDescription$visible)
     expect_false(grepl("horizontal|hypothesis|Cut rule",
-        miso_table_note(analysis$results$dendrogramStructure, "method")))
+        miso_table_note(analysis$results$sampleOrder, "method")))
     expect_false(grepl("horizontal|Dendrogram Structure|\\.\\.",
         miso_table_note(analysis$results$membership, "method")))
 })
@@ -945,9 +931,293 @@ test_that("publication output omits routine explanatory prose", {
 test_that("number cuts retain a conditional tied-height qualification", {
     data <- data.frame(x=c(1, 2, 1, 2), y=c(1, 1, 2, 2))
     analysis <- run_cluster_private(data, vars=c("x", "y"),
-        distance="euclidean", defineClusters=TRUE, cutMode="number",
+        distance="euclidean", showSampleOrder=TRUE, defineClusters=TRUE, cutMode="number",
         numberClusters=3)
     expect_null(cluster_private(analysis)$.state$cutLine)
     expect_match(miso_table_note(analysis$results$membership, "method"),
         "Tied merge heights", fixed=TRUE)
+})
+
+cluster_set_option <- function(analysis, name, value) {
+    option <- analysis$options$option(name)
+    option$.__enclos_env__$private$.value <- value
+    suppressWarnings(suppressMessages(cluster_private(analysis)$.run()))
+}
+
+test_that("context fields preserve complete feature samples and source-row alignment", {
+    data <- cluster_state_data(18L)
+    data$habitat <- factor(rep(c("Forest", "Grass"), 9L))
+    data$temperature <- seq_len(18L) / 10
+    data$identifier <- paste0("ID-", seq_len(18L))
+    data$habitat[3L] <- NA
+    data$temperature[7L] <- NA
+    data$feature_01[5L] <- NA
+    analysis <- run_cluster_private(data, vars=paste0("feature_0", 1:4),
+        labels="sample", contextVars=c("habitat", "temperature", "identifier"),
+        showSampleOrder=TRUE, defineClusters=TRUE)
+    private <- cluster_private(analysis)
+    retained <- setdiff(seq_len(18L), 5L)
+    fit <- private$.state$fit
+    expect_identical(private$.state$prep$rowIndex, retained)
+    expect_equal(length(fit$order), 17L)
+    membership <- analysis$results$membership$asDF
+    expect_identical(membership$context1, as.character(data$habitat[retained]))
+    expect_identical(membership$context2, as.character(data$temperature[retained]))
+    expect_identical(membership$context3, data$identifier[retained])
+    order <- retained[fit$order]
+    expect_identical(analysis$results$sampleOrder$asDF$context3, data$identifier[order])
+    cluster_set_option(analysis, "contextVars", character())
+    expect_identical(private$.state$fit, fit)
+    expect_identical(private$.state$prep$rowIndex, retained)
+})
+
+test_that("context replacement and removal clear unused native columns", {
+    data <- cluster_state_data()
+    data$habitat <- factor(rep(c("Forest", "Grass"), 9L))
+    data$temperature <- seq_len(18L)
+    analysis <- run_cluster_private(data, vars=paste0("feature_0", 1:4),
+        labels="sample", contextVars=c("habitat", "temperature"),
+        defineClusters=TRUE, showSampleOrder=TRUE)
+    for (name in c("membership", "sampleOrder")) {
+        table <- analysis$results[[name]]
+        expect_identical(table$getColumn("sample")$title, "sample")
+        expect_identical(table$getColumn("context1")$title, "habitat")
+        expect_identical(table$getColumn("context2")$title, "temperature")
+    }
+    cluster_set_option(analysis, "contextVars", "temperature")
+    for (name in c("membership", "sampleOrder")) {
+        table <- analysis$results[[name]]
+        expect_identical(table$getColumn("context1")$title, "temperature")
+        expect_false(table$getColumn("context2")$visible)
+        expect_identical(table$getColumn("context2")$title, "")
+        for (key in table$rowKeys)
+            expect_identical(table$getCell(rowKey=key, col="context2")$value, "")
+    }
+    cluster_set_option(analysis, "contextVars", c("sample", "habitat", "unavailable"))
+    expect_identical(analysis$results$membership$getColumn("context1")$title, "habitat")
+    expect_false(analysis$results$membership$getColumn("context2")$visible)
+    expect_match(miso_squish_result(analysis$results$warnings), "unavailable")
+    cluster_set_option(analysis, "contextVars", character())
+    for (name in c("membership", "sampleOrder")) {
+        table <- analysis$results[[name]]
+        expect_false(table$getColumn("context1")$visible)
+        expect_identical(table$getColumn("context1")$title, "")
+        expect_false(grepl("Forest|Grass", table$asString()))
+    }
+})
+
+test_that("presentation controls reuse the fit while feature choices rebuild it", {
+    analysis <- run_cluster_private(cluster_state_data(),
+        vars=paste0("feature_0", 1:4), labels="sample")
+    private <- cluster_private(analysis)
+    calls <- 0L
+    original <- private$.fitTree
+    unlockBinding(".fitTree", private)
+    private$.fitTree <- function(prep) {
+        calls <<- calls + 1L
+        original(prep)
+    }
+    for (setting in list(
+            list("sampleLabels", "hide"), list("contextVars", "feature_01"),
+            list("showSampleOrder", TRUE), list("showMergeHistory", TRUE),
+            list("defineClusters", TRUE), list("numberClusters", 4),
+            list("cutMode", "height"), list("cutHeight", .1),
+            list("labels", NULL)))
+        cluster_set_option(analysis, setting[[1L]], setting[[2L]])
+    expect_identical(calls, 0L)
+    cluster_set_option(analysis, "transform", "sqrt")
+    expect_identical(calls, 1L)
+    cluster_set_option(analysis, "distance", "euclidean")
+    expect_identical(calls, 2L)
+    cluster_set_option(analysis, "vars", paste0("feature_0", 1:3))
+    expect_identical(calls, 3L)
+})
+
+test_that("technical tables toggle before fitting and clear their populated rows", {
+    analysis <- clusterClass$new(options=clusterOptions$new(vars=character()),
+        data=cluster_state_data())
+    cluster_private(analysis)$.run()
+    for (setting in list(c("showSampleOrder", "sampleOrder"),
+            c("showMergeHistory", "mergeHistory"))) {
+        for (shown in c(TRUE, FALSE, TRUE)) {
+            cluster_set_option(analysis, setting[[1L]], shown)
+            expect_identical(analysis$results[[setting[[2L]]]]$visible, shown)
+        }
+    }
+    cluster_set_option(analysis, "vars", paste0("feature_0", 1:4))
+    expect_equal(nrow(analysis$results$sampleOrder$asDF), 18L)
+    expect_equal(nrow(analysis$results$mergeHistory$asDF), 17L)
+    for (setting in list(c("showSampleOrder", "sampleOrder"),
+            c("showMergeHistory", "mergeHistory"))) {
+        cluster_set_option(analysis, setting[[1L]], FALSE)
+        expect_false(analysis$results[[setting[[2L]]]]$visible)
+        expect_length(analysis$results[[setting[[2L]]]]$rowKeys, 0L)
+    }
+})
+
+test_that("context headings remain unambiguous and clear with incomplete inputs", {
+    data <- cluster_state_data()
+    data$Cluster <- seq_len(18L)
+    data$Position <- seq_len(18L) + 100L
+    analysis <- run_cluster_private(data, vars=paste0("feature_0", 1:4),
+        labels="sample", contextVars=c("Cluster", "Position"),
+        defineClusters=TRUE, showSampleOrder=TRUE)
+    expect_identical(analysis$results$membership$getColumn("context1")$title,
+        "Cluster (context)")
+    expect_identical(analysis$results$sampleOrder$getColumn("context2")$title,
+        "Position (context)")
+    cluster_set_option(analysis, "contextVars", c("Position", "Cluster"))
+    expect_identical(analysis$results$sampleOrder$getColumn("context1")$title,
+        "Position (context)")
+    expect_identical(analysis$results$membership$getColumn("context2")$title,
+        "Cluster (context)")
+    cluster_set_option(analysis, "vars", character())
+    cluster_set_option(analysis, "contextVars", character())
+    for (name in c("membership", "sampleOrder")) {
+        table <- analysis$results[[name]]
+        expect_false(table$getColumn("context1")$visible)
+        expect_false(table$getColumn("context2")$visible)
+        expect_identical(table$getColumn("context1")$title, "")
+        expect_identical(table$getColumn("context2")$title, "")
+        expect_false(grepl("context|100", table$asString()))
+    }
+})
+
+test_that("identical feature records retain their own current context after reordering", {
+    data <- cluster_state_data()
+    vars <- paste0("feature_0", 1:4)
+    data[2L, vars] <- data[1L, vars]
+    data$identity <- paste0("record-", seq_len(18L))
+    analysis <- run_cluster_private(data, vars=vars, labels="sample",
+        contextVars="identity", defineClusters=TRUE, showSampleOrder=TRUE)
+    private <- cluster_private(analysis)
+    fit <- private$.state$fit
+    reordered <- data[c(2L, 1L, 3:18), , drop=FALSE]
+    # Data-row identity changes even when the reordered feature values are equal.
+    private$.data <- reordered
+    suppressWarnings(suppressMessages(private$.run()))
+    expect_identical(analysis$results$membership$asDF$context1, reordered$identity)
+    expect_identical(analysis$results$membership$asDF$sample, as.character(reordered$sample))
+    expect_identical(analysis$results$sampleOrder$asDF$context1,
+        reordered$identity[private$.state$fit$order])
+    expect_identical(private$.state$fit$merge, fit$merge)
+    expect_identical(private$.state$fit$height, fit$height)
+})
+
+test_that("native dynamic tables and selections survive serialization without stale context", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
+    data <- cluster_state_data()
+    data$habitat <- factor(rep(c("Forest", "Grass"), 9L))
+    data$temperature <- seq_len(18L)
+    analysis <- run_cluster_private(data, vars=paste0("feature_0", 1:4),
+        labels="sample", contextVars=c("habitat", "temperature"),
+        defineClusters=TRUE, showSampleOrder=TRUE, showMergeHistory=TRUE)
+    cluster_set_option(analysis, "contextVars", "temperature")
+    restored <- unserialize(serialize(analysis, NULL))
+    expect_identical(restored$options$contextVars, "temperature")
+    expect_true(restored$options$showSampleOrder)
+    expect_true(restored$options$showMergeHistory)
+    for (name in c("membership", "sampleOrder", "mergeHistory")) {
+        original <- analysis$results[[name]]
+        table <- restored$results[[name]]
+        expect_identical(table$asDF, original$asDF)
+        expect_identical(table$asProtoBuf()$table$serialize(NULL),
+            original$asProtoBuf()$table$serialize(NULL))
+        expect_false(grepl("Forest|Grass", table$asString()))
+        if (name != "mergeHistory") {
+            column <- Filter(function(col) identical(col$name, "context2"),
+                table$asProtoBuf()$table$columns)[[1L]]
+            for (cell in column$cells)
+                expect_true(!cell$has("s") || identical(cell$s, ""))
+        }
+    }
+    before <- cluster_private(restored)$.state$fit
+    cluster_set_option(restored, "showSampleOrder", FALSE)
+    cluster_set_option(restored, "showSampleOrder", TRUE)
+    expect_identical(restored$results$sampleOrder$asDF,
+        analysis$results$sampleOrder$asDF)
+    expect_identical(cluster_private(restored)$.state$fit, before)
+})
+
+test_that("reserved identifier titles are distinct from table roles", {
+    data <- cluster_state_data()
+    data$Cluster <- data$sample
+    data$Position <- data$sample
+    analysis <- run_cluster_private(data, vars=paste0("feature_0", 1:4),
+        labels="Cluster", contextVars="Position", defineClusters=TRUE,
+        showSampleOrder=TRUE)
+    expect_identical(analysis$results$membership$getColumn("sample")$title,
+        "Cluster (sample)")
+    cluster_set_option(analysis, "labels", "Position")
+    expect_identical(analysis$results$sampleOrder$getColumn("sample")$title,
+        "Position (sample)")
+})
+
+test_that("removing required feature inputs clears persisted dendrogram state", {
+    analysis <- run_cluster_private(cluster_state_data(),
+        vars=paste0("feature_0", 1:4), labels="sample")
+    expect_false(is.null(analysis$results$dendrogram$state))
+    cluster_set_option(analysis, "vars", character())
+    expect_null(analysis$results$dendrogram$state)
+    expect_false(analysis$results$dendrogram$visible)
+    restored <- unserialize(serialize(analysis, NULL))
+    expect_null(restored$results$dendrogram$state)
+})
+
+test_that("cluster native save-load lifecycle preserves current tables and context headings", {
+    skip_if_not_installed("RProtoBuf")
+    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
+    data <- cluster_state_data()
+    data$habitat <- factor(rep(c("Forest", "Grass"), 9L))
+    data$temperature <- seq_len(18L)
+    settings <- list(vars=paste0("feature_0", 1:4), labels="sample",
+        contextVars=c("habitat", "temperature"), defineClusters=TRUE,
+        showSampleOrder=TRUE, showMergeHistory=TRUE)
+    original <- clusterClass$new(options=do.call(clusterOptions$new, settings),
+        data=data, analysisId=1L)
+    suppressWarnings(suppressMessages(original$run()))
+    cluster_set_option(original, "contextVars", "temperature")
+    settings$contextVars <- "temperature"
+    originalFit <- cluster_private(original)$.state$fit
+    statePath <- tempfile()
+    imagePath <- tempfile("cluster-", fileext=".png")
+    on.exit(unlink(c(statePath, imagePath)), add=TRUE)
+    expect_true(file.create(imagePath))
+    original$results$dendrogram$.setPath(imagePath)
+    original$.setStatePathSource(function() statePath)
+    original$.save()
+
+    restored <- clusterClass$new(options=do.call(clusterOptions$new, settings),
+        data=data, analysisId=1L)
+    restored$.setStatePathSource(function() statePath)
+    restored$init()
+    restored$.load()
+    restored$postInit()
+    # Native Table decoding fills existing rows and columns; a run rebuilds
+    # dynamic rows from the saved selections and dataset.
+    suppressWarnings(suppressMessages(restored$run()))
+    expect_identical(cluster_private(restored)$.state$fit, originalFit)
+    for (name in c("membership", "sampleOrder", "mergeHistory")) {
+        expect_identical(restored$results[[name]]$asDF[, names(restored$results[[name]]$asDF), drop=FALSE],
+            original$results[[name]]$asDF[, names(restored$results[[name]]$asDF), drop=FALSE],
+            info=paste(name, "reopened values"))
+        expect_identical(restored$results[[name]]$rowKeys,
+            original$results[[name]]$rowKeys, info=paste(name, "reopened rows"))
+        expect_true(restored$results[[name]]$visible)
+    }
+    for (name in c("membership", "sampleOrder")) {
+        table <- restored$results[[name]]
+        expect_identical(table$getColumn("context1")$title, "temperature")
+        expect_false("context2" %in% names(table$columns))
+        expect_false(grepl("Forest|Grass", table$asString()))
+    }
+    cluster_set_option(restored, "contextVars", character())
+    for (name in c("membership", "sampleOrder")) {
+        table <- restored$results[[name]]
+        expect_false(table$getColumn("context1")$visible)
+        expect_identical(table$getColumn("context1")$title, "")
+        expect_false(grepl("Forest|Grass", table$asString()))
+    }
+    expect_identical(cluster_private(restored)$.state$fit, originalFit)
 })

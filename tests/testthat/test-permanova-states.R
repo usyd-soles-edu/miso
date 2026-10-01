@@ -256,7 +256,7 @@ test_that("PERMANOVA output names and suffixes remain stable", {
     schema <- yaml::read_yaml(miso_fixture_path("jamovi", "permanova.r.yaml"))
     names <- vapply(schema$items, `[[`, character(1), "name")
     expect_identical(names, c(
-        "guidance", "warnings", "table", "companionPcoaDescription",
+        "seedState", "guidance", "warnings", "table", "companionPcoaDescription",
         "companionPcoa", "companionPcoaSites", "companionPcoaCentroids",
         "pairwise"))
     table <- schema$items[[match("table", names)]]
@@ -930,7 +930,10 @@ test_that("PERMANOVA companion JavaScript manages eligibility and focus", {
     expect_match(js, "dependentHadFocus", fixed=TRUE)
     expect_match(js, "focusedDependentDisabled", fixed=TRUE)
     expect_match(js, "focusControl(destination)", fixed=TRUE)
-    expect_match(js, "setTimeout(() => refreshView(ui), 100)", fixed=TRUE)
+    expect_match(js, "view_updated(ui)", fixed=TRUE)
+    expect_match(js, "normaliseLegacySeedMode(ui)", fixed=TRUE)
+    expect_false(grepl(
+        "setTimeout(() => refreshView(ui), 100)", js, fixed=TRUE))
 })
 
 test_that("PERMANOVA companion display assignment survives plot and model changes", {

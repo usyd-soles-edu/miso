@@ -363,8 +363,8 @@ test_that("Module 3 SIMPER summaries match vegan", {
         simperDetails=TRUE))
 
     contributions <- miso_simper$contributions$asDF
-    variability <- miso_simper$variability$asDF
-    means <- miso_simper$means$asDF
+    variability <- simper_test_detail_frame(miso_simper)
+    means <- simper_test_detail_frame(miso_simper)
     contrasts <- miso_simper$contrasts$asDF
     contrast_keys <- names(vegan_simper)
     contrast_labels <- gsub("_", " vs ", contrast_keys, fixed=TRUE)

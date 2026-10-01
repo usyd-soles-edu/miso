@@ -4,6 +4,8 @@ name: simper
 jus: '3.0'
 stage: 0
 compilerMode: tame
+events:
+  updated: view_updated
 children:
   - type: VariableSupplier
     persistentItems: false
@@ -74,8 +76,6 @@ children:
             margin: none
       - type: Label
         label: "Dissimilarity: Bray-Curtis"
-      - type: CheckBox
-        name: simperDetails
 
   - type: CollapseBox
     name: plots
@@ -97,7 +97,7 @@ children:
         margin: small
         children:
           - type: Label
-            label: Features Shown
+            label: Features Shown in Results
             heading: true
             margin: none
           - type: TextBox
@@ -124,6 +124,15 @@ children:
         name: simperHeatmap
 
   - type: CollapseBox
+    name: tables
+    label: Tables
+    collapsed: true
+    stretchFactor: 1
+    children:
+      - type: CheckBox
+        name: simperDetails
+
+  - type: CollapseBox
     name: permutationAssessment
     label: Permutation Assessment (Advanced)
     collapsed: true
@@ -142,9 +151,16 @@ children:
           - type: ComboBox
             name: simperAdjust
             enable: (simperAssess)
+          - type: CheckBox
+            name: useFixedSeed
+            enable: (simperAssess)
+            events:
+              change: fixed_seed_changed
           - type: TextBox
             name: seed
             format: number
             enable: (simperAssess)
+            events:
+              change: seed_changed
 
 ...

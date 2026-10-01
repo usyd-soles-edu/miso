@@ -21,8 +21,13 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .run = function() {
             on.exit(miso_finish_empty_tables(self$results), add=TRUE)
+            effectiveSeed <- miso_effective_seed(
+                self$options$useFixedSeed, self$options$seed)
             structuralKey <- miso_options_signature(
-                self$options, excluded="showRankPlot", data=self$data)
+                self$options,
+                excluded=c("showRankPlot", "seed", "useFixedSeed"),
+                data=self$data,
+                extra=list(effectiveSeed=effectiveSeed))
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
                 private$.refreshDisplayOnly()
@@ -68,7 +73,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     factor=self$options$factor,
                     transform=self$options$transform,
                     distance=self$options$distance,
-                    seed=self$options$seed,
+                    seed=effectiveSeed,
                     strata=self$options$strata,
                     distBinary=self$options$distBinary),
                 error=function(e) e)
@@ -92,6 +97,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 prep$warnings,
                 private$.state$restriction$warnings)
 
+            prep <- miso_record_seed(prep, self$results$seedState)
             private$.state$cl <- miso_parallel(self$options$useParallel)
             on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
             if (! private$.runGlobal(prep)) {
@@ -106,6 +112,9 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 miso_clear_table(self$results$pairwise)
             private$.setWarnings(private$.state$warnings)
             private$.showSuccessfulResults(pairwiseShown)
+            self$results$global$setNote(key="seed",
+                note=paste0("Random seed: ", miso_seed_label(prep), "."),
+                init=FALSE)
         },
 
         .refreshDisplayOnly = function() {
@@ -122,6 +131,9 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .clearResults = function() {
+            self$results$global$setNote(key="seed", note="", init=FALSE)
+            # A new effective seed can refit without a raw-option clearWith hit.
+            self$results$rankPlot$.setPath(NULL)
             self$results$guidance$setContent("")
             self$results$warnings$setContent("")
             miso_clear_fixed_table(self$results$global, 1L)

@@ -1,3 +1,45 @@
+# MISO 1.1.0
+
+Release date: 2 October 2026.
+
+## Added
+
+- Optional site and feature score tables for nMDS, and sample order and merge history tables for cluster analysis.
+- Sample context columns alongside cluster membership and sample order.
+- Fixed seed controls for permutation analyses and nMDS. MISO keeps automatically generated seeds when an analysis is rerun or a saved file is reopened, and reports the seed used as automatic or fixed.
+
+## Changed
+
+- Core result tables are shown before all inputs are assigned. Notices explain problems with the inputs, replacing the generic startup guidance.
+- Changing the nMDS display reuses the fitted ordination, avoiding another run of the analysis. Site and feature score tables are off by default; the feature score table also needs the Feature Scores plot option.
+- SIMPER now combines group means and contribution variability in one optional table per contrast. These tables are faster to produce and follow the same feature shortlist as the contribution ranking.
+- SIMPER heatmaps show full feature names, wrapping long labels and resizing to fit. The caption explains that grey cells mark features omitted by the display limits, which may still have a non-zero contribution.
+
+## Fixed
+
+- Two-dimensional nMDS results now serialise missing third-axis coordinates correctly.
+- nMDS hull and ellipse outlines are easier to distinguish, and ellipses have light shading.
+- SIMPER explains why an average/SD ratio is undefined and shows detail warnings only with the relevant output.
+
+## Changes to results
+
+- In nMDS, site and feature score tables are now off by default. Enable them under **Tables** when you need the coordinates. The feature score table also needs **Feature Scores** enabled under **Plots**.
+- In cluster analysis, the former Dendrogram Structure table has been split into **Sample order** and **Merge history**. Both are available under **Tables** and are off by default.
+- In SIMPER, enable **Group means and contribution variability** under **Tables** to see those details together, in one table per contrast. The tables follow your **Top N features** and **Cumulative contribution (%)** limits.
+- Separate values tables for the nMDS Shepard diagram, SIMPER contribution plots and SIMPER heatmap have been removed. The plots remain available.
+- To choose your own random seed, enable **Use fixed seed** and enter a positive whole number. Otherwise, MISO generates a seed and keeps it for that analysis. The results report the seed used; older saved analyses with a fixed seed continue to use it.
+
+## Installation
+
+Download one `.jmo` file from this release to match your computer:
+
+- Apple Silicon Mac: `miso-1.1.0-macos-arm64.jmo`.
+- Intel Mac: `miso-1.1.0-macos-x64.jmo`.
+- Windows 64-bit: `miso-1.1.0-win-x64.jmo`.
+
+In jamovi, choose **Modules → Sideload Module** and select the downloaded file.
+The manual remains unpublished and is not included in this release.
+
 # MISO 1.0.0
 
 Initial release prepared for submission to the jamovi library.

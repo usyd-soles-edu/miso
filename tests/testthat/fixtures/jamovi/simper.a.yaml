@@ -125,7 +125,7 @@ options:
     hidden: true
 
   - name: seed
-    title: Random seed (0 = random)
+    title: Seed
     type: Number
     default: 0
     min: 0
@@ -181,8 +181,14 @@ options:
     default: holm
 
   - name: simperDetails
-    title: Detailed Statistics
+    title: Group means and contribution variability
     type: Bool
     default: false
+
+  - name: useFixedSeed
+    title: Use fixed seed
+    type: Bool
+    default: true
+    description: Use a positive fixed seed for reproducible permutation assessment; unchecked analyses use the random RNG stream.
 
 ...

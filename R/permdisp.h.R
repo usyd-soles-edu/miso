@@ -23,7 +23,8 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             dispPairwise = FALSE,
             dispAdjust = "holm",
             showDistancePlot = TRUE,
-            showOrdinationPlot = FALSE, ...) {
+            showOrdinationPlot = FALSE,
+            useFixedSeed = TRUE, ...) {
 
             super$initialize(
                 package="miso",
@@ -170,6 +171,10 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "showOrdinationPlot",
                 showOrdinationPlot,
                 default=FALSE)
+            private$..useFixedSeed <- jmvcore::OptionBool$new(
+                "useFixedSeed",
+                useFixedSeed,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -189,6 +194,7 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..dispAdjust)
             self$.addOption(private$..showDistancePlot)
             self$.addOption(private$..showOrdinationPlot)
+            self$.addOption(private$..useFixedSeed)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -208,7 +214,8 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         dispPairwise = function() private$..dispPairwise$value,
         dispAdjust = function() private$..dispAdjust$value,
         showDistancePlot = function() private$..showDistancePlot$value,
-        showOrdinationPlot = function() private$..showOrdinationPlot$value),
+        showOrdinationPlot = function() private$..showOrdinationPlot$value,
+        useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -227,13 +234,15 @@ permdispOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..dispPairwise = NA,
         ..dispAdjust = NA,
         ..showDistancePlot = NA,
-        ..showOrdinationPlot = NA)
+        ..showOrdinationPlot = NA,
+        ..useFixedSeed = NA)
 )
 
 permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "permdispResults",
     inherit = jmvcore::Group,
     active = list(
+        seedState = function() private$.items[["seedState"]],
         guidance = function() private$.items[["guidance"]],
         warnings = function() private$.items[["warnings"]],
         anova = function() private$.items[["anova"]],
@@ -254,6 +263,12 @@ permdispResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 refs=list(
                     "vegan",
                     "anderson2006"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="seedState",
+                title="",
+                visible=FALSE,
+                clearWith=list()))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
@@ -481,8 +496,11 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param dispAdjust .
 #' @param showDistancePlot .
 #' @param showOrdinationPlot .
+#' @param useFixedSeed Use a positive fixed seed for reproducible permutation
+#'   results; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
+#'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$anova} \tab \tab \tab \tab \tab a table \cr
@@ -521,7 +539,8 @@ permdisp <- function(
     dispPairwise = FALSE,
     dispAdjust = "holm",
     showDistancePlot = TRUE,
-    showOrdinationPlot = FALSE) {
+    showOrdinationPlot = FALSE,
+    useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("permdisp requires jmvcore to be installed (restart may be required)")
@@ -554,7 +573,8 @@ permdisp <- function(
         dispPairwise = dispPairwise,
         dispAdjust = dispAdjust,
         showDistancePlot = showDistancePlot,
-        showOrdinationPlot = showOrdinationPlot)
+        showOrdinationPlot = showOrdinationPlot,
+        useFixedSeed = useFixedSeed)
 
     analysis <- permdispClass$new(
         options = options,

@@ -16,7 +16,7 @@
 miso_display_name <- "Multivariate Inference, Similarity and Ordination (MISO)"
 miso_technical_name <- "miso"
 miso_ribbon_group <- "Multivariate"
-miso_identity_version <- "1.0.0"
+miso_identity_version <- "1.1.0"
 miso_analysis_names <- c(
     "permanova", "anosim", "permdisp", "nmds", "pcoa", "cluster", "simper")
 
@@ -86,7 +86,7 @@ miso_retired_identifier_occurrences <- function(files) {
     occurrences
 }
 
-test_that("package metadata declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.0.0", {
+test_that("package metadata declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.1.0", {
     fields <- read.dcf(
         file.path(miso_repo_root(), "DESCRIPTION"),
         fields=c("Package", "Title", "Version"))
@@ -95,7 +95,7 @@ test_that("package metadata declares the Multivariate Inference, Similarity and 
     expect_identical(unname(fields[[1L, "Version"]]), miso_identity_version)
 })
 
-test_that("module manifest declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.0.0", {
+test_that("module manifest declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.1.0", {
     miso_skip_outside_development_checkout()
     module <- yaml::read_yaml(file.path(miso_repo_root(), "jamovi", "0000.yaml"))
     expect_identical(as.character(module$name), miso_technical_name)
@@ -227,7 +227,8 @@ test_that("all analyses expose only native titled result elements", {
         items <- miso_task6_result_items(analysisName)
         names <- vapply(items, `[[`, character(1), "name")
         expect_false(any(grepl("Purpose$|^summary$|^settings$", names)), info=analysisName)
-        titled <- !vapply(items, function(item) item$name %in% c("guidance", "warnings"), logical(1))
+        titled <- !vapply(items, function(item)
+            item$name %in% c("seedState", "analysisCache", "guidance", "warnings"), logical(1))
         expect_true(all(vapply(items[titled], function(item) !is.null(item$title) && nzchar(item$title), logical(1))), info=analysisName)
     }
 })
@@ -273,7 +274,7 @@ test_that("display-only controls do not invalidate unrelated native tables", {
     displayOnly <- list(
         permanova=c("showCompanionPcoa", "pcoaDisplayFactor", "pcoaCentroids", "pcoaSpiders"),
         anosim="showRankPlot", permdisp=c("showDistancePlot", "showOrdinationPlot"),
-        nmds=c("nmdsShepard", "nmdsOverlay", "nmdsSpecies", "nmdsHull", "nmdsEllipse", "nmdsSpider"),
+        nmds="nmdsShepard",
         pcoa=c("showCentroids", "showSpiders"), cluster="sampleLabels",
         simper=c("simperDetails", "simperPlots", "simperHeatmap"))
     for (analysisName in names(displayOnly)) {
@@ -296,7 +297,7 @@ test_that("nMDS optional plot output restores from a display-only rerun", {
     miso_set_option_value(options, "nmdsShepard", TRUE)
     suppressWarnings(suppressMessages(analysis$run()))
     expect_true(analysis$results$shepard$visible)
-    expect_gt(length(analysis$results$shepardPairs$rowKeys), 0L)
+
 })
 
 # --- Task 11: analysis references resolve to complete citation records ---
@@ -367,10 +368,10 @@ test_that("run-generated notes survive restored analyses and display-only update
     simperRestored <- restore_analysis(simperAnalysis)
     miso_set_option_value(simperRestored$options, "simperDetails", TRUE)
     suppressWarnings(suppressMessages(simperRestored$run()))
-    for (table in list(simperRestored$results$contrasts, simperRestored$results$means))
+    for (table in list(simperRestored$results$contrasts))
         expect_false(grepl("Note.", note_text(table), fixed=TRUE))
     expect_match(note_text(simperRestored$results$contributions), "not renormalised", fixed=TRUE)
-    expect_match(note_text(simperRestored$results$variability), "between-group sample pairs", fixed=TRUE)
+    expect_match(note_text(simper_test_detail_table(simperRestored$results)), "between-group sample pairs", fixed=TRUE)
     expect_match(note_text(simperRestored$results$assessment), "Holm adjustment", fixed=TRUE)
 })
 
@@ -625,6 +626,6 @@ test_that("table notes retain interpretation-critical method choices", {
 
     clusterResult <- cluster(data=data, vars=c("sp1", "sp2", "sp3"),
         transform="sqrt", defineClusters=TRUE, cutMode="number", numberClusters=3)
-    expect_match(miso_table_note(clusterResult$dendrogramStructure, "method"), "Square root transformation", fixed=TRUE)
+    expect_match(miso_table_note(clusterResult$membership, "method"), "Square root transformation", fixed=TRUE)
     expect_match(miso_table_note(clusterResult$membership, "method"), "Cut rule: 3 clusters.", fixed=TRUE)
 })

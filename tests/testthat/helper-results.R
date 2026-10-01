@@ -33,3 +33,42 @@ expect_miso_empty_table <- function(table) {
     cells <- unlist(table$asDF, use.names=FALSE)
     expect_true(all(is.na(cells) | cells == ""))
 }
+
+# Full descriptive numerical oracle retained in the analysis cache, rather
+# than the removed hidden duplicate result table.
+simper_test_full <- function(analysis) {
+    rows <- if (inherits(analysis, "simperClass"))
+        analysis$.__enclos_env__$private$.state$descriptive$fullRows
+    else attr(analysis, "simperFullRows")
+    columns <- c("contrast", "feature", "average", "sd", "ratio", "meanFirst",
+        "meanSecond", "contribution", "cumulative")
+    if (length(rows) == 0L)
+        return(data.frame())
+    out <- do.call(rbind, lapply(rows, function(row)
+        as.data.frame(row[columns], stringsAsFactors=FALSE)))
+    for (name in setdiff(columns, c("contrast", "feature")))
+        out[[name]] <- as.numeric(out[[name]])
+    rownames(out) <- paste0('"',seq_len(nrow(out)),'"')
+    out
+}
+
+simper_test_run <- function(data, ...) {
+    analysis <- simperClass$new(options=simperOptions$new(...), data=data)
+    analysis$run()
+    result <- analysis$results
+    attr(result, "simperFullRows") <- analysis$.__enclos_env__$private$.state$descriptive$fullRows
+    result
+}
+
+simper_test_detail_table <- function(result) result$detailsByContrast$items[[1L]]
+
+simper_test_detail_frame <- function(result) {
+    if (length(result$detailsByContrast$items) == 0L) return(data.frame())
+    out <- do.call(rbind, lapply(result$detailsByContrast$items, function(table) {
+        values <- table$asDF
+        values$contrast <- table$title
+        values
+    }))
+    rownames(out) <- NULL
+    out
+}

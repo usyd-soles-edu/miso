@@ -7,6 +7,12 @@ refs:
   - clarke1993
 
 items:
+  - name: seedState
+    title: ''
+    type: Html
+    visible: false
+    clearWith: []
+
   - name: guidance
     title: Getting Started
     type: Html
@@ -55,90 +61,45 @@ items:
         title: Cumulative (%)
         type: number
 
-  - name: variability
-    title: Contribution Variability
-    type: Table
+  - name: detailsByContrast
+    title: Group Means and Contribution Variability
+    type: Array
+    clearWith: []
     visible: false
-    clearWith:
-    rows: 0
-    columns:
-      - name: contrast
-        title: Contrast
-        type: text
-      - name: feature
-        title: Feature
-        type: text
-      - name: average
-        title: Average
-        type: number
-      - name: sd
-        title: SD
-        type: number
-      - name: ratio
-        title: Average/SD
-        type: number
-
-  - name: means
-    title: Group Means
-    type: Table
-    visible: false
-    clearWith:
-    rows: 0
-    columns:
-      - name: contrast
-        title: Contrast
-        type: text
-      - name: feature
-        title: Feature
-        type: text
-      - name: meanFirst
-        title: First mean
-        type: number
-      - name: meanSecond
-        title: Second mean
-        type: number
-
-  - name: table
-    title: Descriptive Feature Contributions
-    type: Table
-    visible: false
-    rows: 0
-    columns:
-      - name: contrast
-        title: Contrast
-        type: text
-      - name: feature
-        title: Feature
-        type: text
-      - name: average
-        title: Average contribution
-        type: number
-      - name: sd
-        title: Contribution SD
-        type: number
-      - name: ratio
-        title: Average divided by SD
-        type: number
-      - name: meanFirst
-        title: Mean in first group
-        type: number
-      - name: meanSecond
-        title: Mean in second group
-        type: number
-      - name: contribution
-        title: Contribution (%)
-        type: number
-      - name: cumulative
-        title: Cumulative contribution (%)
-        type: number
+    template:
+      type: Table
+      title: Contrast details
+      clearWith: []
+      rows: 0
+      columns:
+        - name: feature
+          title: Feature
+          type: text
+        - name: meanFirst
+          title: First group mean
+          type: number
+        - name: meanSecond
+          title: Second group mean
+          type: number
+        - name: average
+          title: Average contribution
+          type: number
+        - name: sd
+          title: SD
+          type: number
+        - name: ratio
+          title: Average/SD
+          type: number
 
   - name: contributionPlots
     title: Contribution Plots by Contrast
     type: Array
+    clearWith: []
     visible: false
     template:
       type: Group
       title: Contrast contribution
+      clearWith: []
       items:
         - name: description
           title: Contribution Plot
@@ -146,41 +107,11 @@ items:
         - name: plot
           title: Contribution Plot
           type: Image
+          clearWith: []
           width: 580
           height: 430
           renderFun: .plotContribution
-        - name: values
-          title: Contribution Values
-          type: Table
-          rows: 0
-          columns:
-            - name: feature
-              title: Feature
-              type: text
-            - name: average
-              title: Average contribution
-              type: number
-            - name: contribution
-              title: Contribution (%)
-              type: number
-            - name: cumulative
-              title: Cumulative (%)
-              type: number
-            - name: firstGroup
-              title: First group
-              type: text
-            - name: meanFirst
-              title: First mean
-              type: number
-            - name: secondGroup
-              title: Second group
-              type: text
-            - name: meanSecond
-              title: Second mean
-              type: number
-            - name: direction
-              title: Direction
-              type: text
+
   - name: heatmapDescription
     title: Contrast Overview Heatmap
     type: Html
@@ -195,26 +126,6 @@ items:
     width: 600
     height: 500
     renderFun: .plotHeatmap
-
-  - name: heatmapValues
-    title: Contrast Heatmap Values
-    type: Table
-    visible: false
-    clearWith:
-    rows: 0
-    columns:
-      - name: contrast
-        title: Contrast
-        type: text
-      - name: feature
-        title: Feature
-        type: text
-      - name: contribution
-        title: Contribution (%)
-        type: number
-      - name: selected
-        title: Selected for this contrast
-        type: text
 
   - name: assessment
     title: Permutation Assessment

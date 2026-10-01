@@ -6,6 +6,29 @@ refs:
   - vegan
 
 items:
+  - name: seedState
+    title: ''
+    type: Html
+    visible: false
+    clearWith: []
+
+  - name: analysisCache
+    title: ''
+    type: Html
+    visible: false
+    clearWith:
+      - vars
+      - factor
+      - transform
+      - distance
+      - distBinary
+      - nmdsK
+      - nmdsTrymax
+      - nmdsMaxit
+      - nmdsEnv
+      - nmdsSpecies
+      - nmdsEnvPerm
+
   - name: guidance
     title: Getting Started
     type: Html
@@ -16,7 +39,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -33,7 +55,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -50,7 +71,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -70,12 +90,16 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
       - nmdsEnv
+      - nmdsSpecies
       - nmdsEnvPerm
+      - nmdsOverlay
+      - nmdsHull
+      - nmdsEllipse
+      - nmdsSpider
 
   - name: sites
     title: Site Scores
@@ -107,7 +131,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -117,7 +140,7 @@ items:
   - name: stress
     title: Stress and Convergence Diagnostics
     type: Table
-    rows: 8
+    rows: 9
     visible: false
     columns:
       - name: item
@@ -132,7 +155,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -149,7 +171,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -169,38 +190,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsEnv
-      - nmdsEnvPerm
-
-  - name: shepardPairs
-    title: Shepard Diagram Values
-    type: Table
-    rows: 0
-    visible: false
-    columns:
-      - name: dissimilarity
-        title: Observed dissimilarity
-        type: number
-        format: zto
-      - name: ordinationDistance
-        title: Ordination distance
-        type: number
-        format: zto
-      - name: monotonicFit
-        title: Monotone fitted distance
-        type: number
-        format: zto
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -248,7 +237,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit
@@ -282,7 +270,6 @@ items:
       - transform
       - distance
       - distBinary
-      - seed
       - nmdsK
       - nmdsTrymax
       - nmdsMaxit

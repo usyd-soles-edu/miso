@@ -19,7 +19,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             simperHeatmap = FALSE,
             simperAssess = FALSE,
             simperAdjust = "holm",
-            simperDetails = FALSE, ...) {
+            simperDetails = FALSE,
+            useFixedSeed = TRUE, ...) {
 
             super$initialize(
                 package="miso",
@@ -140,6 +141,10 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "simperDetails",
                 simperDetails,
                 default=FALSE)
+            private$..useFixedSeed <- jmvcore::OptionBool$new(
+                "useFixedSeed",
+                useFixedSeed,
+                default=TRUE)
 
             self$.addOption(private$..vars)
             self$.addOption(private$..factor)
@@ -155,6 +160,7 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..simperAssess)
             self$.addOption(private$..simperAdjust)
             self$.addOption(private$..simperDetails)
+            self$.addOption(private$..useFixedSeed)
         }),
     active = list(
         vars = function() private$..vars$value,
@@ -170,7 +176,8 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         simperHeatmap = function() private$..simperHeatmap$value,
         simperAssess = function() private$..simperAssess$value,
         simperAdjust = function() private$..simperAdjust$value,
-        simperDetails = function() private$..simperDetails$value),
+        simperDetails = function() private$..simperDetails$value,
+        useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
         ..factor = NA,
@@ -185,24 +192,23 @@ simperOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..simperHeatmap = NA,
         ..simperAssess = NA,
         ..simperAdjust = NA,
-        ..simperDetails = NA)
+        ..simperDetails = NA,
+        ..useFixedSeed = NA)
 )
 
 simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     "simperResults",
     inherit = jmvcore::Group,
     active = list(
+        seedState = function() private$.items[["seedState"]],
         guidance = function() private$.items[["guidance"]],
         warnings = function() private$.items[["warnings"]],
         contrasts = function() private$.items[["contrasts"]],
         contributions = function() private$.items[["contributions"]],
-        variability = function() private$.items[["variability"]],
-        means = function() private$.items[["means"]],
-        table = function() private$.items[["table"]],
+        detailsByContrast = function() private$.items[["detailsByContrast"]],
         contributionPlots = function() private$.items[["contributionPlots"]],
         heatmapDescription = function() private$.items[["heatmapDescription"]],
         heatmap = function() private$.items[["heatmap"]],
-        heatmapValues = function() private$.items[["heatmapValues"]],
         assessment = function() private$.items[["assessment"]]),
     private = list(),
     public=list(
@@ -214,6 +220,12 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 refs=list(
                     "vegan",
                     "clarke1993"))
+            self$add(jmvcore::Html$new(
+                options=options,
+                name="seedState",
+                title="",
+                visible=FALSE,
+                clearWith=list()))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="guidance",
@@ -270,119 +282,61 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="cumulative",
                         `title`="Cumulative (%)",
                         `type`="number"))))
-            self$add(jmvcore::Table$new(
+            self$add(jmvcore::Array$new(
                 options=options,
-                name="variability",
-                title="Contribution Variability",
+                name="detailsByContrast",
+                title="Group Means and Contribution Variability",
+                clearWith=list(),
                 visible=FALSE,
-                clearWith=NULL,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="contrast",
-                        `title`="Contrast",
-                        `type`="text"),
-                    list(
-                        `name`="feature",
-                        `title`="Feature",
-                        `type`="text"),
-                    list(
-                        `name`="average",
-                        `title`="Average",
-                        `type`="number"),
-                    list(
-                        `name`="sd",
-                        `title`="SD",
-                        `type`="number"),
-                    list(
-                        `name`="ratio",
-                        `title`="Average/SD",
-                        `type`="number"))))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="means",
-                title="Group Means",
-                visible=FALSE,
-                clearWith=NULL,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="contrast",
-                        `title`="Contrast",
-                        `type`="text"),
-                    list(
-                        `name`="feature",
-                        `title`="Feature",
-                        `type`="text"),
-                    list(
-                        `name`="meanFirst",
-                        `title`="First mean",
-                        `type`="number"),
-                    list(
-                        `name`="meanSecond",
-                        `title`="Second mean",
-                        `type`="number"))))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="table",
-                title="Descriptive Feature Contributions",
-                visible=FALSE,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="contrast",
-                        `title`="Contrast",
-                        `type`="text"),
-                    list(
-                        `name`="feature",
-                        `title`="Feature",
-                        `type`="text"),
-                    list(
-                        `name`="average",
-                        `title`="Average contribution",
-                        `type`="number"),
-                    list(
-                        `name`="sd",
-                        `title`="Contribution SD",
-                        `type`="number"),
-                    list(
-                        `name`="ratio",
-                        `title`="Average divided by SD",
-                        `type`="number"),
-                    list(
-                        `name`="meanFirst",
-                        `title`="Mean in first group",
-                        `type`="number"),
-                    list(
-                        `name`="meanSecond",
-                        `title`="Mean in second group",
-                        `type`="number"),
-                    list(
-                        `name`="contribution",
-                        `title`="Contribution (%)",
-                        `type`="number"),
-                    list(
-                        `name`="cumulative",
-                        `title`="Cumulative contribution (%)",
-                        `type`="number"))))
+                template=jmvcore::Table$new(
+                    options=options,
+                    title="Contrast details",
+                    clearWith=list(),
+                    rows=0,
+                    columns=list(
+                        list(
+                            `name`="feature",
+                            `title`="Feature",
+                            `type`="text"),
+                        list(
+                            `name`="meanFirst",
+                            `title`="First group mean",
+                            `type`="number"),
+                        list(
+                            `name`="meanSecond",
+                            `title`="Second group mean",
+                            `type`="number"),
+                        list(
+                            `name`="average",
+                            `title`="Average contribution",
+                            `type`="number"),
+                        list(
+                            `name`="sd",
+                            `title`="SD",
+                            `type`="number"),
+                        list(
+                            `name`="ratio",
+                            `title`="Average/SD",
+                            `type`="number")))))
             self$add(jmvcore::Array$new(
                 options=options,
                 name="contributionPlots",
                 title="Contribution Plots by Contrast",
+                clearWith=list(),
                 visible=FALSE,
                 template=R6::R6Class(
                     inherit = jmvcore::Group,
                     active = list(
                         description = function() private$.items[["description"]],
-                        plot = function() private$.items[["plot"]],
-                        values = function() private$.items[["values"]]),
+                        plot = function() private$.items[["plot"]]),
                     private = list(),
                     public=list(
                         initialize=function(options) {
                             super$initialize(
                                 options=options,
                                 name="undefined",
-                                title="Contrast contribution")
+                                title="Contrast contribution",
+                                clearWith=list())
                             self$add(jmvcore::Html$new(
                                 options=options,
                                 name="description",
@@ -391,51 +345,10 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                                 options=options,
                                 name="plot",
                                 title="Contribution Plot",
+                                clearWith=list(),
                                 width=580,
                                 height=430,
-                                renderFun=".plotContribution"))
-                            self$add(jmvcore::Table$new(
-                                options=options,
-                                name="values",
-                                title="Contribution Values",
-                                rows=0,
-                                columns=list(
-                                    list(
-                                        `name`="feature",
-                                        `title`="Feature",
-                                        `type`="text"),
-                                    list(
-                                        `name`="average",
-                                        `title`="Average contribution",
-                                        `type`="number"),
-                                    list(
-                                        `name`="contribution",
-                                        `title`="Contribution (%)",
-                                        `type`="number"),
-                                    list(
-                                        `name`="cumulative",
-                                        `title`="Cumulative (%)",
-                                        `type`="number"),
-                                    list(
-                                        `name`="firstGroup",
-                                        `title`="First group",
-                                        `type`="text"),
-                                    list(
-                                        `name`="meanFirst",
-                                        `title`="First mean",
-                                        `type`="number"),
-                                    list(
-                                        `name`="secondGroup",
-                                        `title`="Second group",
-                                        `type`="text"),
-                                    list(
-                                        `name`="meanSecond",
-                                        `title`="Second mean",
-                                        `type`="number"),
-                                    list(
-                                        `name`="direction",
-                                        `title`="Direction",
-                                        `type`="text"))))}))$new(options=options)))
+                                renderFun=".plotContribution"))}))$new(options=options)))
             self$add(jmvcore::Html$new(
                 options=options,
                 name="heatmapDescription",
@@ -451,30 +364,6 @@ simperResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 width=600,
                 height=500,
                 renderFun=".plotHeatmap"))
-            self$add(jmvcore::Table$new(
-                options=options,
-                name="heatmapValues",
-                title="Contrast Heatmap Values",
-                visible=FALSE,
-                clearWith=NULL,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="contrast",
-                        `title`="Contrast",
-                        `type`="text"),
-                    list(
-                        `name`="feature",
-                        `title`="Feature",
-                        `type`="text"),
-                    list(
-                        `name`="contribution",
-                        `title`="Contribution (%)",
-                        `type`="number"),
-                    list(
-                        `name`="selected",
-                        `title`="Selected for this contrast",
-                        `type`="text"))))
             self$add(jmvcore::Table$new(
                 options=options,
                 name="assessment",
@@ -547,19 +436,19 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperAssess .
 #' @param simperAdjust .
 #' @param simperDetails .
+#' @param useFixedSeed Use a positive fixed seed for reproducible permutation
+#'   assessment; unchecked analyses use the random RNG stream.
 #' @return A results object containing:
 #' \tabular{llllll}{
+#'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$contrasts} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$contributions} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$variability} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$means} \tab \tab \tab \tab \tab a table \cr
-#'   \code{results$table} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$detailsByContrast} \tab \tab \tab \tab \tab an array of tables \cr
 #'   \code{results$contributionPlots} \tab \tab \tab \tab \tab an array of groups \cr
 #'   \code{results$heatmapDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$heatmap} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$heatmapValues} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$assessment} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
@@ -585,7 +474,8 @@ simper <- function(
     simperHeatmap = FALSE,
     simperAssess = FALSE,
     simperAdjust = "holm",
-    simperDetails = FALSE) {
+    simperDetails = FALSE,
+    useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
         stop("simper requires jmvcore to be installed (restart may be required)")
@@ -614,7 +504,8 @@ simper <- function(
         simperHeatmap = simperHeatmap,
         simperAssess = simperAssess,
         simperAdjust = simperAdjust,
-        simperDetails = simperDetails)
+        simperDetails = simperDetails,
+        useFixedSeed = useFixedSeed)
 
     analysis <- simperClass$new(
         options = options,

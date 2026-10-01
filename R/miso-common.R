@@ -1,6 +1,6 @@
-# Deterministic full-data signature for structural cache keys. jamovi reruns
-# the same analysis object when its dataset is edited, so a key that covers
-# options only would let same-object data edits serve stale results. The
+# Deterministic full-data signature for structural cache keys. Analysis reruns
+# and dataset edits need a key covering data as well as options, whether jamovi
+# reuses an analysis object or reconstructs one from saved results. The
 # signature canonicalizes column values (and factor levels, separately from
 # their codes) so identical data yields identical raw output while any feature
 # value, group assignment, or filtered-row change yields different bytes.
@@ -18,13 +18,40 @@ miso_data_signature <- function(data) {
     serialize(list(rows=nrow(data), columns=columns), NULL)
 }
 
-miso_options_signature <- function(options, excluded=character(), data=NULL) {
+miso_options_signature <- function(options, excluded=character(), data=NULL,
+        extra=list()) {
     names <- setdiff(options$names, excluded)
     values <- lapply(names, function(name) options$option(name)$value)
     names(values) <- names
     if (! is.null(data))
         values$.data <- miso_data_signature(data)
+    if (length(extra) > 0L)
+        values$.cache <- extra
     serialize(values, NULL)
+}
+
+# Resolve the seed used by a fit. The UI's `useFixedSeed` option defaults to
+# TRUE so old saved analyses, which do not contain that option, continue to
+# use their stored positive seed. A zero value remains the established random
+# sentinel for R callers and for newly opened UI analyses before the view
+# controller changes the checkbox to its unchecked state.
+miso_effective_seed <- function(useFixedSeed=TRUE, seed=0, enabled=TRUE) {
+    if (! isTRUE(enabled) || ! isTRUE(useFixedSeed))
+        return(0L)
+
+    if (length(seed) != 1L)
+        jmvcore::reject(c("A fixed random seed must be a finite positive integer."))
+
+    value <- suppressWarnings(as.numeric(seed))
+    if (is.na(value) || ! is.finite(value))
+        jmvcore::reject(c("A fixed random seed must be a finite positive integer."))
+    if (value == 0)
+        return(0L)
+    if (value < 1 || value != floor(value) || value > .Machine$integer.max)
+        jmvcore::reject(c(
+            "A fixed random seed must be a positive whole number no larger than 2147483647."))
+
+    as.integer(value)
 }
 
 miso_clean_vars <- function(x) {
@@ -356,9 +383,28 @@ miso_reconcile_table_rows <- function(table, rows) {
     invisible(TRUE)
 }
 
+# The analysis owns its seed: retain it through refits and saved-file reloads.
+miso_record_seed <- function(prep, seedState) {
+    saved <- seedState$state
+    prep$actualSeed <- if (!is.na(prep$seed))
+        prep$seed
+    else if (!is.null(saved))
+        saved$seed
+    else
+        sample.int(.Machine$integer.max, 1L)
+    prep$seedSource <- if (is.na(prep$seed)) "automatic" else "fixed"
+    seedState$setState(list(seed=prep$actualSeed))
+    prep
+}
+
+miso_seed_label <- function(prep) {
+    sprintf("%d (%s)", prep$actualSeed, prep$seedSource)
+}
+
 miso_set_seed <- function(prep) {
-    if (! is.na(prep$seed))
-        set.seed(prep$seed)
+    seed <- if (!is.null(prep$actualSeed)) prep$actualSeed else prep$seed
+    if (! is.na(seed))
+        set.seed(seed)
 }
 
 miso_num_or_na <- function(x) {

@@ -140,7 +140,7 @@ options:
     default: none
 
   - name: seed
-    title: Random seed
+    title: Seed
     type: Number
     default: 0
     min: 0
@@ -224,5 +224,11 @@ options:
     title: Ordination with group centres
     type: Bool
     default: false
+
+  - name: useFixedSeed
+    title: Use fixed seed
+    type: Bool
+    default: true
+    description: Use a positive fixed seed for reproducible permutation results; unchecked analyses use the random RNG stream.
 
 ...

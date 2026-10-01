@@ -7,6 +7,12 @@ refs:
   - clarke1993
 
 items:
+  - name: seedState
+    title: ''
+    type: Html
+    visible: false
+    clearWith: []
+
   - name: guidance
     title: Getting Started
     type: Html
@@ -72,7 +78,6 @@ items:
       - permRestriction
       - permScheme
       - anosimN
-      - seed
 
   - name: rankPlot
     title: Ranked Dissimilarities Plot
@@ -87,7 +92,6 @@ items:
       - permRestriction
       - permScheme
       - anosimN
-      - seed
     width: 600
     height: 480
     renderFun: .plotRank

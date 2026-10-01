@@ -22,7 +22,7 @@ test_that("Task 6 uses exact title-case labels and noun-phrase controls", {
         nmdsShepard="Shepard Diagram", nmdsSpecies="Feature Scores",
         showCentroids="Group Centroids", pcoaCentroids="Group Centroids",
         showCompanionPcoa="Companion PCoA", permInteractions="Model Interactions",
-        simperDetails="Detailed Statistics")
+        simperDetails="Group means and contribution variability")
     find_node <- function(node, name) {
         if (is.list(node) && identical(node$name, name)) return(node)
         if (is.list(node)) for (child in node) {
@@ -164,9 +164,9 @@ test_that("every plot keeps description, image, and table order", {
         permanova=c("companionPcoa"="companionPcoaDescription|companionPcoaSites"),
         anosim=c("rankPlot"="rankPlotDescription|rankSummary"),
         permdisp=c("plot"="plotDescription|distances", "ordinationPlot"="ordinationDescription|ordinationScores"),
-        simper=c("contributionPlots/plot"="description|values", "heatmap"="heatmapDescription|heatmapValues"),
-        nmds=c("ordination"="ordinationDescription|sites", "shepard"="shepardDescription|shepardPairs"),
-        cluster=c("dendrogram"="dendrogramDescription|dendrogramStructure"),
+        simper=c("contributionPlots/plot"="description", "heatmap"="heatmapDescription"),
+        nmds=c("ordination"="ordinationDescription|sites", "shepard"="shepardDescription"),
+        cluster=c("dendrogram"="dendrogramDescription|membership"),
         pcoa=c("ordination"="ordinationDescription|sites"))
     for (analysis in names(expected)) {
         schema <- yaml::read_yaml(plot_contract_fixture(analysis, "r"))
@@ -181,6 +181,12 @@ test_that("every plot keeps description, image, and table order", {
             expect_identical(contract$image$type, "Image", info=paste(analysis, path))
             if (!is.null(contract$tablePurpose))
                 expect_identical(contract$tablePurpose$type, "Html", info=paste(analysis, path, "table purpose"))
+            if (length(expectedNames) == 1L) {
+                expect_false(identical(contract$table$name, "heatmapValues") ||
+                    identical(contract$table$name, "shepardPairs") ||
+                    identical(contract$table$name, "values"), info=paste(analysis, path))
+                next
+            }
             expect_identical(contract$table$type, "Table", info=paste(analysis, path))
             expect_identical(contract$table$name, expectedNames[[2L]], info=paste(analysis, path))
             expect_true(nzchar(contract$table$title), info=paste(analysis, path, "table title"))
@@ -345,4 +351,16 @@ test_that("every plot renderer consumes only its serialized image state", {
             expect_false(grepl("private\\$\\.state", source), info=name)
         }
     }
+})
+
+
+test_that("cluster provides opt-in native tables for exact tree access", {
+    schema <- yaml::read_yaml(plot_contract_fixture("cluster", "r"))
+    tables <- setNames(schema$items, vapply(schema$items, `[[`, character(1), "name"))
+    expect_identical(vapply(tables$sampleOrder$columns, `[[`, character(1), "name"),
+        c("position", "sample"))
+    expect_identical(vapply(tables$mergeHistory$columns, `[[`, character(1), "name"),
+        c("step", "first", "second", "height"))
+    expect_identical(tables$sampleOrder$type, "Table")
+    expect_identical(tables$mergeHistory$type, "Table")
 })

@@ -7,6 +7,12 @@ refs:
   - anderson2001
 
 items:
+  - name: seedState
+    title: ''
+    type: Html
+    visible: false
+    clearWith: []
+
   - name: guidance
     title: Getting Started
     type: Html
@@ -56,7 +62,6 @@ items:
       - distSqrt
       - distAdd
       - permN
-      - seed
       - useParallel
 
   - name: companionPcoaDescription

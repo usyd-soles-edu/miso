@@ -8,15 +8,18 @@ startup_cases <- list(
         enabled=list(dispPairwise=TRUE, showOrdinationPlot=TRUE),
         optional=c("pairwise", "ordinationScores")),
     simper=list(core=c("contrasts", "contributions"), extra=list(),
-        enabled=list(simperDetails=TRUE, simperAssess=TRUE, simperHeatmap=TRUE),
-        optional=c("variability", "means", "assessment", "heatmapValues")),
-    nmds=list(core=c("sites", "stress", "shepardPairs"),
+        enabled=list(simperDetails=TRUE, simperAssess=TRUE),
+        optional=c("assessment")),
+    nmds=list(core="stress",
         extra=list(seed=123, nmdsTrymax=5),
-        enabled=list(nmdsSpecies=TRUE, nmdsEnv="x"), optional=c("features", "envfit")),
+        enabled=list(nmdsSpecies=TRUE, nmdsEnv="x", nmdsSiteTable=TRUE,
+            nmdsFeatureTable=TRUE),
+        optional=c("sites", "features", "envfit")),
     pcoa=list(core=c("sites", "eigenvalues"), extra=list(),
         enabled=list(showCentroids=TRUE), optional="centroids"),
-    cluster=list(core="dendrogramStructure", extra=list(),
-        enabled=list(defineClusters=TRUE), optional="membership"))
+    cluster=list(core=character(), extra=list(),
+        enabled=list(defineClusters=TRUE, showSampleOrder=TRUE, showMergeHistory=TRUE),
+        optional=c("membership", "sampleOrder", "mergeHistory")))
 
 startup_data <- function() {
     data.frame(x=c(2,4,1,6,3,5,8,9,7), y=c(8,5,7,2,9,1,4,3,6),
@@ -117,8 +120,6 @@ test_that("optional empty tables track toggles before and after fitting", {
         permanova=list(option="showCompanionPcoa", tables="companionPcoaSites"),
         anosim=list(option="anosimPairwise", tables="pairwise"),
         permdisp=list(option="showOrdinationPlot", tables="ordinationScores"),
-        simper=list(option="simperDetails", tables=c("variability","means")),
-        nmds=list(option="nmdsShepard", tables="shepardPairs"),
         pcoa=list(option="showCentroids", tables="centroids"),
         cluster=list(option="defineClusters", tables="membership"))
     for (name in names(toggles)) {
