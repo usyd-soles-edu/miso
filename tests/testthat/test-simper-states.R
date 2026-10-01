@@ -516,7 +516,7 @@ test_that("colliding shortened identities remain distinct plot coordinates", {
     expect_equal(length(unique(heatmap_build$data[[1L]]$x)), 3L)
     expect_length(unique(unname(feature_labels)), 2L)
     expect_length(unique(unname(contrast_labels)), 3L)
-    expect_true(all(nchar(feature_labels) <= 20L))
+    expect_identical(gsub("\n", "", unname(feature_labels), fixed=TRUE), features)
     expect_true(all(nchar(contrast_labels) <= 24L))
     expect_identical(sort(levels(heatmap$data$feature)), sort(features))
     expect_identical(
@@ -644,7 +644,7 @@ test_that("contribution plots and heatmap render from serialized Image state", {
     expect_rendered_from_state(
         heatmapImage,
         function(img) private$.plotHeatmap(img),
-        600, 500)
+        heatmapImage$size$width, heatmapImage$size$height)
 })
 
 

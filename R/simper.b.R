@@ -14,9 +14,12 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .postInit = function() {
             # Header-only loads can recover scalar image state without a fit.
-            if (identical(private$.dataProvided, FALSE))
+            if (identical(private$.dataProvided, FALSE)) {
+                if (!is.null(self$results$heatmap$state))
+                    private$.sizeHeatmap(self$results$heatmap$state)
                 self$results$heatmap$setVisible(isTRUE(self$options$simperHeatmap) &&
                     !is.null(self$results$heatmap$state))
+            }
         },
 
         .showEmptyTables = function() {
@@ -178,6 +181,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             if (heatmap && !private$.state$heatmapReady) {
                 self$results$heatmap$setState(private$.state$heatmapData)
+                private$.sizeHeatmap(private$.state$heatmapData)
                 private$.state$heatmapReady <- TRUE
             }
             self$results$heatmap$setVisible(heatmap)
@@ -710,13 +714,55 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             grid
         },
 
+        .heatmapLayout = function(dat) {
+            features <- unique(dat$feature)
+            labels <- stats::setNames(vapply(features, function(value) {
+                characters <- regmatches(value, gregexpr("\\X", value, perl=TRUE))[[1L]]
+                lines <- character()
+                while (length(characters) > 0L) {
+                    newline <- match("\n", characters, nomatch=length(characters) + 1L)
+                    widths <- cumsum(nchar(characters, type="width"))
+                    end <- which(widths > 30L)[1L]
+                    if (is.na(end)) end <- length(characters) + 1L
+                    if (newline <= end) {
+                        lines <- c(lines, paste0(characters[seq_len(newline - 1L)], collapse=""))
+                        characters <- characters[-seq_len(newline)]
+                        if (length(characters) == 0L) lines <- c(lines, "")
+                    } else {
+                        end <- max(1L, end - 1L)
+                        spaces <- which(grepl("^[[:blank:]]$", characters[seq_len(end)]))
+                        if (end < length(characters) && length(spaces) > 0L)
+                            end <- tail(spaces, 1L)
+                        lines <- c(lines, paste0(characters[seq_len(end)], collapse=""))
+                        characters <- characters[-seq_len(end)]
+                    }
+                }
+                paste(lines, collapse="\n")
+            }, character(1)), features)
+            lines <- strsplit(labels, "\n", fixed=TRUE)
+            labelWidth <- max(0L, nchar(unlist(lines), type="width"))
+            depth <- max(1L, lengths(lines))
+            list(labels=labels,
+                width=max(600L, 80L + 8L * labelWidth + 32L * length(unique(dat$contrast))),
+                height=max(500L, 230L + length(features) * max(22L, 18L * depth + 6L)))
+        },
+
+        .sizeHeatmap = function(dat) {
+            layout <- private$.heatmapLayout(dat)
+            image <- self$results$heatmap
+            previous <- image$size
+            image$setSize(layout$width, layout$height)
+            if (!identical(image$size, previous))
+                image$.setPath(NULL)
+        },
+
         .buildHeatmapPlot = function (dat = private$.heatmapData())
         {
             if (is.null(dat))
                 return(NULL)
             dat$feature <- factor(dat$feature, levels = unique(dat$feature))
             dat$contrast <- factor(dat$contrast, levels = unique(dat$contrast))
-            featureLabels <- .misoUniqueShortLabels(levels(dat$feature), width = 20L)
+            featureLabels <- private$.heatmapLayout(dat)$labels
             contrastLabels <- .misoUniqueShortLabels(levels(dat$contrast), width = 24L)
             grid <- dat[, c("feature", "contrast", "missing"), drop = FALSE]
             selected <- dat[!dat$missing, , drop = FALSE]
@@ -728,7 +774,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 caption = paste("Grey cells show features omitted by the display limits",
                     "and do not necessarily mean zero contribution.", sep = "\n")) +
                 .misoPlotTheme() + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 35, hjust = 1,
-                vjust = 1), plot.caption = ggplot2::element_text(hjust = 0))
+                vjust = 1), axis.text.y = ggplot2::element_text(lineheight = 0.9),
+                plot.caption = ggplot2::element_text(hjust = 0))
         }
 ,
 
