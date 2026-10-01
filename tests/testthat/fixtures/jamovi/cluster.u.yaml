@@ -24,6 +24,25 @@ children:
             isTarget: true
 
   - type: CollapseBox
+    name: tables
+    label: Tables
+    collapsed: true
+    children:
+      - type: CheckBox
+        name: showSampleOrder
+      - type: CheckBox
+        name: showMergeHistory
+      - type: VariableSupplier
+        persistentItems: true
+        children:
+          - type: TargetLayoutBox
+            label: Sample context (optional)
+            children:
+              - type: VariablesListBox
+                name: contextVars
+                isTarget: true
+
+  - type: CollapseBox
     name: analysisChoices
     label: Analysis Choices
     collapsed: false

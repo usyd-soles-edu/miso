@@ -41,6 +41,29 @@ options:
       - id
     default: null
 
+  - name: contextVars
+    title: Sample context
+    type: Variables
+    suggested:
+      - nominal
+      - ordinal
+      - id
+    permitted:
+      - numeric
+      - factor
+      - id
+    default: []
+
+  - name: showSampleOrder
+    title: Sample order
+    type: Bool
+    default: false
+
+  - name: showMergeHistory
+    title: Merge history
+    type: Bool
+    default: false
+
   - name: transform
     title: Transformation
     type: List

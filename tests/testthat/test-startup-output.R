@@ -17,8 +17,9 @@ startup_cases <- list(
         optional=c("sites", "features", "shepardPairs", "envfit")),
     pcoa=list(core=c("sites", "eigenvalues"), extra=list(),
         enabled=list(showCentroids=TRUE), optional="centroids"),
-    cluster=list(core="dendrogramStructure", extra=list(),
-        enabled=list(defineClusters=TRUE), optional="membership"))
+    cluster=list(core=character(), extra=list(),
+        enabled=list(defineClusters=TRUE, showSampleOrder=TRUE, showMergeHistory=TRUE),
+        optional=c("membership", "sampleOrder", "mergeHistory")))
 
 startup_data <- function() {
     data.frame(x=c(2,4,1,6,3,5,8,9,7), y=c(8,5,7,2,9,1,4,3,6),

@@ -626,6 +626,6 @@ test_that("table notes retain interpretation-critical method choices", {
 
     clusterResult <- cluster(data=data, vars=c("sp1", "sp2", "sp3"),
         transform="sqrt", defineClusters=TRUE, cutMode="number", numberClusters=3)
-    expect_match(miso_table_note(clusterResult$dendrogramStructure, "method"), "Square root transformation", fixed=TRUE)
+    expect_match(miso_table_note(clusterResult$membership, "method"), "Square root transformation", fixed=TRUE)
     expect_match(miso_table_note(clusterResult$membership, "method"), "Cut rule: 3 clusters.", fixed=TRUE)
 })

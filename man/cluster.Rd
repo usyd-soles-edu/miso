@@ -8,6 +8,9 @@ cluster(
   data,
   vars,
   labels = NULL,
+  contextVars = list(),
+  showSampleOrder = FALSE,
+  showMergeHistory = FALSE,
   transform = "none",
   distance = "bray",
   sampleLabels = "auto",
@@ -24,6 +27,12 @@ cluster(
 \item{vars}{.}
 
 \item{labels}{.}
+
+\item{contextVars}{.}
+
+\item{showSampleOrder}{.}
+
+\item{showMergeHistory}{.}
 
 \item{transform}{.}
 
@@ -49,15 +58,16 @@ A results object containing:
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$dendrogramDescription} \tab \tab \tab \tab \tab a html \cr
   \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
-  \code{results$dendrogramStructure} \tab \tab \tab \tab \tab a table \cr
   \code{results$membership} \tab \tab \tab \tab \tab a table \cr
+  \code{results$sampleOrder} \tab \tab \tab \tab \tab a table \cr
+  \code{results$mergeHistory} \tab \tab \tab \tab \tab a table \cr
 }
 
 Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 
-\code{results$dendrogramStructure$asDF}
+\code{results$membership$asDF}
 
-\code{as.data.frame(results$dendrogramStructure)}
+\code{as.data.frame(results$membership)}
 }
 \description{
 Groups samples by hierarchical clustering of dissimilarities calculated

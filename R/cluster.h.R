@@ -8,6 +8,9 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         initialize = function(
             vars = NULL,
             labels = NULL,
+            contextVars = list(),
+            showSampleOrder = FALSE,
+            showMergeHistory = FALSE,
             transform = "none",
             distance = "bray",
             sampleLabels = "auto",
@@ -45,6 +48,26 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "factor",
                     "id"),
                 default=NULL)
+            private$..contextVars <- jmvcore::OptionVariables$new(
+                "contextVars",
+                contextVars,
+                suggested=list(
+                    "nominal",
+                    "ordinal",
+                    "id"),
+                permitted=list(
+                    "numeric",
+                    "factor",
+                    "id"),
+                default=list())
+            private$..showSampleOrder <- jmvcore::OptionBool$new(
+                "showSampleOrder",
+                showSampleOrder,
+                default=FALSE)
+            private$..showMergeHistory <- jmvcore::OptionBool$new(
+                "showMergeHistory",
+                showMergeHistory,
+                default=FALSE)
             private$..transform <- jmvcore::OptionList$new(
                 "transform",
                 transform,
@@ -124,6 +147,9 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 
             self$.addOption(private$..vars)
             self$.addOption(private$..labels)
+            self$.addOption(private$..contextVars)
+            self$.addOption(private$..showSampleOrder)
+            self$.addOption(private$..showMergeHistory)
             self$.addOption(private$..transform)
             self$.addOption(private$..distance)
             self$.addOption(private$..sampleLabels)
@@ -136,6 +162,9 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     active = list(
         vars = function() private$..vars$value,
         labels = function() private$..labels$value,
+        contextVars = function() private$..contextVars$value,
+        showSampleOrder = function() private$..showSampleOrder$value,
+        showMergeHistory = function() private$..showMergeHistory$value,
         transform = function() private$..transform$value,
         distance = function() private$..distance$value,
         sampleLabels = function() private$..sampleLabels$value,
@@ -147,6 +176,9 @@ clusterOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
     private = list(
         ..vars = NA,
         ..labels = NA,
+        ..contextVars = NA,
+        ..showSampleOrder = NA,
+        ..showMergeHistory = NA,
         ..transform = NA,
         ..distance = NA,
         ..sampleLabels = NA,
@@ -165,8 +197,9 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         warnings = function() private$.items[["warnings"]],
         dendrogramDescription = function() private$.items[["dendrogramDescription"]],
         dendrogram = function() private$.items[["dendrogram"]],
-        dendrogramStructure = function() private$.items[["dendrogramStructure"]],
-        membership = function() private$.items[["membership"]]),
+        membership = function() private$.items[["membership"]],
+        sampleOrder = function() private$.items[["sampleOrder"]],
+        mergeHistory = function() private$.items[["mergeHistory"]]),
     private = list(),
     public=list(
         initialize=function(options) {
@@ -237,50 +270,6 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "cutHeight")))
             self$add(jmvcore::Table$new(
                 options=options,
-                name="dendrogramStructure",
-                title="Dendrogram Structure",
-                visible=FALSE,
-                rows=0,
-                columns=list(
-                    list(
-                        `name`="recordType",
-                        `title`="Record",
-                        `type`="text"),
-                    list(
-                        `name`="displayOrder",
-                        `title`="Display order",
-                        `type`="integer"),
-                    list(
-                        `name`="sample",
-                        `title`="Sample",
-                        `type`="text"),
-                    list(
-                        `name`="mergeStep",
-                        `title`="Merge step",
-                        `type`="integer"),
-                    list(
-                        `name`="leftChild",
-                        `title`="Left child",
-                        `type`="text"),
-                    list(
-                        `name`="rightChild",
-                        `title`="Right child",
-                        `type`="text"),
-                    list(
-                        `name`="height",
-                        `title`="Height",
-                        `type`="number")),
-                clearWith=list(
-                    "vars",
-                    "labels",
-                    "transform",
-                    "distance",
-                    "defineClusters",
-                    "cutMode",
-                    "numberClusters",
-                    "cutHeight")))
-            self$add(jmvcore::Table$new(
-                options=options,
                 name="membership",
                 title="Cluster Membership",
                 visible=FALSE,
@@ -294,6 +283,62 @@ clusterResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                         `name`="cluster",
                         `title`="Cluster",
                         `type`="integer")),
+                clearWith=list(
+                    "vars",
+                    "labels",
+                    "transform",
+                    "distance",
+                    "defineClusters",
+                    "cutMode",
+                    "numberClusters",
+                    "cutHeight")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="sampleOrder",
+                title="Sample Order",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="position",
+                        `title`="Position",
+                        `type`="integer"),
+                    list(
+                        `name`="sample",
+                        `title`="Sample",
+                        `type`="text")),
+                clearWith=list(
+                    "vars",
+                    "labels",
+                    "transform",
+                    "distance",
+                    "defineClusters",
+                    "cutMode",
+                    "numberClusters",
+                    "cutHeight")))
+            self$add(jmvcore::Table$new(
+                options=options,
+                name="mergeHistory",
+                title="Merge History",
+                visible=FALSE,
+                rows=0,
+                columns=list(
+                    list(
+                        `name`="step",
+                        `title`="Step",
+                        `type`="integer"),
+                    list(
+                        `name`="first",
+                        `title`="First sample or branch",
+                        `type`="text"),
+                    list(
+                        `name`="second",
+                        `title`="Second sample or branch",
+                        `type`="text"),
+                    list(
+                        `name`="height",
+                        `title`="Dissimilarity at merge",
+                        `type`="number")),
                 clearWith=list(
                     "vars",
                     "labels",
@@ -336,6 +381,9 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param data .
 #' @param vars .
 #' @param labels .
+#' @param contextVars .
+#' @param showSampleOrder .
+#' @param showMergeHistory .
 #' @param transform .
 #' @param distance .
 #' @param sampleLabels .
@@ -351,21 +399,25 @@ clusterBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$dendrogramDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$dendrogram} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$dendrogramStructure} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$membership} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$sampleOrder} \tab \tab \tab \tab \tab a table \cr
+#'   \code{results$mergeHistory} \tab \tab \tab \tab \tab a table \cr
 #' }
 #'
 #' Tables can be converted to data frames with \code{asDF} or \code{\link{as.data.frame}}. For example:
 #'
-#' \code{results$dendrogramStructure$asDF}
+#' \code{results$membership$asDF}
 #'
-#' \code{as.data.frame(results$dendrogramStructure)}
+#' \code{as.data.frame(results$membership)}
 #'
 #' @export
 cluster <- function(
     data,
     vars,
     labels = NULL,
+    contextVars = list(),
+    showSampleOrder = FALSE,
+    showMergeHistory = FALSE,
     transform = "none",
     distance = "bray",
     sampleLabels = "auto",
@@ -380,16 +432,21 @@ cluster <- function(
 
     if ( ! missing(vars)) vars <- jmvcore::resolveQuo(jmvcore::enquo(vars))
     if ( ! missing(labels)) labels <- jmvcore::resolveQuo(jmvcore::enquo(labels))
+    if ( ! missing(contextVars)) contextVars <- jmvcore::resolveQuo(jmvcore::enquo(contextVars))
     if (missing(data))
         data <- jmvcore::marshalData(
             parent.frame(),
             `if`( ! missing(vars), vars, NULL),
-            `if`( ! missing(labels), labels, NULL))
+            `if`( ! missing(labels), labels, NULL),
+            `if`( ! missing(contextVars), contextVars, NULL))
 
 
     options <- clusterOptions$new(
         vars = vars,
         labels = labels,
+        contextVars = contextVars,
+        showSampleOrder = showSampleOrder,
+        showMergeHistory = showMergeHistory,
         transform = transform,
         distance = distance,
         sampleLabels = sampleLabels,
