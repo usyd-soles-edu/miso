@@ -9,3 +9,4 @@
 ^miso_.*\.jmo$
 ^tests/manual/workbooks$
 ^LICENSE$
+^docs/miso-manual$

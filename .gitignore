@@ -64,3 +64,6 @@ Rplots.pdf
 npm-debug.log
 inst/doc
 tests/testthat/Rplots.pdf
+
+# Unpublished local manual drafts
+/docs/miso-manual/
