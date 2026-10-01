@@ -3,263 +3,203 @@ simper_optional_data <- function() {
     data.frame(x=1+i%%4, y=2+i%%5, z=3+i%%7,
         group=factor(rep(c("A","B","C"),each=4)))
 }
-
 simper_optional_run <- function(...) {
     analysis <- simperClass$new(options=simperOptions$new(
-        vars=c("x","y","z"),factor="group",...),data=simper_optional_data(),analysisId=1L)
-    suppressMessages(analysis$run())
-    analysis
+        vars=c("x","y","z"),factor="group",...), data=simper_optional_data(),analysisId=1L)
+    suppressMessages(analysis$run()); analysis
+}
+simper_optional_set <- function(analysis,name,value) {
+    option <- analysis$options$option(name); option$value <- value
+    analysis$optionsChangedHandler(name); suppressMessages(analysis$run())
 }
 
-simper_optional_set <- function(analysis, name, value) {
-    option <- analysis$options$option(name)
-    option$value <- value
-    analysis$optionsChangedHandler(name)
-    suppressMessages(analysis$run())
-}
-
-test_that("SIMPER plot and value controls are independent with lazy tables", {
-    for (details in c(FALSE,TRUE)) for (plot in c(FALSE,TRUE)) for (values in c(FALSE,TRUE)) {
-        analysis <- simper_optional_run(simperPlots=plot,simperPlotValues=values,
-            simperHeatmap=plot,simperHeatmapValues=values,simperDetails=details)
-        result <- analysis$results
-        expect_true(result$contributions$visible)
-        expect_identical(result$contributionPlots$visible,plot || values)
-        expect_identical(result$heatmap$visible,plot)
-        expect_identical(result$heatmapValues$visible,values)
-        expect_identical(nrow(result$heatmapValues$asDF)>0L,values)
-        expect_length(result$contributionPlots$items,if(plot || values) 3L else 0L)
-        for (item in result$contributionPlots$items) {
-            expect_identical(item$plot$visible,plot)
-            expect_identical(item$values$visible,values)
-            expect_identical(nrow(item$values$asDF)>0L,values)
+test_that("SIMPER selected details and plots are independent native outputs", {
+    for (details in c(FALSE,TRUE)) for (plots in c(FALSE,TRUE)) {
+        a <- simper_optional_run(simperDetails=details,simperPlots=plots,simperHeatmap=plots,simperTop=1)
+        expect_identical(a$results$detailsByContrast$visible,details)
+        expect_identical(a$results$contributionPlots$visible,plots)
+        expect_identical(a$results$heatmap$visible,plots)
+        expect_length(a$results$detailsByContrast$items,if(details)3L else 0L)
+        expect_length(a$results$contributionPlots$items,if(plots)3L else 0L)
+        for (table in a$results$detailsByContrast$items) {
+            expect_equal(nrow(table$asDF),1L)
+            expect_match(miso_table_note(table,"meaning"),"Top N",fixed=TRUE)
         }
-        for (name in c("variability","means")) {
-            expect_identical(result[[name]]$visible,details)
-            expect_identical(length(result[[name]]$rowKeys)>0L,details)
-        }
+        for(name in c("table","variability","means","heatmapValues"))
+            expect_null(a$results[[name]])
+        for(item in a$results$contributionPlots$items)
+            expect_error(item$values,"does not exist",fixed=TRUE)
     }
-    result <- simper(data=simper_optional_data(),vars=c("x","y","z"),factor="group")
-    expect_error(result$table,"does not exist",fixed=TRUE)
+    schema <- yaml::read_yaml(miso_fixture_path("jamovi","simper.a.yaml"))
+    names <- vapply(schema$options,`[[`,character(1),"name")
+    expect_false(any(c("simperPlotValues","simperHeatmapValues") %in% names))
 })
 
-test_that("SIMPER table toggles retain cells fit seeds and image resources", {
-    original <- vegan::simper
-    calls <- 0L
+test_that("SIMPER detail rows match selected full statistics without renormalising", {
+    for(top in c(1,3)) for(cum in c(50,100)) {
+        a <- simper_optional_run(simperDetails=TRUE,simperTop=top,simperCum=cum)
+        private <- a$.__enclos_env__$private
+        selected <- private$.state$descriptive$displayRows
+        full <- private$.state$descriptive$fullRows
+        actual <- simper_test_detail_frame(a$results)
+        expect_equal(nrow(actual),length(selected))
+        expect_equal(nrow(actual),nrow(a$results$contributions$asDF))
+        for(i in seq_along(selected)) {
+            row <- selected[[i]]
+            expect_identical(actual$feature[[i]],row$feature)
+            expect_identical(actual$contrast[[i]],row$contrast)
+            for(name in c("meanFirst","meanSecond","average","sd","ratio"))
+                expect_equal(actual[[name]][[i]],row[[name]])
+            reference <- Filter(function(x) x$contrastIndex==row$contrastIndex && x$feature==row$feature,full)[[1L]]
+            expect_identical(row,reference)
+        }
+        expect_equal(sum(vapply(full,function(x)x$contribution,numeric(1))),300)
+        expect_lte(max(table(actual$contrast)),top)
+    }
+})
+
+test_that("detail visibility uses cached statistics seeds and image resources", {
+    original <- vegan::simper; calls <- 0L
     testthat::local_mocked_bindings(simper=function(...) {
-        calls <<- calls+1L
-        original(...)
+        calls <<- calls+1L; original(...)
     },.package="vegan")
-    analysis <- simper_optional_run(simperPlots=TRUE,simperHeatmap=TRUE,
-        simperAssess=TRUE,simperN=19,seed=123)
-    expect_identical(calls,2L)
-    private <- analysis$.__enclos_env__$private
-    fit <- serialize(private$.state$descriptive,NULL)
-    rng <- .Random.seed
-    contribution <- analysis$results$contributions$asDF
-    assessment <- analysis$results$assessment$asDF
-    note <- miso_table_note(analysis$results$assessment,"seed")
-    items <- analysis$results$contributionPlots$items
-    images <- c(lapply(items,function(item)item$plot),list(analysis$results$heatmap))
-    paths <- vapply(images,function(image)tempfile(),character(1))
-    on.exit(unlink(paths),add=TRUE)
-    for (i in seq_along(images)) {
-        file.create(paths[[i]])
-        images[[i]]$.setPath(paths[[i]])
-    }
-    states <- lapply(images,function(image)serialize(image$state,NULL))
-    for (option in c("simperDetails","simperPlotValues","simperHeatmapValues")) {
-        simper_optional_set(analysis,option,TRUE)
-        tables <- switch(option,simperDetails=list(analysis$results$variability,analysis$results$means),
-            simperPlotValues=lapply(items,function(item)item$values),
-            simperHeatmapValues=list(analysis$results$heatmapValues))
-        cells <- lapply(tables,miso_table_first_cell)
-        dfs <- lapply(tables,function(table)table$asDF)
-        for (shown in c(FALSE,TRUE,FALSE,TRUE)) {
-            simper_optional_set(analysis,option,shown)
-            for(i in seq_along(tables)) {
-                expect_identical(tables[[i]]$visible,shown)
-                expect_identical(miso_table_first_cell(tables[[i]]),cells[[i]])
-                expect_identical(tables[[i]]$asDF,dfs[[i]])
-            }
-        }
+    a <- simper_optional_run(simperPlots=TRUE,simperHeatmap=TRUE,simperAssess=TRUE,simperN=19,seed=123)
+    fit <- serialize(a$.__enclos_env__$private$.state$descriptive,NULL)
+    rng <- .Random.seed; values <- a$results$contributions$asDF
+    assessment <- a$results$assessment$asDF
+    images <- c(lapply(a$results$contributionPlots$items,function(x)x$plot),list(a$results$heatmap))
+    paths <- vapply(images,function(x)tempfile(),character(1)); on.exit(unlink(paths),add=TRUE)
+    for(i in seq_along(images)) { file.create(paths[[i]]);images[[i]]$.setPath(paths[[i]]) }
+    states <- lapply(images,function(x)serialize(x$state,NULL))
+    simper_optional_set(a,"simperDetails",TRUE)
+    tables <- a$results$detailsByContrast$items
+    cells <- lapply(tables,miso_table_first_cell)
+    for(shown in c(FALSE,TRUE,FALSE,TRUE)) {
+        simper_optional_set(a,"simperDetails",shown)
+        expect_identical(a$results$detailsByContrast$visible,shown)
+        expect_identical(a$results$detailsByContrast$items,tables)
+        expect_identical(lapply(tables,miso_table_first_cell),cells)
     }
     expect_identical(calls,2L)
-    expect_identical(serialize(private$.state$descriptive,NULL),fit)
+    expect_identical(serialize(a$.__enclos_env__$private$.state$descriptive,NULL),fit)
     expect_identical(.Random.seed,rng)
-    expect_identical(analysis$results$contributions$asDF,contribution)
-    expect_identical(analysis$results$assessment$asDF,assessment)
-    expect_identical(miso_table_note(analysis$results$assessment,"seed"),note)
-    for(i in seq_along(images)) {
-        expect_identical(serialize(images[[i]]$state,NULL),states[[i]])
-        expect_identical(images[[i]]$.__enclos_env__$private$.filePath,paths[[i]])
-    }
-    expect_identical(analysis$results$contributionPlots$items,items)
+    expect_identical(a$results$contributions$asDF,values)
+    expect_identical(a$results$assessment$asDF,assessment)
+    expect_identical(lapply(images,function(x)serialize(x$state,NULL)),states)
+    expect_identical(vapply(images,function(x)x$.__enclos_env__$private$.filePath,character(1)),paths)
 })
 
-test_that("SIMPER bulk native rows match public API including protobuf and missing values", {
-    skip_if_not_installed("RProtoBuf")
-    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto",package="jmvcore"))
-    analysis <- simper_optional_run()
-    writer <- analysis$.__enclos_env__$private$.populateRows
-    schema <- yaml::read_yaml(miso_fixture_path("jamovi","simper.r.yaml"))$items
-    by_name <- setNames(schema,vapply(schema,`[[`,character(1),"name"))
-    shapes <- c(lapply(by_name[c("contrasts","contributions","variability","means","heatmapValues","assessment")],function(table)table$columns),
-        list(plot=by_name$contributionPlots$template$items[[3L]]$columns))
-    for (columns in shapes) {
-        make <- function() jmvcore::Table$new(name="comparison",columns=columns)
-        for(count in c(0L,1L,3L)) {
-            rows <- lapply(seq_len(count),function(i) list(values=setNames(lapply(columns,function(column) {
-                if(column$type=="text") paste0("value_",i)
-                else if(i==2L) NA else if(column$type=="integer") as.integer(i) else i/3
-            }),vapply(columns,`[[`,character(1),"name"))))
-            fast <- make(); slow <- make()
-            writer(fast,rows)
-            for(i in seq_along(rows)) slow$addRow(rowKey=as.character(i),values=rows[[i]]$values)
-            expect_identical(fast$asDF,slow$asDF)
-            expect_identical(fast$rowKeys,slow$rowKeys)
-            expect_identical(fast$asProtoBuf()$serialize(NULL),slow$asProtoBuf()$serialize(NULL))
-            if(count>0L) {
-                cell <- miso_table_first_cell(fast)
-                writer(fast,rows)
-                expect_identical(miso_table_first_cell(fast),cell)
-            }
-            writer(fast,list())
-            expect_length(fast$rowKeys,0L)
-            expect_length(fast$.__enclos_env__$private$.rowNames,0L)
-        }
-    }
-    # Exercise the former slow scale without a wall-clock assertion.
-    table <- jmvcore::Table$new(name="large",columns=shapes$variability)
-    rows <- lapply(seq_len(990L),function(i)list(values=list(contrast="A vs B",feature=paste0("x",i),average=1,sd=NA,ratio=NA)))
-    writer(table,rows)
-    expect_equal(nrow(table$asDF),990L)
-    expect_true(all(is.na(table$asDF$sd)))
-})
-
-test_that("optional SIMPER tables refresh across structural edits and invalid states", {
-    analysis <- simper_optional_run(simperDetails=TRUE,simperPlotValues=TRUE,simperHeatmapValues=TRUE)
-    before <- analysis$results$variability$asDF
-    cell <- miso_table_first_cell(analysis$results$variability)
-    analysis$.__enclos_env__$private$.data$x <- analysis$data$x+0.5
-    suppressMessages(analysis$run())
-    expect_false(identical(analysis$results$variability$asDF,before))
-    expect_identical(miso_table_first_cell(analysis$results$variability),cell)
-    simper_optional_set(analysis,"simperDetails",FALSE)
-    analysis$.__enclos_env__$private$.data$z <- 0
-    suppressMessages(analysis$run())
-    simper_optional_set(analysis,"simperDetails",TRUE)
-    expect_false("z" %in% analysis$results$variability$asDF$feature)
-    for(item in analysis$results$contributionPlots$items)
-        expect_false("z" %in% item$values$asDF$feature)
-    analysis$.__enclos_env__$private$.data$group <- factor(rep(c("A","B"),each=6))
-    suppressMessages(analysis$run())
-    expect_length(analysis$results$contributionPlots$items,1L)
-    simper_optional_set(analysis,"vars",character())
-    for(name in c("variability","means","heatmapValues"))
-        expect_miso_empty_table(analysis$results[[name]])
-    expect_length(analysis$results$contributionPlots$items,0L)
-})
-
-test_that("SIMPER native save load restores independent outputs and stored seed", {
-    skip_if_not_installed("RProtoBuf")
-    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto",package="jmvcore"))
-    flags <- list(simperPlots=FALSE,simperPlotValues=TRUE,simperHeatmap=TRUE,
-        simperHeatmapValues=FALSE,simperDetails=TRUE,simperAssess=TRUE,simperN=19,
-        seed=0,useFixedSeed=FALSE)
-    original <- do.call(simper_optional_run,flags)
-    path <- tempfile();on.exit(unlink(path),add=TRUE)
-    original$.setStatePathSource(function()path)
-    original$.save()
-    expect_gt(file.info(path)$size,0L)
-    booleanFlags <- names(flags)[vapply(flags,is.logical,logical(1))]
-    optionPB <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOptions"))
-    optionPB$hasNames <- TRUE
-    optionPB$names <- booleanFlags
-    optionPB$options <- lapply(booleanFlags,function(name) {
-        option <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOption"))
-        option$o <- as.integer(flags[[name]])
-        option
-    })
-    options <- simperOptions$new(vars=c("x","y","z"),factor="group",simperN=19)
-    options$fromProtoBuf(RProtoBuf::read(RProtoBuf::P("jamovi.coms.AnalysisOptions"),optionPB$serialize(NULL)))
-    for(name in booleanFlags) expect_identical(options[[name]],flags[[name]])
-    restored <- simperClass$new(options=options,data=simper_optional_data(),analysisId=1L)
-    restored$.setStatePathSource(function()path)
-    restored$init();restored$.load();restored$postInit()
-    suppressMessages(restored$run())
-    for(name in c("contrasts","contributions","variability","means","assessment","heatmapValues")) {
-        expect_identical(restored$results[[name]]$visible,original$results[[name]]$visible)
-        expect_identical(restored$results[[name]]$asDF,original$results[[name]]$asDF)
-    }
-    # A fresh structural run reconstructs groups. Their saved image states
-    # remain self-contained render sources; no full private fit is needed.
-    private <- restored$.__enclos_env__$private
-    private$.state$plotData <- NULL
-    for(item in restored$results$contributionPlots$items) {
-        file <- tempfile(fileext=".png")
-        grDevices::png(file,width=580,height=430)
-        private$.plotContribution(item$plot)
-        grDevices::dev.off()
-        expect_gt(file.info(file)$size,1000)
-        unlink(file)
-    }
-    file <- tempfile(fileext=".png")
-    grDevices::png(file,width=600,height=500)
-    private$.plotHeatmap(restored$results$heatmap)
-    grDevices::dev.off()
-    expect_gt(file.info(file)$size,1000)
-    unlink(file)
-    expect_false(restored$results$contributionPlots$items[[1L]]$plot$visible)
-    expect_true(restored$results$contributionPlots$items[[1L]]$values$visible)
-    expect_identical(restored$results$seedState$state,original$results$seedState$state)
-    expect_identical(miso_table_note(restored$results$assessment,"seed"),miso_table_note(original$results$assessment,"seed"))
-})
-
-test_that("native contribution array restore preserves images on value-option changes", {
-    skip_if_not_installed("RProtoBuf")
-    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto",package="jmvcore"))
-    analysis <- simper_optional_run(simperPlots=TRUE,simperPlotValues=TRUE)
-    array <- analysis$results$contributionPlots
-    images <- lapply(array$items,function(item)item$plot)
-    paths <- vapply(images,function(image)tempfile(),character(1))
-    on.exit(unlink(paths),add=TRUE)
-    for(i in seq_along(images)) {
-        file.create(paths[[i]])
-        images[[i]]$.setPath(paths[[i]])
-    }
-    states <- lapply(images,function(image)image$state)
-    pb <- array$asProtoBuf()
-    for(image in images) {image$setState(NULL);image$.setPath(NULL)}
-    array$fromProtoBuf(pb,oChanges="simperPlotValues",vChanges=character())
-    for(i in seq_along(images)) {
-        expect_identical(images[[i]]$state,states[[i]])
-        expect_identical(images[[i]]$.__enclos_env__$private$.filePath,paths[[i]])
+test_that("detail headers retain actual groups and full feature identities", {
+    d <- simper_optional_data(); labels <- c('A vs B','C "quoted"','δ group')
+    d$group <- factor(rep(labels,each=4))
+    long <- paste(rep("Long taxon",8),collapse=" ");names(d)[1] <- long
+    a <- simperClass$new(options=simperOptions$new(vars=c(long,'y','z'),factor='group',simperDetails=TRUE,simperTop=3,simperCum=100),data=d)
+    suppressMessages(a$run())
+    for(table in a$results$detailsByContrast$items) {
+        expect_true(long %in% table$asDF$feature)
+        row <- Filter(function(row)as.character(row$contrastIndex)==table$key,a$.__enclos_env__$private$.state$descriptive$displayRows)[[1L]]
+        expect_identical(table$getColumn('meanFirst')$title,paste0(row$firstGroup,' mean'))
+        expect_identical(table$getColumn('meanSecond')$title,paste0(row$secondGroup,' mean'))
+        expect_identical(table$title,row$contrast)
     }
 })
 
-test_that("header-only SIMPER recovers the supported heatmap image state", {
-    skip_if_not_installed("RProtoBuf")
-    RProtoBuf::readProtoFiles(file=system.file("jamovi.proto",package="jmvcore"))
-    flags <- list(simperDetails=TRUE,simperHeatmap=TRUE,simperHeatmapValues=TRUE)
-    original <- do.call(simper_optional_run,flags)
-    path <- tempfile();on.exit(unlink(path),add=TRUE)
-    original$.setStatePathSource(function()path)
-    original$.save()
-    restored <- simperClass$new(options=do.call(simperOptions$new,
-        c(list(vars=c("x","y","z"),factor="group"),flags)),
-        data=data.frame(x=numeric(),y=numeric(),z=numeric(),group=factor()),analysisId=1L)
-    restored$.setStatePathSource(function()path)
-    restored$init()
+test_that("structural edits refresh bounded detail rows and discard stale output", {
+    a <- simper_optional_run(simperDetails=TRUE,simperTop=1)
+    before <- simper_test_detail_frame(a$results)
+    a$.__enclos_env__$private$.data$x <- a$data$x+0.5;suppressMessages(a$run())
+    expect_false(identical(simper_test_detail_frame(a$results),before))
+    simper_optional_set(a,'simperTop',3);simper_optional_set(a,'simperCum',100)
+    expect_equal(nrow(simper_test_detail_frame(a$results)),9L)
+    a$.__enclos_env__$private$.data$group <- factor(rep(c('C','A'),each=6));suppressMessages(a$run())
+    expect_length(a$results$detailsByContrast$items,1L)
+    expect_identical(a$results$detailsByContrast$items[[1]]$title,'C vs A')
+    simper_optional_set(a,'vars',character())
+    expect_length(a$results$detailsByContrast$items,0L)
+    recovered <- simper_optional_data(); recovered$group <- factor(rep(c('C','A'),each=6))
+    a$.__enclos_env__$private$.data <- recovered
+    simper_optional_set(a,'vars',c('x','y'))
+    expect_length(a$results$detailsByContrast$items,1L)
+    expect_equal(nrow(simper_test_detail_frame(a$results)),2L)
+})
+
+test_that("new saved results restore selected details images and effective seed", {
+    skip_if_not_installed('RProtoBuf')
+    RProtoBuf::readProtoFiles(file=system.file('jamovi.proto',package='jmvcore'))
+    flags <- list(vars=c('x','y','z'),factor='group',simperDetails=TRUE,simperPlots=TRUE,simperHeatmap=TRUE,simperAssess=TRUE,simperN=19,seed=123)
+    original <- simperClass$new(options=do.call(simperOptions$new,flags),data=simper_optional_data(),analysisId=1L)
+    path <- tempfile();on.exit(unlink(path),add=TRUE);original$.setStatePathSource(function()path)
+    suppressMessages(original$run());original$.save()
+    restored <- simperClass$new(options=do.call(simperOptions$new,flags),data=simper_optional_data(),analysisId=1L)
+    restored$.setStatePathSource(function()path);restored$init();restored$.load();restored$postInit();suppressMessages(restored$run())
+    expect_equal(simper_test_detail_frame(restored$results),simper_test_detail_frame(original$results))
+    expect_identical(restored$results$heatmap$state,original$results$heatmap$state)
+    expect_identical(miso_table_note(restored$results$assessment,'seed'),miso_table_note(original$results$assessment,'seed'))
+    expect_identical(lapply(restored$results$contributionPlots$items,function(x)x$plot$state),lapply(original$results$contributionPlots$items,function(x)x$plot$state))
+})
+
+test_that("bounded SIMPER details retain native schema and default disclosure", {
+    options <- yaml::read_yaml(miso_fixture_path('jamovi','simper.a.yaml'))$options
+    detail <- Filter(function(x)identical(x$name,'simperDetails'),options)[[1L]]
+    expect_false(detail$default)
+    ui <- yaml::read_yaml(miso_fixture_path('jamovi','simper.u.yaml'))
+    tables <- Filter(function(x)identical(x$name,'tables'),ui$children)[[1L]]
+    expect_true(tables$collapsed)
+    expect_identical(vapply(tables$children,`[[`,character(1),'name'),'simperDetails')
+    results <- yaml::read_yaml(miso_fixture_path('jamovi','simper.r.yaml'))$items
+    detail <- Filter(function(x)identical(x$name,'detailsByContrast'),results)[[1L]]
+    expect_identical(detail$type,'Array')
+    expect_identical(detail$template$type,'Table')
+    expect_identical(vapply(detail$template$columns,`[[`,character(1),'name'),
+        c('feature','meanFirst','meanSecond','average','sd','ratio'))
+})
+
+test_that("diagnostics on omitted features stay cached without displayed warnings", {
+    original <- vegan::simper
+    testthat::local_mocked_bindings(simper=function(...) {
+        fit <- original(...)
+        i <- which.min(fit[[1]]$average)
+        fit[[1]]$sd[[i]] <- NA_real_;fit[[1]]$ratio[[i]] <- NA_real_
+        fit
+    },.package='vegan')
+    a <- simper_optional_run(simperDetails=TRUE,simperTop=1,simperCum=100)
+    diagnostics <- a$.__enclos_env__$private$.state$descriptive$diagnostics
+    expect_true(any(vapply(diagnostics,function(x)x$reason=='unexpected',logical(1))))
+    expect_false(a$results$warnings$visible)
+    expect_false(grepl('Other blank',miso_table_note(simper_test_detail_table(a$results),'meaning'),fixed=TRUE))
+    simper_optional_set(a,'simperTop',3)
+    expect_match(miso_squish_result(a$results$warnings),'1 feature row',fixed=TRUE)
+    expect_match(miso_table_note(simper_test_detail_table(a$results),'meaning'),'Other blank',fixed=TRUE)
+})
+
+test_that("header-only SIMPER restores and renders the retained heatmap state", {
+    skip_if_not_installed('RProtoBuf')
+    RProtoBuf::readProtoFiles(file=system.file('jamovi.proto',package='jmvcore'))
+    original <- simper_optional_run(simperDetails=TRUE,simperHeatmap=TRUE)
+    path <- tempfile();pngPath <- tempfile(fileext='.png');on.exit(unlink(c(path,pngPath)),add=TRUE)
+    original$.setStatePathSource(function()path);original$.save()
+    restored <- simperClass$new(options=simperOptions$new(vars=c('x','y','z'),factor='group',simperDetails=TRUE,simperHeatmap=TRUE),
+        data=simper_optional_data()[0,],analysisId=1L)
+    restored$.setStatePathSource(function()path);restored$init()
     restored$.__enclos_env__$private$.dataProvided <- FALSE
     restored$.load();restored$postInit()
-    # Like dynamic arrays, native tables only restore Cells into existing
-    # rows; new dynamic rows require the normal data-backed .run lifecycle.
-    for(name in c("variability","means","heatmapValues"))
-        expect_miso_empty_table(restored$results[[name]])
     expect_true(restored$results$heatmap$visible)
     expect_identical(restored$results$heatmap$state,original$results$heatmap$state)
-    # Dynamic contribution groups require a normal data-backed structural run;
-    # header-only recovery of those groups is not implemented by jmvcore Array.
-    expect_length(restored$results$contributionPlots$items,0L)
+    grDevices::png(pngPath);restored$.__enclos_env__$private$.plotHeatmap(restored$results$heatmap);grDevices::dev.off()
+    expect_gt(file.info(pngPath)$size,0L)
+    # Native dynamic Arrays require a normal data-backed run to reconstruct items.
+    expect_length(restored$results$detailsByContrast$items,0L)
+})
+
+test_that("contrast detail identities do not depend on presentation labels", {
+    a <- simper_optional_run(simperTop=1)
+    private <- a$.__enclos_env__$private
+    descriptive <- private$.state$descriptive
+    descriptive$displayRows <- lapply(descriptive$displayRows,function(row) { row$contrast <- 'Same label';row })
+    private$.populateOptionalDetailRows(descriptive)
+    tables <- a$results$detailsByContrast$items
+    expect_length(tables,3L)
+    expect_length(unique(vapply(tables,function(x)x$key,character(1))),3L)
+    expect_true(all(vapply(tables,function(x)x$title=='Same label',logical(1))))
+    expect_equal(sum(vapply(tables,function(x)nrow(x$asDF),integer(1))),3L)
 })

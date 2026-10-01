@@ -68,8 +68,6 @@ children:
       - type: CheckBox
         name: nmdsFeatureTable
         enable: (nmdsSpecies)
-      - type: CheckBox
-        name: nmdsShepardTable
       - type: Label
         label: Feature scores require the Feature Scores plot option.
 

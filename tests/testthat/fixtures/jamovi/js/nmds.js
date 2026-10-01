@@ -68,8 +68,7 @@ const updateControlStates = ui => {
 };
 
 const revealActiveSections = ui => {
-    if (ui.nmdsSiteTable.value() || ui.nmdsFeatureTable.value() ||
-        ui.nmdsShepardTable.value())
+    if (ui.nmdsSiteTable.value() || ui.nmdsFeatureTable.value())
         ui.tables.expand();
 
     if (hasValue(ui.factor.value()) && (

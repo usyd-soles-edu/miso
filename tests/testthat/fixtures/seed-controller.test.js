@@ -24,7 +24,6 @@ const defaults = {
     nmdsShepard: true,
     nmdsSiteTable: false,
     nmdsFeatureTable: false,
-    nmdsShepardTable: false,
     nmdsTrymax: 20,
     nmdsMaxit: 200,
     simperAssess: false,
@@ -165,7 +164,7 @@ for (const analysis of ['permanova', 'anosim', 'permdisp', 'simper', 'nmds'])
 console.log('seed UI controller contracts pass');
 
 // Saved table preferences should remain discoverable when reopening the panel.
-for (const option of ['nmdsSiteTable', 'nmdsFeatureTable', 'nmdsShepardTable']) {
+for (const option of ['nmdsSiteTable', 'nmdsFeatureTable']) {
     const { ui } = createUi({ [option]: true });
     let expanded = false;
     ui.tables.expand = () => { expanded = true; };

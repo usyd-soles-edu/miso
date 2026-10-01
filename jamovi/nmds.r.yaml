@@ -196,36 +196,6 @@ items:
       - nmdsEnv
       - nmdsEnvPerm
 
-  - name: shepardPairs
-    title: Shepard Diagram Values
-    type: Table
-    rows: 0
-    visible: false
-    columns:
-      - name: dissimilarity
-        title: Observed dissimilarity
-        type: number
-        format: zto
-      - name: ordinationDistance
-        title: Ordination distance
-        type: number
-        format: zto
-      - name: monotonicFit
-        title: Monotone fitted distance
-        type: number
-        format: zto
-    clearWith:
-      - vars
-      - factor
-      - transform
-      - distance
-      - distBinary
-      - nmdsK
-      - nmdsTrymax
-      - nmdsMaxit
-      - nmdsEnv
-      - nmdsEnvPerm
-
   - name: envfit
     title: Environmental Fit
     type: Table

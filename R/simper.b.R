@@ -22,10 +22,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showEmptyTables = function() {
             miso_show_empty_tables(self$results, c(
                     contrasts=TRUE, contributions=TRUE,
-                    variability=isTRUE(self$options$simperDetails),
-                    means=isTRUE(self$options$simperDetails),
-                    assessment=isTRUE(self$options$simperAssess),
-                    heatmapValues=isTRUE(self$options$simperHeatmapValues)))
+                    assessment=isTRUE(self$options$simperAssess)))
         },
 
         .run = function() {
@@ -36,7 +33,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("simperDetails", "simperPlots", "simperHeatmap",
-                    "simperPlotValues", "simperHeatmapValues",
                     "seed", "useFixedSeed"),
                 data=self$data,
                 extra=list(effectiveSeed=effectiveSeed))
@@ -57,9 +53,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 effectivePermutations=NA_integer_,
                 detailsReady=FALSE,
                 contributionPlotsReady=FALSE,
-                plotValuesReady=FALSE,
                 heatmapReady=FALSE,
-                heatmapValuesReady=FALSE,
                 heatmapDataReady=FALSE,
                 heatmapData=NULL,
                 descriptive=NULL)
@@ -167,29 +161,18 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             details <- isTRUE(self$options$simperDetails)
             plots <- isTRUE(self$options$simperPlots)
-            plotValues <- isTRUE(self$options$simperPlotValues)
             heatmap <- isTRUE(self$options$simperHeatmap)
-            heatmapValues <- isTRUE(self$options$simperHeatmapValues)
             if (details && !private$.state$detailsReady) {
                 private$.populateOptionalDetailRows(descriptive)
                 private$.state$detailsReady <- TRUE
             }
-            self$results$variability$setVisible(details)
-            self$results$means$setVisible(details)
-            if ((plots || plotValues) && !private$.state$contributionPlotsReady) {
+            self$results$detailsByContrast$setVisible(details)
+            if (plots && !private$.state$contributionPlotsReady) {
                 private$.populateContributionPlots(descriptive)
                 private$.state$contributionPlotsReady <- TRUE
             }
-            if (plotValues && !private$.state$plotValuesReady) {
-                private$.populateContributionValues()
-                private$.state$plotValuesReady <- TRUE
-            }
-            for (item in self$results$contributionPlots$items) {
-                item$plot$setVisible(plots)
-                item$values$setVisible(plotValues)
-            }
-            self$results$contributionPlots$setVisible(plots || plotValues)
-            if ((heatmap || heatmapValues) && !private$.state$heatmapDataReady) {
+            self$results$contributionPlots$setVisible(plots)
+            if (heatmap && !private$.state$heatmapDataReady) {
                 private$.state$heatmapData <- private$.heatmapData()
                 private$.state$heatmapDataReady <- TRUE
             }
@@ -197,22 +180,16 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 self$results$heatmap$setState(private$.state$heatmapData)
                 private$.state$heatmapReady <- TRUE
             }
-            if (heatmapValues && !private$.state$heatmapValuesReady) {
-                private$.populateOptionalHeatmapValues(private$.state$heatmapData)
-                private$.state$heatmapValuesReady <- TRUE
-            }
             self$results$heatmap$setVisible(heatmap)
             self$results$heatmapDescription$setVisible(FALSE)
-            self$results$heatmapValues$setVisible(heatmapValues)
             self$results$contrasts$setVisible(TRUE)
             self$results$contributions$setVisible(TRUE)
             self$results$assessment$setVisible(private$.state$assessmentShown)
             private$.refreshPresentation()
         },
 
-        # These native tables have sequential string keys and literal columns.
-        # addRow() re-encodes all previous keys per append; initialize metadata
-        # once on rebuild, following the NMDS Shepard table implementation.
+        # Reuse existing cells when the row shape is unchanged; build new rows
+        # through the documented Table API.
         .populateRows = function(table, rows) {
             keys <- as.character(seq_along(rows))
             if (length(rows) > 0L && identical(
@@ -222,53 +199,24 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return()
             }
             miso_clear_table(table)
-            metadata <- table$.__enclos_env__$private
-            metadata$.rowKeys <- as.list(keys)
-            metadata$.rowCount <- length(keys)
-            metadata$.rowNames <- if (length(keys)) paste0('"', keys, '"') else character()
-            for (column in table$columns) {
-                for (i in seq_along(rows))
-                    column$addCell(rows[[i]]$values[[column$name]],
-                        .key=keys[[i]], .index=i)
-            }
+            for (i in seq_along(rows))
+                table$addRow(rowKey=keys[[i]], values=rows[[i]]$values)
         },
 
         .populateOptionalDetailRows = function(descriptive) {
-            variabilityRows <- list()
-            meansRows <- list()
-            for (index in seq_along(descriptive$fullRows)) {
-                values <- descriptive$fullRows[[index]]
-                values$contrastIndex <- NULL
-                values$firstGroup <- NULL
-                values$secondGroup <- NULL
-                variabilityRows[[index]] <- list(
-                    key=as.character(index),
-                    values=values[c("contrast", "feature", "average", "sd", "ratio")])
-                meansRows[[index]] <- list(
-                    key=as.character(index),
-                    values=values[c("contrast", "feature", "meanFirst", "meanSecond")])
-            }
-            private$.populateRows(self$results$variability, variabilityRows)
-            private$.populateRows(self$results$means, meansRows)
-        },
+            rows <- descriptive$displayRows
+            indices <- unique(vapply(rows, function(row) row$contrastIndex, integer(1)))
+            for (index in indices) {
+                selected <- Filter(function(row) row$contrastIndex == index, rows)
+                table <- self$results$detailsByContrast$addItem(as.character(index))
+                table$setTitle(selected[[1L]]$contrast)
+                table$getColumn("meanFirst")$setTitle(paste0(selected[[1L]]$firstGroup, " mean"))
+                table$getColumn("meanSecond")$setTitle(paste0(selected[[1L]]$secondGroup, " mean"))
+                values <- lapply(selected, function(row) list(values=row[c(
+                    "feature", "meanFirst", "meanSecond", "average", "sd", "ratio")]))
+                private$.populateRows(table, values)
 
-        .populateOptionalHeatmapValues = function(heatmapData) {
-            if (is.null(heatmapData))
-                return()
-            heatmapRows <- lapply(seq_len(nrow(heatmapData)), function(row) {
-                list(
-                    key=as.character(row),
-                    values=list(
-                        contrast=as.character(heatmapData$contrast[[row]]),
-                        feature=as.character(heatmapData$feature[[row]]),
-                        contribution=if (isTRUE(heatmapData$missing[[row]]))
-                            ""
-                        else
-                            miso_num_or_na(heatmapData$contribution[[row]]),
-                        selected=if (isTRUE(heatmapData$missing[[row]]))
-                            "No" else "Yes"))
-            })
-            private$.populateRows(self$results$heatmapValues, heatmapRows)
+            }
         },
 
         .clearResults = function() {
@@ -279,15 +227,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setContent("")
             miso_clear_table_values(self$results$contrasts)
             miso_clear_table_values(self$results$contributions)
-            miso_clear_table_values(self$results$variability)
-            miso_clear_table_values(self$results$means)
             miso_clear_table_values(self$results$assessment)
-            miso_clear_table_values(self$results$heatmapValues)
+            self$results$detailsByContrast$clear()
             self$results$contributionPlots$clear()
             self$results$contrasts$setNote(key="meaning", note=NULL, init=FALSE)
             self$results$contributions$setNote(key="meaning", note=NULL, init=FALSE)
-            self$results$variability$setNote(key="meaning", note=NULL, init=FALSE)
-            self$results$means$setNote(key="meaning", note=NULL, init=FALSE)
             self$results$assessment$setNote(key="scope", note=NULL, init=FALSE)
             self$results$heatmapDescription$setContent("")
             self$results$heatmap$setSize(600, 500)
@@ -295,10 +239,9 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             for (name in c(
                     "guidance", "warnings",
                     "contrasts", "contributions",
-                    "variability",
-                    "means",
+                    "detailsByContrast",
                     "contributionPlots", "heatmap", "heatmapDescription",
-                    "heatmapValues", "assessment"
+                    "assessment"
                     ))
                 self$results[[name]]$setVisible(FALSE)
             private$.showEmptyTables()
@@ -310,10 +253,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .discardKeyedRows = function() {
             miso_clear_table(self$results$contrasts)
             miso_clear_table(self$results$contributions)
-            miso_clear_table(self$results$variability)
-            miso_clear_table(self$results$means)
             miso_clear_table(self$results$assessment)
-            miso_clear_table(self$results$heatmapValues)
         },
 
         .showGuidance = function(content, title="Action needed") {
@@ -490,40 +430,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
         },
 
-        .populateContributionValues = function() {
-            for (item in self$results$contributionPlots$items) {
-                rows <- private$.state$plotData[
-                    private$.state$plotData$contrast == item$key, , drop=FALSE]
-                valueRows <- list()
-                for (row in seq_len(nrow(rows))) {
-                    direction <- if (!is.finite(rows$meanFirst[[row]]) ||
-                            !is.finite(rows$meanSecond[[row]])) {
-                        "Mean unavailable"
-                    } else if (rows$meanFirst[[row]] > rows$meanSecond[[row]]) {
-                        paste0(rows$firstGroup[[row]], " higher")
-                    } else if (rows$meanSecond[[row]] > rows$meanFirst[[row]]) {
-                        paste0(rows$secondGroup[[row]], " higher")
-                    } else {
-                        "Equal means"
-                    }
-                    valueRows[[row]] <- list(
-                        rowKey=as.character(row),
-                        values=list(
-                            feature=as.character(rows$feature[[row]]),
-                            average=miso_num_or_na(rows$average[[row]]),
-                            contribution=miso_num_or_na(
-                                rows$contribution[[row]]),
-                            cumulative=miso_num_or_na(rows$cumulative[[row]]),
-                            firstGroup=as.character(rows$firstGroup[[row]]),
-                            meanFirst=miso_num_or_na(rows$meanFirst[[row]]),
-                            secondGroup=as.character(rows$secondGroup[[row]]),
-                            meanSecond=miso_num_or_na(rows$meanSecond[[row]]),
-                            direction=direction))
-                }
-                private$.populateRows(item$values, valueRows)
-            }
-        },
-
         .runAssessment = function(prep, displayRows) {
             private$.state$requestedPermutations <- as.integer(self$options$simperN)
             miso_set_seed(prep)
@@ -643,8 +549,18 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             diagnostics
         },
 
-        .detailNote = function() {
-            reasons <- vapply(private$.state$descriptive$diagnostics,
+        .detailDiagnostics = function(index=NULL) {
+            rows <- private$.state$descriptive$displayRows
+            keys <- vapply(rows, function(row)
+                paste(row$contrastIndex, row$feature, sep="\r"), character(1))
+            Filter(function(issue)
+                (is.null(index) || issue$contrastIndex == index) &&
+                paste(issue$contrastIndex, issue$feature, sep="\r") %in% keys,
+                private$.state$descriptive$diagnostics)
+        },
+
+        .detailNote = function(diagnostics=private$.detailDiagnostics()) {
+            reasons <- vapply(diagnostics,
                 function(issue) issue$reason, character(1))
             paste(c(
                 "SD describes variation in contributions across between-group sample pairs.",
@@ -667,20 +583,20 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .refreshPresentation = function() {
             warnings <- private$.state$operationalWarnings
             if (isTRUE(self$options$simperDetails)) {
-                diagnostics <- private$.state$descriptive$diagnostics
+                diagnostics <- private$.detailDiagnostics()
                 singlePairs <- Filter(function(issue)
                     identical(issue$reason, "single_pair"), diagnostics)
                 count <- length(unique(vapply(singlePairs,
                     function(issue) issue$contrastIndex, integer(1))))
                 if (count > 0L)
                     warnings <- c(warnings, sprintf(
-                        "Contribution SD could not be calculated for %d %s with only one between-group sample pair. See Contribution Variability for details.",
+                        "Contribution SD could not be calculated for %d %s with only one between-group sample pair. See Group Means and Contribution Variability for details.",
                         count, if (count == 1L) "contrast" else "contrasts"))
                 unexpected <- sum(vapply(diagnostics,
                     function(issue) identical(issue$reason, "unexpected"), logical(1)))
                 if (unexpected > 0L)
                     warnings <- c(warnings, sprintf(
-                        "A finite SD or ratio could not be calculated for %d %s. See Contribution Variability for details.",
+                        "A finite SD or ratio could not be calculated for %d %s. See Group Means and Contribution Variability for details.",
                         unexpected, if (unexpected == 1L) "feature row" else "feature rows"))
             }
             private$.setWarnings(warnings)
@@ -699,12 +615,13 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 note=if (filtered) paste(c(transformation,
                     "Percentages use all usable features before display filtering and are not renormalised."), collapse=" ")
                     else transformation, init=FALSE)
-            self$results$variability$setNote(
-                key="meaning", note=if (isTRUE(self$options$simperDetails))
-                    private$.detailNote() else NULL, init=FALSE)
-            self$results$means$setNote(
-                key="meaning", note=if (isTRUE(self$options$simperDetails))
-                    transformation else NULL, init=FALSE)
+            for (table in self$results$detailsByContrast$items) {
+                table$setNote(key="meaning", note=paste(
+                    "Features follow the Top N or cumulative contribution limit; the threshold-crossing feature is included.",
+                    if (identical(self$options$transform, "none")) "Means use untransformed values."
+                    else sprintf("Means use %s-transformed values.", private$.transformLabel(self$options$transform)),
+                    private$.detailNote(private$.detailDiagnostics(as.integer(table$key)))), init=FALSE)
+            }
             self$results$assessment$setNote(
                 key="scope", note=if (isTRUE(private$.state$assessmentShown)) paste(
                     "Group-label permutation tests of average contributions.",

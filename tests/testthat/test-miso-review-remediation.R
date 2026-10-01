@@ -297,7 +297,7 @@ test_that("nMDS optional plot output restores from a display-only rerun", {
     miso_set_option_value(options, "nmdsShepard", TRUE)
     suppressWarnings(suppressMessages(analysis$run()))
     expect_true(analysis$results$shepard$visible)
-    expect_gt(length(analysis$results$shepardPairs$rowKeys), 0L)
+
 })
 
 # --- Task 11: analysis references resolve to complete citation records ---
@@ -368,10 +368,10 @@ test_that("run-generated notes survive restored analyses and display-only update
     simperRestored <- restore_analysis(simperAnalysis)
     miso_set_option_value(simperRestored$options, "simperDetails", TRUE)
     suppressWarnings(suppressMessages(simperRestored$run()))
-    for (table in list(simperRestored$results$contrasts, simperRestored$results$means))
+    for (table in list(simperRestored$results$contrasts))
         expect_false(grepl("Note.", note_text(table), fixed=TRUE))
     expect_match(note_text(simperRestored$results$contributions), "not renormalised", fixed=TRUE)
-    expect_match(note_text(simperRestored$results$variability), "between-group sample pairs", fixed=TRUE)
+    expect_match(note_text(simper_test_detail_table(simperRestored$results)), "between-group sample pairs", fixed=TRUE)
     expect_match(note_text(simperRestored$results$assessment), "Holm adjustment", fixed=TRUE)
 })
 

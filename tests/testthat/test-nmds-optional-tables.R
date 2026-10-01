@@ -16,7 +16,7 @@ optional_nmds_set <- function(analysis, name, value) {
 
 test_that("NMDS default output hides long tables but retains values and plots", {
     analysis <- optional_nmds(nmdsSpecies=TRUE)
-    for (name in c("sites", "features", "shepardPairs")) {
+    for (name in c("sites", "features")) {
         expect_false(analysis$results[[name]]$visible, info=name)
         expect_gt(nrow(analysis$results[[name]]$asDF), 0L)
     }
@@ -37,8 +37,7 @@ test_that("NMDS table toggles preserve the fit, RNG and plot resources", {
     analysis$results$shepard$.setPath(paths[[2]])
     plotStates <- lapply(c("ordination", "shepard"), function(name)
         analysis$results[[name]]$state)
-    tables <- c(nmdsSiteTable="sites", nmdsFeatureTable="features",
-        nmdsShepardTable="shepardPairs")
+    tables <- c(nmdsSiteTable="sites", nmdsFeatureTable="features")
     values <- lapply(unname(tables), function(name) analysis$results[[name]]$asDF)
     for (option in names(tables)) {
         for (shown in c(TRUE, FALSE, TRUE)) {
@@ -58,20 +57,6 @@ test_that("NMDS table toggles preserve the fit, RNG and plot resources", {
     }
 })
 
-test_that("Shepard numerical table and plot have independent controls", {
-    for (plot in c(FALSE, TRUE)) for (table in c(FALSE, TRUE)) {
-        analysis <- optional_nmds(nmdsShepard=plot, nmdsShepardTable=table)
-        expect_identical(analysis$results$shepard$visible, plot)
-        expect_identical(analysis$results$shepardPairs$visible, table)
-        if (table) expect_gt(nrow(analysis$results$shepardPairs$asDF), 0L)
-    }
-    analysis <- optional_nmds(nmdsShepard=FALSE)
-    fit <- analysis$.__enclos_env__$private$.state$fit
-    optional_nmds_set(analysis, "nmdsShepardTable", TRUE)
-    expect_true(analysis$results$shepardPairs$visible)
-    expect_false(analysis$results$shepard$visible)
-    expect_identical(analysis$.__enclos_env__$private$.state$fit, fit)
-})
 
 test_that("Feature table requires available feature scores", {
     analysis <- optional_nmds(nmdsFeatureTable=TRUE, nmdsSpecies=FALSE)
@@ -84,14 +69,14 @@ test_that("NMDS saved table selections restore with header-only data", {
     RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
     for (shown in c(FALSE, TRUE)) {
         analysis <- optional_nmds(nmdsSpecies=TRUE, nmdsSiteTable=shown,
-            nmdsFeatureTable=shown, nmdsShepardTable=shown)
+            nmdsFeatureTable=shown)
         path <- tempfile()
         on.exit(unlink(path), add=TRUE)
         analysis$.setStatePathSource(function() path)
         analysis$.save()
         # Standalone R options have no incoming UI protobuf. Round-trip the
         # persisted table switches explicitly alongside the structural settings.
-        flags <- c("nmdsSiteTable", "nmdsFeatureTable", "nmdsShepardTable")
+        flags <- c("nmdsSiteTable", "nmdsFeatureTable")
         optionPB <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOptions"))
         optionPB$hasNames <- TRUE
         optionPB$names <- flags
@@ -111,7 +96,7 @@ test_that("NMDS saved table selections restore with header-only data", {
         restored$.__enclos_env__$private$.dataProvided <- FALSE
         restored$.load()
         restored$postInit()
-        for (name in c("sites", "features", "shepardPairs")) {
+        for (name in c("sites", "features")) {
             expect_identical(restored$results[[name]]$visible, shown, info=name)
             expect_identical(restored$results[[name]]$asDF,
                 analysis$results[[name]]$asDF, info=name)
@@ -125,7 +110,7 @@ test_that("Legacy NMDS options hide tables without invalidating the cached fit",
     skip_if_not_installed("RProtoBuf")
     RProtoBuf::readProtoFiles(file=system.file("jamovi.proto", package="jmvcore"))
     original <- optional_nmds(nmdsSpecies=TRUE, nmdsSiteTable=TRUE,
-        nmdsFeatureTable=TRUE, nmdsShepardTable=TRUE)
+        nmdsFeatureTable=TRUE)
     options <- nmdsOptions$new(vars=c("a", "b", "c"), seed=123,
         nmdsTrymax=3, nmdsSpecies=TRUE)
     # Legacy messages omit the newly introduced table switches.
@@ -136,9 +121,23 @@ test_that("Legacy NMDS options hide tables without invalidating the cached fit",
     restored$.__enclos_env__$private$.dataProvided <- FALSE
     rng <- .Random.seed
     restored$postInit()
-    for (name in c("sites", "features", "shepardPairs"))
+    for (name in c("sites", "features"))
         expect_false(restored$results[[name]]$visible)
     expect_identical(restored$.__enclos_env__$private$.state$fit,
         original$.__enclos_env__$private$.state$fit)
     expect_identical(.Random.seed, rng)
+})
+
+test_that("Shepard plotting has no native pair table and retains independent data", {
+    for(shown in c(FALSE,TRUE)) {
+        a <- optional_nmds(nmdsShepard=shown)
+        expect_null(a$results[['shepardPairs']])
+        expect_null(a$options$option('nmdsShepardTable'))
+        expect_identical(a$results$shepard$visible,shown)
+        if(shown) {
+            state <- a$results$shepard$state
+            expect_gt(nrow(state$display),0L)
+            expect_s3_class(a$.__enclos_env__$private$.buildShepardPlot(state),'ggplot')
+        }
+    }
 })

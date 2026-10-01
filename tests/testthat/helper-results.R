@@ -59,3 +59,16 @@ simper_test_run <- function(data, ...) {
     attr(result, "simperFullRows") <- analysis$.__enclos_env__$private$.state$descriptive$fullRows
     result
 }
+
+simper_test_detail_table <- function(result) result$detailsByContrast$items[[1L]]
+
+simper_test_detail_frame <- function(result) {
+    if (length(result$detailsByContrast$items) == 0L) return(data.frame())
+    out <- do.call(rbind, lapply(result$detailsByContrast$items, function(table) {
+        values <- table$asDF
+        values$contrast <- table$title
+        values
+    }))
+    rownames(out) <- NULL
+    out
+}

@@ -314,7 +314,7 @@ reference_nmds <- function(
         reference_row(dataset, scenario_id, "nMDS", "Feature Scores", "table rows", if (is.null(feature_points)) 0L else nrow(feature_points), display = as.character(if (is.null(feature_points)) 0L else nrow(feature_points)), abs_tolerance = 0, reference_function = "vegan::scores"),
         reference_row(dataset, scenario_id, "nMDS", "Environmental Fit", "table rows", length(fitted_environment), display = as.character(length(fitted_environment)), abs_tolerance = 0, reference_function = "vegan::envfit"),
         text_row(dataset, scenario_id, "nMDS", "Site Scores", "configuration reference", "pairwise site distances", "stats::dist", "Rotation and reflection invariant; raw axes are intentionally not stored."),
-        text_row(dataset, scenario_id, "nMDS", "Shepard Diagram Values", "plot", "present", "vegan::stressplot")
+        text_row(dataset, scenario_id, "nMDS", "Shepard Diagram", "plot", "present", "vegan::stressplot")
     )
     for (i in seq_along(distance_probs)) {
         label <- paste0(
@@ -393,11 +393,11 @@ reference_simper <- function(
             rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive Feature Contributions", paste0(contrast, " first contribution percent"), 100 * tab$contribution[[1L]], reference_function = "vegan::simper(permutations = 0)")
             rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Descriptive Feature Contributions", paste0(contrast, " displayed cumulative percent"), 100 * tail(tab$cumulative, 1L), reference_function = "vegan::simper + independent crossing-feature filter")
             if (isTRUE(details)) {
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution Variability", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution Variability", paste0(contrast, " first SD"), tab$sd[[1L]], reference_function = "vegan::simper sd")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Contribution Variability", paste0(contrast, " first average divided by SD"), tab$ratio[[1L]], reference_function = "vegan::simper ratio")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
-                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means and Contribution Variability", paste0(contrast, " first average contribution"), tab$average[[1L]], reference_function = "vegan::simper(permutations = 0)")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means and Contribution Variability", paste0(contrast, " first SD"), tab$sd[[1L]], reference_function = "vegan::simper sd")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means and Contribution Variability", paste0(contrast, " first average divided by SD"), tab$ratio[[1L]], reference_function = "vegan::simper ratio")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means and Contribution Variability", paste0(contrast, " first-group mean"), tab$ava[[1L]], reference_function = "vegan::simper ava")
+                rows[[length(rows) + 1L]] <- reference_row(dataset, scenario_id, "SIMPER", "Group Means and Contribution Variability", paste0(contrast, " second-group mean"), tab$avb[[1L]], reference_function = "vegan::simper avb")
             }
         }
     }

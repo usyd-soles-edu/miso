@@ -33,7 +33,7 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
         nmdsEnv=c("temperature", "pH"),
         nmdsSpecies=TRUE,
         nmdsShepard=TRUE,
-        nmdsSiteTable=TRUE, nmdsFeatureTable=TRUE, nmdsShepardTable=TRUE,
+        nmdsSiteTable=TRUE, nmdsFeatureTable=TRUE,
         seed=123,
         nmdsTrymax=5)
     statePath <- tempfile()
@@ -85,7 +85,7 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
     expect_identical(beforeInitLoad$results$envfit$asDF, originalEnvfit)
     expect_identical(beforeInitLoad$results$envfit$rowKeys,
         original$results$envfit$rowKeys)
-    for (name in c("sites", "stress", "envfit", "features", "shepardPairs")) {
+    for (name in c("sites", "stress", "envfit", "features")) {
         expect_identical(
             beforeInitLoad$results[[name]]$rowKeys,
             original$results[[name]]$rowKeys,
@@ -108,7 +108,7 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
     headerOnly$postInit()
 
     expect_identical(headerPrivate$.state$fit, originalFit)
-    for (name in c("sites", "stress", "envfit", "features", "shepardPairs")) {
+    for (name in c("sites", "stress", "envfit", "features")) {
         expect_identical(
             headerOnly$results[[name]]$rowKeys,
             original$results[[name]]$rowKeys,
@@ -124,7 +124,7 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
     expect_true(headerOnly$results$envfit$visible)
     expect_true(headerOnly$results$features$visible)
     expect_true(headerOnly$results$shepard$visible)
-    expect_true(headerOnly$results$shepardPairs$visible)
+
 
     headerPrivate$.data <- data
     headerPrivate$.dataProvided <- TRUE
@@ -297,14 +297,14 @@ test_that("NMDS group display refresh preserves fit, tables, and Shepard state",
     private <- analysis$.__enclos_env__$private
     fit <- private$.state$fit
     baseWarnings <- private$.state$baseWarnings
-    tables <- c("sites", "stress", "envfit", "features", "shepardPairs")
+    tables <- c("sites", "stress", "envfit", "features")
     tableState <- lapply(tables, function(name) list(
         rows=analysis$results[[name]]$rowKeys,
         values=analysis$results[[name]]$asDF,
         firstCell=miso_table_first_cell(analysis$results[[name]])))
     names(tableState) <- tables
     shepardState <- analysis$results$shepard$state
-    shepardCell <- miso_table_first_cell(analysis$results$shepardPairs)
+    shepardCell <- private$.state$shepardDisplayData
 
     expectedEffective <- c(
         nmdsOverlay=FALSE, nmdsHull=TRUE,
@@ -344,7 +344,7 @@ test_that("NMDS group display refresh preserves fit, tables, and Shepard state",
             expectedEffective[[name]], info=paste(name, "plot state"))
         expect_identical(analysis$results$shepard$state, shepardState, info=name)
         expect_identical(
-            miso_table_first_cell(analysis$results$shepardPairs),
+            private$.state$shepardDisplayData,
             shepardCell,
             info=name)
         for (table in tables) {
@@ -377,7 +377,7 @@ test_that("NMDS Shepard visibility uses cached data without resetting either plo
     private <- analysis$.__enclos_env__$private
     ordinationState <- analysis$results$ordination$state
     shepardState <- analysis$results$shepard$state
-    pairCell <- miso_table_first_cell(analysis$results$shepardPairs)
+    pairCell <- private$.state$shepardDisplayData
     shepardOption <- analysis$options$option("nmdsShepard")
 
     shepardOption$.__enclos_env__$private$.value <- FALSE
@@ -385,9 +385,9 @@ test_that("NMDS Shepard visibility uses cached data without resetting either plo
     expect_false(analysis$results$shepard$visible)
     expect_identical(analysis$results$ordination$state, ordinationState)
     expect_identical(analysis$results$shepard$state, shepardState)
-    expect_gt(length(analysis$results$shepardPairs$rowKeys), 0L)
+
     expect_identical(
-        miso_table_first_cell(analysis$results$shepardPairs), pairCell)
+        private$.state$shepardDisplayData, pairCell)
 
     shepardOption$.__enclos_env__$private$.value <- TRUE
     suppressMessages(private$.run())
@@ -395,7 +395,7 @@ test_that("NMDS Shepard visibility uses cached data without resetting either plo
     expect_identical(analysis$results$ordination$state, ordinationState)
     expect_identical(analysis$results$shepard$state, shepardState)
     expect_identical(
-        miso_table_first_cell(analysis$results$shepardPairs), pairCell)
+        private$.state$shepardDisplayData, pairCell)
 
     ordinationState <- analysis$results$ordination$state
     hullOption <- analysis$options$option("nmdsHull")
@@ -408,7 +408,7 @@ test_that("NMDS Shepard visibility uses cached data without resetting either plo
     expect_identical(analysis$results$shepard$state, shepardState)
     expect_identical(.Random.seed, rngBefore)
     expect_identical(
-        miso_table_first_cell(analysis$results$shepardPairs), pairCell)
+        private$.state$shepardDisplayData, pairCell)
 
     ordinationState <- analysis$results$ordination$state
     ellipseOption <- analysis$options$option("nmdsEllipse")
@@ -422,7 +422,7 @@ test_that("NMDS Shepard visibility uses cached data without resetting either plo
     expect_identical(analysis$results$shepard$state, shepardState)
     expect_identical(.Random.seed, rngBefore)
     expect_identical(
-        miso_table_first_cell(analysis$results$shepardPairs), pairCell)
+        private$.state$shepardDisplayData, pairCell)
 
     ordinationState <- analysis$results$ordination$state
     displayWarningHtml <- private$.state$warningHtml
@@ -433,7 +433,7 @@ test_that("NMDS Shepard visibility uses cached data without resetting either plo
     expect_identical(private$.state$warningHtml, displayWarningHtml)
     expect_identical(.Random.seed, rngBefore)
     expect_identical(
-        miso_table_first_cell(analysis$results$shepardPairs), pairCell)
+        private$.state$shepardDisplayData, pairCell)
 })
 
 test_that("NMDS first Shepard display populates from a cached fit", {
@@ -448,47 +448,12 @@ test_that("NMDS first Shepard display populates from a cached fit", {
     fit <- private$.state$fit
     ordinationState <- analysis$results$ordination$state
     shepardOption <- analysis$options$option("nmdsShepard")
-    expect_length(analysis$results$shepardPairs$rowKeys, 0L)
+
 
     shepardOption$.__enclos_env__$private$.value <- TRUE
     suppressMessages(private$.run())
     expect_identical(private$.state$fit, fit)
     expect_identical(analysis$results$ordination$state, ordinationState)
     expect_true(analysis$results$shepard$visible)
-    expect_gt(length(analysis$results$shepardPairs$rowKeys), 0L)
-})
 
-test_that("Shepard batch restoration matches public row construction", {
-    skip_if_not_installed("RProtoBuf")
-    RProtoBuf::readProtoFiles(
-        file=system.file("jamovi.proto", package="jmvcore"))
-    analysis <- nmdsClass$new(options=nmdsOptions$new(), data=data.frame())
-    reference <- nmdsClass$new(options=nmdsOptions$new(), data=data.frame())
-    private <- analysis$.__enclos_env__$private
-    count <- 1001L
-    pairs <- data.frame(
-        dissimilarity=seq_len(count) / count,
-        ordinationDistance=seq_len(count) / (count + 1L),
-        monotonicFit=seq_len(count) / (count + 2L))
-    pairs$monotonicFit[[count]] <- NA_real_
-    private$.state$shepardDisplayData <- pairs
-    expected <- reference$results$shepardPairs
-    for (i in seq_len(count))
-        expected$addRow(as.character(i), values=lapply(pairs, function(x)
-            miso_num_or_na(x[[i]])))
-    private$.populateShepardPairs()
-    actual <- analysis$results$shepardPairs
-    expect_identical(actual$rowKeys, expected$rowKeys)
-    expect_identical(actual$names, expected$names)
-    expect_equal(actual$rowCount, expected$rowCount)
-    expect_identical(actual$asDF, expected$asDF)
-    expect_identical(
-        actual$asProtoBuf()$table$serialize(NULL),
-        expected$asProtoBuf()$table$serialize(NULL))
-    # Replacing the table must discard surplus cells and reset row metadata.
-    private$.state$shepardDisplayData <- pairs[1:3, ]
-    private$.populateShepardPairs()
-    expect_identical(actual$rowKeys, as.list(as.character(1:3)))
-    expect_equal(actual$rowCount, 3L)
-    expect_identical(actual$asDF, expected$asDF[1:3, ])
 })

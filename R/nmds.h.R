@@ -25,7 +25,6 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             nmdsEnvPerm = 99,
             nmdsSiteTable = FALSE,
             nmdsFeatureTable = FALSE,
-            nmdsShepardTable = FALSE,
             useFixedSeed = TRUE, ...) {
 
             super$initialize(
@@ -167,10 +166,6 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 "nmdsFeatureTable",
                 nmdsFeatureTable,
                 default=FALSE)
-            private$..nmdsShepardTable <- jmvcore::OptionBool$new(
-                "nmdsShepardTable",
-                nmdsShepardTable,
-                default=FALSE)
             private$..useFixedSeed <- jmvcore::OptionBool$new(
                 "useFixedSeed",
                 useFixedSeed,
@@ -195,7 +190,6 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
             self$.addOption(private$..nmdsEnvPerm)
             self$.addOption(private$..nmdsSiteTable)
             self$.addOption(private$..nmdsFeatureTable)
-            self$.addOption(private$..nmdsShepardTable)
             self$.addOption(private$..useFixedSeed)
         }),
     active = list(
@@ -218,7 +212,6 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         nmdsEnvPerm = function() private$..nmdsEnvPerm$value,
         nmdsSiteTable = function() private$..nmdsSiteTable$value,
         nmdsFeatureTable = function() private$..nmdsFeatureTable$value,
-        nmdsShepardTable = function() private$..nmdsShepardTable$value,
         useFixedSeed = function() private$..useFixedSeed$value),
     private = list(
         ..vars = NA,
@@ -240,7 +233,6 @@ nmdsOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         ..nmdsEnvPerm = NA,
         ..nmdsSiteTable = NA,
         ..nmdsFeatureTable = NA,
-        ..nmdsShepardTable = NA,
         ..useFixedSeed = NA)
 )
 
@@ -258,7 +250,6 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
         stress = function() private$.items[["stress"]],
         shepardDescription = function() private$.items[["shepardDescription"]],
         shepard = function() private$.items[["shepard"]],
-        shepardPairs = function() private$.items[["shepardPairs"]],
         envfit = function() private$.items[["envfit"]],
         features = function() private$.items[["features"]]),
     private = list(),
@@ -469,39 +460,6 @@ nmdsResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "nmdsEnvPerm")))
             self$add(jmvcore::Table$new(
                 options=options,
-                name="shepardPairs",
-                title="Shepard Diagram Values",
-                rows=0,
-                visible=FALSE,
-                columns=list(
-                    list(
-                        `name`="dissimilarity",
-                        `title`="Observed dissimilarity",
-                        `type`="number",
-                        `format`="zto"),
-                    list(
-                        `name`="ordinationDistance",
-                        `title`="Ordination distance",
-                        `type`="number",
-                        `format`="zto"),
-                    list(
-                        `name`="monotonicFit",
-                        `title`="Monotone fitted distance",
-                        `type`="number",
-                        `format`="zto")),
-                clearWith=list(
-                    "vars",
-                    "factor",
-                    "transform",
-                    "distance",
-                    "distBinary",
-                    "nmdsK",
-                    "nmdsTrymax",
-                    "nmdsMaxit",
-                    "nmdsEnv",
-                    "nmdsEnvPerm")))
-            self$add(jmvcore::Table$new(
-                options=options,
                 name="envfit",
                 title="Environmental Fit",
                 rows=0,
@@ -642,7 +600,6 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param nmdsEnvPerm .
 #' @param nmdsSiteTable .
 #' @param nmdsFeatureTable .
-#' @param nmdsShepardTable .
 #' @param useFixedSeed Use a positive fixed seed for reproducible ordination
 #'   and environmental-fit results; unchecked analyses use the random RNG
 #'   stream.
@@ -658,7 +615,6 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #'   \code{results$stress} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$shepardDescription} \tab \tab \tab \tab \tab a html \cr
 #'   \code{results$shepard} \tab \tab \tab \tab \tab an image \cr
-#'   \code{results$shepardPairs} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$envfit} \tab \tab \tab \tab \tab a table \cr
 #'   \code{results$features} \tab \tab \tab \tab \tab a table \cr
 #' }
@@ -691,7 +647,6 @@ nmds <- function(
     nmdsEnvPerm = 99,
     nmdsSiteTable = FALSE,
     nmdsFeatureTable = FALSE,
-    nmdsShepardTable = FALSE,
     useFixedSeed = TRUE) {
 
     if ( ! requireNamespace("jmvcore", quietly=TRUE))
@@ -729,7 +684,6 @@ nmds <- function(
         nmdsEnvPerm = nmdsEnvPerm,
         nmdsSiteTable = nmdsSiteTable,
         nmdsFeatureTable = nmdsFeatureTable,
-        nmdsShepardTable = nmdsShepardTable,
         useFixedSeed = useFixedSeed)
 
     analysis <- nmdsClass$new(

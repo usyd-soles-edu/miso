@@ -97,7 +97,7 @@ children:
         margin: small
         children:
           - type: Label
-            label: Features Shown
+            label: Features Shown in Results
             heading: true
             margin: none
           - type: TextBox
@@ -131,10 +131,6 @@ children:
     children:
       - type: CheckBox
         name: simperDetails
-      - type: CheckBox
-        name: simperPlotValues
-      - type: CheckBox
-        name: simperHeatmapValues
 
   - type: CollapseBox
     name: permutationAssessment

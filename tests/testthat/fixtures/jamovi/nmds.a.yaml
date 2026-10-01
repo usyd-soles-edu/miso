@@ -201,11 +201,6 @@ options:
     type: Bool
     default: false
 
-  - name: nmdsShepardTable
-    title: Shepard diagram values
-    type: Bool
-    default: false
-
   - name: useFixedSeed
     title: Use fixed seed
     type: Bool

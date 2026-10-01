@@ -181,17 +181,7 @@ options:
     default: holm
 
   - name: simperDetails
-    title: Detailed Statistics
-    type: Bool
-    default: false
-
-  - name: simperPlotValues
-    title: Contribution plot values
-    type: Bool
-    default: false
-
-  - name: simperHeatmapValues
-    title: Heatmap values
+    title: Group means and contribution variability
     type: Bool
     default: false
 

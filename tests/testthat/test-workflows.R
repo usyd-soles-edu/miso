@@ -448,8 +448,7 @@ test_that("SIMPER returns stable contribution results and plot output", {
     rownames(compact) <- NULL
     rownames(expected_compact) <- NULL
     expect_identical(compact, expected_compact)
-    expect_false(res$variability$visible)
-    expect_false(res$means$visible)
+    expect_false(res$detailsByContrast$visible)
     expect_equal(nrow(res$contrasts$asDF), 3L)
     expect_false(res$assessment$visible)
     expect_false(res$assessment$visible)

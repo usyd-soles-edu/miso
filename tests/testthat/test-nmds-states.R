@@ -243,7 +243,7 @@ expect_nmds_visibility <- function(result, visible, hidden) {
 expect_nmds_correction_with_tables <- function(result) {
     expect_nmds_visibility(result,
         visible=c("guidance", "stress"),
-        hidden=c("sites", "shepardPairs", "warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
+        hidden=c("sites", "warnings", "ordination", "ordinationDescription", "shepard", "shepardDescription", "envfit", "features"))
 }
 
 find_nmds_yaml_node <- function(node, name) {
@@ -354,13 +354,12 @@ test_that("nMDS result schema contains no initially visible shell", {
             "seedState", "analysisCache", "guidance", "warnings",
             "ordinationDescription", "ordination", "sites",
             "stress", "shepardDescription", "shepard",
-            "shepardPairs",
             "envfit", "features"
             ))
     expect_identical(by_name$guidance$type, "Html")
     expect_identical(by_name$ordinationDescription$type, "Html")
     expect_identical(by_name$shepardDescription$type, "Html")
-    expect_identical(by_name$shepardPairs$type, "Table")
+
     expect_identical(
         vapply(by_name$envfit$columns, `[[`, character(1), "name"),
         c("variable", "r2", "p", "samples", "permutations", "NMDS1", "NMDS2", "NMDS3"))
@@ -385,7 +384,7 @@ test_that("new and incomplete nMDS analyses show one actionable state", {
     none <- noneAnalysis$results
     expect_false(none$guidance$visible)
     expect_true(none$stress$visible)
-    for (name in c("sites", "features", "shepardPairs"))
+    for (name in c("sites", "features"))
         expect_false(none[[name]]$visible)
     expect_null(noneAnalysis$.__enclos_env__$private$.buildNmdsPlot())
 
@@ -1210,8 +1209,8 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
     expect_true(isTRUE(rendered))
     expect_true(shown$results$shepard$visible)
     expect_false(shown$results$shepardDescription$visible)
-    expect_false(shown$results$shepardPairs$visible)
-    shownPairs <- shown$results$shepardPairs$asDF
+
+    shownPairs <- shownPrivate$.state$shepardDisplayData
     rownames(shownPairs) <- NULL
     expect_equal(shownPairs, expectedData, tolerance=0)
     expect_identical(description, "character(0)")
@@ -1230,8 +1229,8 @@ test_that("Shepard visibility is prevalidated and its renderer is read-only", {
         nmdsTrymax=5)
     expect_false(hidden$results$shepard$visible)
     expect_false(hidden$results$shepardDescription$visible)
-    expect_false(hidden$results$shepardPairs$visible)
-    expect_equal(length(hidden$results$shepardPairs$rowKeys), 0L)
+
+
     expect_false(grepl(
         "observed dissimilarities",
         nmds_squish(hidden$results$shepardDescription$asString())))
@@ -1377,7 +1376,6 @@ test_that("nMDS migration scenarios use current result names", {
         "nMDS Ordination",
         "Stress and Convergence Diagnostics",
         "Shepard Diagram",
-        "Shepard Diagram Values",
         "Environmental Fit",
         "Site Scores",
         sep="|")

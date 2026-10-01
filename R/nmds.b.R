@@ -130,7 +130,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         .showEmptyTables = function() {
             miso_show_empty_tables(self$results, c(
                     sites=isTRUE(self$options$nmdsSiteTable), stress=TRUE,
-                    shepardPairs=isTRUE(self$options$nmdsShepardTable),
                     envfit=length(miso_clean_vars(self$options$nmdsEnv)) > 0L,
                     features=isTRUE(self$options$nmdsFeatureTable) &&
                         isTRUE(self$options$nmdsSpecies)))
@@ -581,8 +580,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             showShepard <- isTRUE(self$options$nmdsShepard) &&
                 isTRUE(private$.state$shepardValid)
             if (shepardChanged) {
-                if (showShepard && length(self$results$shepardPairs$rowKeys) == 0L)
-                    private$.populateShepardPairs()
                 self$results$shepard$setVisible(showShepard)
             }
             if (groupChanged || shepardChanged) {
@@ -609,44 +606,11 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 isTRUE(self$options$nmdsFeatureTable) &&
                 isTRUE(self$options$nmdsSpecies) &&
                 !is.null(private$.state$features))
-            showPairs <- isTRUE(self$options$nmdsShepardTable) &&
-                isTRUE(private$.state$shepardValid)
-            if (showPairs && length(self$results$shepardPairs$rowKeys) == 0L)
-                private$.populateShepardPairs()
-            self$results$shepardPairs$setVisible(showPairs)
-        },
-
-        .populateShepardPairs = function() {
-            shepardPairs <- private$.state$shepardDisplayData
-            if (is.null(shepardPairs) || nrow(shepardPairs) == 0L)
-                return()
-            table <- self$results$shepardPairs
-            keys <- as.character(seq_len(nrow(shepardPairs)))
-            # Table$addRow() re-encodes every existing row key for each append.
-            # Restoring 1,001 Shepard rows therefore does quadratic JSON work.
-            # This table has sequential string keys and three literal columns;
-            # initialise its row metadata once, using the same Cell API as
-            # addRow(). jmvcore has no public bulk-row API.
-            private$.clearTable(table)
-            tablePrivate <- table$.__enclos_env__$private
-            tablePrivate$.rowKeys <- as.list(keys)
-            tablePrivate$.rowCount <- length(keys)
-            tablePrivate$.rowNames <- paste0('"', keys, '"')
-            for (name in c(
-                    "dissimilarity", "ordinationDistance", "monotonicFit")) {
-                column <- table$getColumn(name)
-                for (i in seq_along(keys))
-                    column$addCell(
-                        miso_num_or_na(shepardPairs[[name]][[i]]),
-                        .key=keys[[i]], .index=i)
-            }
         },
 
         .clearDisplayResults = function() {
-            miso_clear_table(self$results$shepardPairs)
             self$results$shepard$setVisible(FALSE)
             self$results$shepardDescription$setVisible(FALSE)
-            self$results$shepardPairs$setVisible(FALSE)
         },
 
         .selectPlotLabels = function(points, labels, maxLabels=12L) {
@@ -818,7 +782,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$ordinationDescription$setContent("")
             self$results$shepardDescription$setContent("")
             miso_clear_fixed_table(self$results$stress, 9L)
-            private$.clearTable(self$results$shepardPairs)
             private$.clearTable(self$results$envfit)
             self$results$envfit$setNote(
                 key="method",
@@ -830,7 +793,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     "guidance", "warnings",
                     "ordination", "ordinationDescription", "stress",
                     "shepard", "shepardDescription",
-                    "shepardPairs", "envfit",
+                    "envfit",
                     "sites",
                     "features"
                     ))
@@ -1405,7 +1368,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             k <- private$.state$effectiveK
 
             for (table in c(
-                    "stress", "shepardPairs", "sites", "features"))
+                    "stress", "sites", "features"))
                 private$.clearTable(self$results[[table]])
 
             stress <- private$.finiteNumber(fit$stress)
@@ -1434,9 +1397,6 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         item=diagnosticRows[[i]][[1L]],
                         value=diagnosticRows[[i]][[2L]]))
 
-            if (isTRUE(self$options$nmdsShepard) ||
-                    isTRUE(self$options$nmdsShepardTable))
-                private$.populateShepardPairs()
 
             isThreeDimensional <- identical(k, 3L)
             self$results$sites$getColumn("NMDS3")$setVisible(
