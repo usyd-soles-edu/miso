@@ -12,7 +12,7 @@ Release date: 2 October 2026.
 
 - Core result tables are shown before all inputs are assigned. Notices explain problems with the inputs, replacing the generic startup guidance.
 - Changing the nMDS display reuses the fitted ordination, avoiding another run of the analysis. Site and feature score tables are off by default; the feature score table also needs the Feature Scores plot option.
-- SIMPER now combines group means and contribution variability in one optional table per contrast. These tables are faster to produce and include all retained features, regardless of the display limits.
+- SIMPER now combines group means and contribution variability in one optional table per contrast. These tables are faster to produce and follow the same feature shortlist as the contribution ranking.
 - SIMPER heatmaps show full feature names, wrapping long labels and resizing to fit. The caption explains that grey cells mark features omitted by the display limits, which may still have a non-zero contribution.
 
 ## Fixed
@@ -25,7 +25,7 @@ Release date: 2 October 2026.
 
 - In nMDS, site and feature score tables are now off by default. Enable them under **Tables** when you need the coordinates. The feature score table also needs **Feature Scores** enabled under **Plots**.
 - In cluster analysis, the former Dendrogram Structure table has been split into **Sample order** and **Merge history**. Both are available under **Tables** and are off by default.
-- In SIMPER, enable **Group means and contribution variability** under **Tables** to see those details together, in one table per contrast. These tables include all retained features, even when the contribution ranking shows only a shortlist.
+- In SIMPER, enable **Group means and contribution variability** under **Tables** to see those details together, in one table per contrast. The tables follow your **Top N features** and **Cumulative contribution (%)** limits.
 - Separate values tables for the nMDS Shepard diagram, SIMPER contribution plots and SIMPER heatmap have been removed. The plots remain available.
 - To choose your own random seed, enable **Use fixed seed** and enter a positive whole number. Otherwise, MISO generates a seed and keeps it for that analysis. The results report the seed used; older saved analyses with a fixed seed continue to use it.
 

@@ -241,8 +241,18 @@ test_that("diagnostic output survives R serialization and native save-load rerun
     restored$.setStatePathSource(function() path)
     restored$init(); restored$.load(); restored$postInit()
     suppressWarnings(suppressMessages(restored$run()))
-    for (name in c("contributions","variability","assessment"))
+    for (name in c("contributions","assessment")) {
+        expect_false(is.null(original$results[[name]]))
+        expect_false(is.null(restored$results[[name]]))
         expect_identical(restored$results[[name]]$asDF,original$results[[name]]$asDF)
+    }
+    originalDetails <- original$results$detailsByContrast$items
+    restoredDetails <- restored$results$detailsByContrast$items
+    expect_gt(length(originalDetails),0L)
+    expect_identical(vapply(restoredDetails,function(table) table$key,character(1)),
+        vapply(originalDetails,function(table) table$key,character(1)))
+    for (i in seq_along(originalDetails))
+        expect_identical(restoredDetails[[i]]$asDF,originalDetails[[i]]$asDF)
     expect_identical(restored$results$warnings$content,original$results$warnings$content)
     expect_identical(miso_table_note(simper_test_detail_table(restored$results),"meaning"),
         miso_table_note(simper_test_detail_table(original$results),"meaning"))
