@@ -52,18 +52,24 @@ children:
                 name: strata
                 maxItemCount: 1
                 isTarget: true
+                events:
+                  change: update_control_states
           - type: TargetLayoutBox
             label: Continuous Covariates
             children:
               - type: VariablesListBox
                 name: covariates
                 isTarget: true
+                events:
+                  change: update_control_states
       - type: CheckBox
         name: permInteractions
         events:
           change: update_control_states
       - type: ComboBox
         name: permScheme
+        events:
+          change: update_control_states
       - type: ComboBox
         name: permBy
         events:
@@ -76,14 +82,24 @@ children:
     children:
       - type: ComboBox
         name: transform
+        events:
+          change: update_control_states
       - type: ComboBox
         name: distance
+        events:
+          change: update_control_states
       - type: CheckBox
         name: distBinary
+        events:
+          change: update_control_states
       - type: CheckBox
         name: distSqrt
+        events:
+          change: update_control_states
       - type: ComboBox
         name: distAdd
+        events:
+          change: update_control_states
       - type: CheckBox
         name: permPairwise
         style: list
@@ -93,6 +109,31 @@ children:
           - type: ComboBox
             name: permAdjust
             enable: (permPairwise)
+          - type: LayoutBox
+            style: list
+            margin: none
+            children:
+              - type: Label
+                label: With Model interactions, Pairwise comparisons become
+                margin: none
+              - type: Label
+                label: conditional simple-effect tests within
+                margin: none
+              - type: Label
+                label: one Additional factor; they require Marginal terms,
+                margin: none
+              - type: Label
+                label: Free permutations, Holm adjustment,
+                margin: none
+              - type: Label
+                label: no Blocking variable or Continuous covariates,
+                margin: none
+              - type: Label
+                label: and untransformed Euclidean or fourth-root
+                margin: none
+              - type: Label
+                label: Bray-Curtis distances.
+                margin: none
   - type: CollapseBox
     name: plots
     label: Plots

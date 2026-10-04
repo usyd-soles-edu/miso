@@ -375,7 +375,12 @@ test_that("pairwise conflicts preserve the main result and hide pairwise output"
 
     expect_true(interactions$table$visible)
     expect_false(interactions$pairwise$visible)
-    expect_match(as.character(interactions$warnings$asString()), "unavailable while interactions")
+    expect_equal(nrow(interactions$pairwise$asDF), 0L)
+    interactionsWarning <- miso_squish_result(interactions$warnings)
+    expect_match(interactionsWarning,
+        "conditional simple-effect tests", fixed=TRUE)
+    expect_match(interactionsWarning,
+        "require Test type Marginal terms", fixed=TRUE)
     expect_true(omnibus$table$visible)
     expect_false(omnibus$pairwise$visible)
     expect_match(as.character(omnibus$warnings$asString()), "Sequential terms or Marginal terms")
@@ -947,6 +952,23 @@ test_that("PERMANOVA companion display assignment survives plot and model change
     expect_identical(pairwise$name, "permPairwise")
     expect_identical(pairwise$children[[1L]]$name, "permAdjust")
     expect_identical(pairwise$children[[1L]]$enable, "(permPairwise)")
+    helper <- pairwise$children[[2L]]
+    expect_identical(helper$type, "LayoutBox")
+    expect_identical(helper$style, "list")
+    expect_identical(
+        vapply(helper$children, function(item) item$type, character(1L)),
+        rep("Label", length(helper$children)))
+    lines <- vapply(helper$children, function(item) item$label, character(1L))
+    expect_false(any(grepl("<", lines, fixed=TRUE)))
+    expect_lte(max(nchar(lines)), 60L)
+    expect_identical(paste(lines, collapse=" "),
+        paste("With Model interactions, Pairwise comparisons become",
+            "conditional simple-effect tests within",
+            "one Additional factor; they require Marginal terms,",
+            "Free permutations, Holm adjustment,",
+            "no Blocking variable or Continuous covariates,",
+            "and untransformed Euclidean or fourth-root",
+            "Bray-Curtis distances."))
     display <- plots$children[[match(
         "pcoaDisplayVariables",
         vapply(plots$children, function(item)

@@ -53,6 +53,8 @@ const defaults = {
     distBinary: false,
     distSqrt: false,
     distAdd: 'none',
+    transform: 'none',
+    distance: 'bray',
     dispBias: false,
 };
 

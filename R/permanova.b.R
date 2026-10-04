@@ -124,11 +124,21 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             pairwiseShown <- FALSE
             if (isTRUE(self$options$permPairwise)) {
                 if (isTRUE(self$options$permInteractions)) {
-                    private$.state$warnings <- c(
-                        private$.state$warnings,
-                        paste(
-                            "Pairwise comparisons are unavailable while interactions are included.",
-                            "Clear Pairwise comparisons or clear Interactions."))
+                    eligibility <- private$.conditionalPairwiseEligibility(
+                        prep, main$model)
+                    if (isTRUE(eligibility$eligible)) {
+                        pairwise <- private$.runConditionalPairwisePermanova(
+                            prep, main)
+                        pairwiseShown <- pairwise$rows > 0L
+                        private$.state$warnings <- c(
+                            private$.state$warnings,
+                            pairwise$warnings)
+                    }
+                    else {
+                        private$.state$warnings <- c(
+                            private$.state$warnings,
+                            eligibility$message)
+                    }
                 }
                 else if (identical(self$options$permBy, "omnibus")) {
                     private$.state$warnings <- c(
@@ -824,6 +834,199 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
 
+
+        # Conditional simple-effect eligibility for pairwise comparisons with
+        # interactions. The fitted model is authoritative about which additional
+        # factor survived filtering; raw requested selections are rejected even
+        # when common preprocessing cleaned them away.
+        .conditionalPairwiseEligibility = function(prep, model) {
+            unsupported <- character()
+
+            if (! identical(self$options$permBy, "margin"))
+                unsupported <- c(unsupported, sprintf(
+                    "Test type is %s",
+                    private$.testTypeLabel(self$options$permBy)))
+            selected <- unique(miso_clean_vars(self$options$permFactors))
+            if (length(selected) != 1L)
+                unsupported <- c(unsupported, sprintf(
+                    "%d Additional factors are selected", length(selected)))
+            else if (length(model$extraNames) != 1L)
+                unsupported <- c(unsupported, sprintf(
+                    "the Additional factor '%s' was not retained in the fitted model",
+                    selected[[1L]]))
+            if (length(miso_clean_vars(self$options$strata)) > 0L)
+                unsupported <- c(unsupported,
+                    "a Blocking variable is assigned")
+            if (length(miso_clean_vars(self$options$covariates)) > 0L)
+                unsupported <- c(unsupported,
+                    "Continuous covariates are assigned")
+            if (! identical(self$options$permScheme, "free"))
+                unsupported <- c(unsupported,
+                    "Permutation restrictions are not Free")
+            if (! identical(self$options$permAdjust, "holm"))
+                unsupported <- c(unsupported, sprintf(
+                    "P-value adjustment is %s",
+                    private$.adjustmentLabel(self$options$permAdjust)))
+            if (isTRUE(self$options$distBinary))
+                unsupported <- c(unsupported,
+                    "binary presence/absence distances are enabled")
+            if (isTRUE(self$options$distSqrt))
+                unsupported <- c(unsupported,
+                    "square-root distances are enabled")
+            if (! identical(self$options$distAdd, "none"))
+                unsupported <- c(unsupported,
+                    "an additive constant is enabled")
+            distanceSupported <-
+                (identical(self$options$distance, "euclidean") &&
+                        identical(self$options$transform, "none")) ||
+                (identical(self$options$distance, "bray") &&
+                        identical(self$options$transform, "fourthroot"))
+            if (! distanceSupported)
+                unsupported <- c(unsupported,
+                    "the distance settings are not untransformed Euclidean or fourth-root Bray-Curtis")
+
+            if (length(unsupported) == 0L)
+                return(list(eligible=TRUE))
+
+            list(
+                eligible=FALSE,
+                message=paste(
+                    "Pairwise comparisons with Model interactions are available only as",
+                    "conditional simple-effect tests within each level of one Additional factor.",
+                    "They require Test type Marginal terms, exactly one Additional factor retained",
+                    "in the fitted model, Holm P-value adjustment, Free permutations, no Blocking",
+                    "variable, no Continuous covariates, and untransformed Euclidean or fourth-root",
+                    "transformed Bray-Curtis distances without binary form, square-root distances,",
+                    "or an additive constant.",
+                    paste0(
+                        "Unsupported here: ",
+                        paste(unsupported, collapse="; "), "."),
+                    "The main PERMANOVA results are unchanged."))
+        },
+
+        # Planned-family conditional (simple-effect) pairwise fits. The family
+        # is registered before any fit: every unordered Grouping pair within
+        # every retained level of the single Additional factor. Planned rows
+        # keep their position when a subset cannot be estimated, and Holm
+        # adjustment always spans the complete planned family.
+        .runConditionalPairwisePermanova = function(prep, main) {
+            aVar <- prep$primary
+            bVar <- prep$extra[[1L]]
+            aLevels <- levels(prep$group)
+            bValues <- as.character(prep$data[[bVar]])
+            bLevels <- levels(droplevels(as.factor(prep$data[[bVar]])))
+            pairs <- utils::combn(aLevels, 2, simplify=FALSE)
+            planned <- unlist(
+                lapply(bLevels, function(bLevel)
+                    lapply(pairs, function(pair)
+                        list(a1=pair[[1L]], a2=pair[[2L]], b=bLevel))),
+                recursive=FALSE)
+            familyN <- length(planned)
+            warnings <- character()
+            rows <- vector("list", familyN)
+            pvals <- rep(NA_real_, familyN)
+            distMat <- as.matrix(prep$dist)
+
+            for (i in seq_len(familyN)) {
+                plan <- planned[[i]]
+                contrast <- sprintf("%s vs %s (%s: %s)",
+                    plan$a1, plan$a2, bVar, plan$b)
+                notEstimated <- function(reason) {
+                    warnings <<- c(warnings, sprintf(
+                        "Conditional comparison %s was not estimated: %s.",
+                        contrast, reason))
+                    rows[[i]] <<- list(
+                        contrast=paste0(contrast, " (not estimated)"),
+                        f=NA,
+                        p=NA)
+                }
+                idx <- which(bValues == plan$b &
+                    prep$group %in% c(plan$a1, plan$a2))
+                subsetGroup <- droplevels(prep$group[idx])
+                sizes <- table(subsetGroup)
+                if (length(sizes) != 2L || any(sizes < 2L)) {
+                    notEstimated(paste(
+                        "each Grouping level needs at least two samples within",
+                        sprintf("'%s: %s'", bVar, plan$b)))
+                    next
+                }
+                subDist <- distMat[idx, idx, drop=FALSE]
+                subsetDistances <- subDist[lower.tri(subDist)]
+                if (any(! is.finite(subsetDistances)) ||
+                        all(subsetDistances == 0)) {
+                    notEstimated(
+                        "the subset distances are all zero or not finite")
+                    next
+                }
+                subPrep <- prep
+                subPrep$dist <- stats::as.dist(subDist)
+                subPrep$group <- subsetGroup
+                subPrep$data <- prep$data[idx, , drop=FALSE]
+                subPrep$extra <- character(0)
+                subPrep$strata <- character(0)
+                subPrep$covariates <- NULL
+                miso_set_seed(subPrep)
+                result <- tryCatch(
+                    private$.adonisModel(subPrep),
+                    error=function(e) e)
+                if (inherits(result, "error")) {
+                    notEstimated(result$message)
+                    next
+                }
+                tab <- as.data.frame(result)
+                residual <- match("Residual", rownames(tab))
+                # Named .f1 row extraction, not the first table row.
+                f <- suppressWarnings(as.numeric(tab[".f1", "F"]))
+                p <- suppressWarnings(as.numeric(tab[".f1", "Pr(>F)"]))
+                if (is.na(residual) ||
+                        ! is.finite(tab$SumOfSqs[[residual]]) ||
+                        tab$SumOfSqs[[residual]] <= 0 ||
+                        ! is.finite(f) || ! is.finite(p)) {
+                    notEstimated(paste(
+                        "the subset fit did not produce a positive residual sum of",
+                        "squares with finite test statistic and p-value"))
+                    next
+                }
+                rows[[i]] <- list(contrast=contrast, f=f, p=p)
+                pvals[[i]] <- p
+            }
+
+            successful <- is.finite(pvals)
+            adjusted <- rep(NA_real_, familyN)
+            if (any(successful))
+                adjusted[successful] <- stats::p.adjust(
+                    pvals[successful], method="holm", n=familyN)
+            pairwiseRows <- lapply(seq_len(familyN), function(i)
+                list(
+                    key=as.character(i),
+                    values=list(
+                        contrast=rows[[i]]$contrast,
+                        f=rows[[i]]$f,
+                        p=rows[[i]]$p,
+                        padj=if (is.na(adjusted[[i]])) NA else adjusted[[i]])))
+            miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
+
+            self$results$pairwise$setNote(
+                key="scope",
+                note=paste0(
+                    sprintf(
+                        "Conditional simple-effect comparisons of %s within each level of %s.",
+                        aVar, bVar),
+                    " Each comparison refits the Grouping variable on that subset alone,",
+                    " so its residual variance is subset-specific.",
+                    sprintf(
+                        " P-values are Holm-adjusted across all %d planned comparisons,",
+                        familyN),
+                    " including any marked '(not estimated)'.",
+                    " Comparisons assume independent observations and Free permutations",
+                    " within each subset; they are not full-model tests, are not Type III",
+                    " main effects, and are not PRIMER pooled pairwise comparisons.",
+                    " The omnibus interaction test is separate and is not part of this",
+                    " adjusted family."),
+                init=FALSE)
+
+            list(rows=familyN, warnings=warnings)
+        },
 
         .enabledLabel = function(value) {
             if (isTRUE(value)) "Enabled" else "Disabled"

@@ -51,18 +51,38 @@ const focusControl = control => {
         element.focus();
 };
 
+// Distance settings the conditional (simple-effect) pairwise mode supports.
+// The interface cannot know which additional factors the fitted model
+// retains or their levels, so the R-side guard stays authoritative; this is
+// an availability hint only.
+const conditionalDistanceMode = ui =>
+    !ui.distBinary.value() &&
+    !ui.distSqrt.value() &&
+    ui.distAdd.value() === 'none' && (
+        (ui.distance.value() === 'euclidean' && ui.transform.value() === 'none') ||
+        (ui.distance.value() === 'bray' && ui.transform.value() === 'fourthroot'));
+
 const updateControlStates = ui => {
     const pairwise = ui.permPairwise.value();
     const interactions = ui.permInteractions.value();
-    const pairwiseSupported = !interactions && ui.permBy.value() !== 'omnibus';
+    const additional = selections(ui.permFactors.value());
+    const pooledSupported = !interactions && ui.permBy.value() !== 'omnibus';
+    const conditionalSupported = interactions &&
+        ui.permBy.value() === 'margin' &&
+        additional.length === 1 &&
+        ui.permScheme.value() === 'free' &&
+        !hasSelection(ui.strata.value()) &&
+        !hasSelection(ui.covariates.value()) &&
+        conditionalDistanceMode(ui);
+    const pairwiseSupported = pooledSupported || conditionalSupported;
 
-    ui.permInteractions.setEnabled(
-        interactions || (!pairwise && hasSelection(ui.permFactors.value())));
+    // Interactions stay operable with additional factors even while pairwise
+    // comparisons are checked: the backend explains invalid combinations.
+    ui.permInteractions.setEnabled(interactions || additional.length > 0);
     ui.permPairwise.setEnabled(pairwise || pairwiseSupported);
     ui.permAdjust.setEnabled(pairwise && pairwiseSupported);
 
     const primary = selections(ui.factor.value());
-    const additional = selections(ui.permFactors.value());
     const modelFactors = primary.concat(additional);
     const multifactor = additional.length > 0;
     const displayed = selections(ui.pcoaDisplayFactor.value());
