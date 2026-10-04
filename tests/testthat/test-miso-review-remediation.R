@@ -350,7 +350,7 @@ test_that("run-generated notes survive restored analyses and display-only update
     miso_set_option_value(permanovaRestored$options, "showCompanionPcoa", TRUE)
     suppressWarnings(suppressMessages(permanovaRestored$run()))
     expect_match(note_text(permanovaRestored$results$table), "Bray-Curtis dissimilarities", fixed=TRUE)
-    expect_match(note_text(permanovaRestored$results$pairwise), "P-value adjustment")
+    expect_match(note_text(permanovaRestored$results$pairwise), "Holm correction")
 
     permdispOptionsValue <- permdispOptions$new(vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123, dispPairwise=TRUE, showDistancePlot=TRUE)
     permdispAnalysis <- permdispClass$new(options=permdispOptionsValue, data=data)

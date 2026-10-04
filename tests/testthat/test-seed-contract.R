@@ -251,8 +251,13 @@ test_that("reported automatic seeds reproduce randomised analyses and pairwise r
         configure(automatic)
         seed_rerun(automatic)
         label <- seed_result_label(automatic, name)
-        expect_match(label, "[0-9]+ \\(automatic\\)", info=name)
-        recorded <- as.integer(sub(".*?([0-9]+) \\(automatic\\).*", "\\1", label))
+        if (name == "permanova") {
+            expect_match(label, "^Random seed: [0-9]+\\.$")
+            recorded <- as.integer(sub("Random seed: ([0-9]+)\\.", "\\1", label))
+        } else {
+            expect_match(label, "[0-9]+ \\(automatic\\)", info=name)
+            recorded <- as.integer(sub(".*?([0-9]+) \\(automatic\\).*", "\\1", label))
+        }
         expect_true(recorded > 0L, info=name)
         expect_identical(automatic$options$seed, 123, info=name)
         expect_false(automatic$options$useFixedSeed, info=name)
@@ -260,7 +265,8 @@ test_that("reported automatic seeds reproduce randomised analyses and pairwise r
         fixed <- seed_analysis(name, seed=recorded)
         configure(fixed)
         seed_rerun(fixed)
-        expect_match(seed_result_label(fixed, name), "\\(fixed\\)", info=name)
+        expect_match(seed_result_label(fixed, name),
+            if (name == "permanova") "^Fixed seed:" else "\\(fixed\\)", info=name)
         tables <- switch(name, permanova=c("table", "pairwise"),
             anosim=c("global", "pairwise"), permdisp=c("anova", "pairwise"),
             simper=c("assessment", "contributions"), nmds=c("sites", "envfit"))
@@ -355,10 +361,12 @@ test_that("analysis seeds remain stable through refits until manually replaced",
         seed_set_option(state, "seed", 867)
         seed_set_option(state, "useFixedSeed", TRUE)
         seed_rerun(state)
-        expect_match(seed_result_label(state, name), "867 \\(fixed\\)", info=name)
+        expect_match(seed_result_label(state, name),
+            if (name == "permanova") "Fixed seed: 867." else "867 \\(fixed\\)", info=name)
         seed_set_option(state, "useFixedSeed", FALSE)
         seed_rerun(state)
-        expect_match(seed_result_label(state, name), "867 \\(automatic\\)", info=name)
+        expect_match(seed_result_label(state, name),
+            if (name == "permanova") "Random seed: 867." else "867 \\(automatic\\)", info=name)
         expect_false(state$analysis$results$seedState$visible, info=name)
     }
 })

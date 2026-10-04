@@ -98,25 +98,20 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             })
             miso_reconcile_table_rows(self$results$table, termRows)
 
-            permutation <- private$.state$permutation
-            blockDetail <- if (isTRUE(permutation$blockUsed))
-                sprintf(" Blocking variable: %s.", permutation$block)
-            else ""
-            sequenceDetail <- if (identical(self$options$permScheme, "series"))
-                " Sequence order: Current data-row order."
-            else ""
+            private$.state$mainPermutationN <- private$.permutationCount(main$result)
             self$results$table$setNote(
                 key="method",
-                note=paste0(
+                note=trimws(paste(
                     miso_method_note(
                         private$.transformLabel(self$options$transform),
                         private$.distanceLabel(self$options$distance),
                         self$options$distBinary, self$options$distSqrt,
                         private$.additiveLabel(self$options$distAdd)),
-                    sprintf(" Test type: %s. Permutation restrictions: %s (%d requested).",
-                        private$.testTypeLabel(self$options$permBy),
-                        permutation$effective, as.integer(self$options$permN)),
-                    blockDetail, sequenceDetail),
+                    sprintf("%s with %d permutations.",
+                        switch(self$options$permBy, omnibus="Omnibus test",
+                            terms="Sequential tests", margin="Marginal tests"),
+                        private$.state$mainPermutationN),
+                    private$.permutationRestrictionNote())),
                 init=FALSE)
 
             private$.runCompanionPcoa(prep, main$model)
@@ -215,7 +210,9 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
             private$.assemblePermanovaResults(prep, main)
             self$results$table$setNote(key="seed",
-                note=paste0("Random seed: ", miso_seed_label(prep), "."),
+                note=sprintf("%s seed: %d.",
+                    if (identical(prep$seedSource, "fixed")) "Fixed" else "Random",
+                    prep$actualSeed),
                 init=FALSE)
         },
 
@@ -750,6 +747,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             pairs <- utils::combn(groups, 2, simplify=FALSE)
             rows <- list()
             warnings <- character()
+            permutationCounts <- integer()
             distMat <- as.matrix(prep$dist)
 
             for (pair in pairs) {
@@ -787,6 +785,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                             contrast))
                     next
                 }
+                permutationCounts <- c(permutationCounts,
+                    private$.permutationCount(result))
                 rows[[length(rows) + 1L]] <- list(
                     contrast=contrast,
                     f=f,
@@ -814,21 +814,17 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
             retained <- c(prep$extra, prep$covariateNames)
-            retainedText <- if (length(retained) == 0L) "" else
-                sprintf(" Adjustment terms: %s.", paste(retained, collapse=", "))
-            permutation <- private$.state$permutation
-            blockDetail <- if (isTRUE(permutation$blockUsed))
-                sprintf(" Blocking variable: %s.", permutation$block) else ""
-            sequenceDetail <- if (identical(self$options$permScheme, "series"))
-                " Sequence order: Current data-row order." else ""
+            comparisons <- if (length(retained) == 0L)
+                sprintf("%s comparisons.", prep$primary)
+            else sprintf("%s comparisons, adjusted for %s.",
+                prep$primary, paste(retained, collapse=", "))
+            adjustment <- if (identical(method, "none")) "Unadjusted p-values."
+            else sprintf("%s correction across %d contrasts.",
+                private$.adjustmentLabel(method), length(pvals))
             self$results$pairwise$setNote(
                 key="scope",
-                note=paste0(sprintf(
-                    "Grouping variable: %s. Test type: %s.%s Permutation restrictions: %s.",
-                    prep$primary, private$.testTypeLabel(self$options$permBy),
-                    retainedText, permutation$effective), blockDetail, sequenceDetail,
-                    sprintf(" P-value adjustment: %s across %d available contrasts.",
-                        private$.adjustmentLabel(self$options$permAdjust), length(pvals))),
+                note=paste0(comparisons, " ", adjustment,
+                    private$.pairwisePermutationNote(permutationCounts)),
                 init=FALSE)
 
             list(rows=length(rows), warnings=warnings)
@@ -926,6 +922,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             warnings <- character()
             rows <- vector("list", familyN)
             pvals <- rep(NA_real_, familyN)
+            permutationCounts <- integer()
             distMat <- as.matrix(prep$dist)
 
             for (i in seq_len(familyN)) {
@@ -988,6 +985,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "squares with finite test statistic and p-value"))
                     next
                 }
+                permutationCounts <- c(permutationCounts,
+                    private$.permutationCount(result))
                 rows[[i]] <- list(contrast=contrast, f=f, p=p)
                 pvals[[i]] <- p
             }
@@ -1012,12 +1011,39 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             self$results$pairwise$setNote(
                 key="scope",
-                note=sprintf(
-                    "Conditional comparisons of %s within %s. Holm adjustment across %d planned comparisons.",
+                note=paste0(sprintf(
+                    "%s comparisons within each %s level. Holm correction across %d planned contrasts.",
                     aVar, bVar, familyN),
+                    private$.pairwisePermutationNote(permutationCounts)),
                 init=FALSE)
 
             list(rows=familyN, warnings=warnings)
+        },
+
+        .permutationCount = function(result) {
+            nrow(attr(result, "F.perm"))
+        },
+
+        .permutationRestrictionNote = function() {
+            permutation <- private$.state$permutation
+            if (identical(self$options$permScheme, "series")) {
+                block <- if (isTRUE(permutation$blockUsed))
+                    sprintf(" within blocks defined by %s", permutation$block) else ""
+                return(sprintf("Series permutations%s in data-row order.", block))
+            }
+            if (isTRUE(permutation$blockUsed))
+                return(sprintf("Permutations within blocks defined by %s.", permutation$block))
+            ""
+        },
+
+        .pairwisePermutationNote = function(counts) {
+            # Subsets may exhaust their legal permutations before the main fit.
+            if (length(counts) == 0L || all(counts == private$.state$mainPermutationN))
+                return("")
+            limits <- range(counts)
+            count <- if (limits[[1L]] == limits[[2L]]) as.character(limits[[1L]])
+                else sprintf("%d–%d", limits[[1L]], limits[[2L]])
+            sprintf(" %s permutations per contrast.", count)
         },
 
         .enabledLabel = function(value) {
@@ -1049,7 +1075,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             labels <- c(
                 none="None",
                 sqrt="Square root",
-                fourthroot="Fourth root",
+                fourthroot="Fourth-root",
                 log="Log(x + 1)",
                 pa="Presence/absence",
                 wisconsin="Wisconsin",

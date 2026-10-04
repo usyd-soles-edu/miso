@@ -216,7 +216,7 @@ test_that("PERMANOVA permutation notices follow the restriction truth table", {
         "Blocking variable 'block' is assigned but not used with Free permutations.",
         fixed=TRUE)
     expect_match(miso_table_note(results$freeWithBlock$table, "method"),
-        "Permutation restrictions: Free", fixed=TRUE)
+        "permutations.", fixed=TRUE)
 
     expect_true(results$withinWithoutBlock$guidance$visible)
     expect_match(miso_squish_result(results$withinWithoutBlock$guidance),
@@ -229,9 +229,9 @@ test_that("PERMANOVA permutation notices follow the restriction truth table", {
     expect_false(results$withinWithBlock$guidance$visible)
     expect_false(results$withinWithBlock$warnings$visible)
     expect_match(miso_table_note(results$withinWithBlock$table, "method"),
-        "Permutation restrictions: Within blocks", fixed=TRUE)
+        "Permutations within blocks defined by block.", fixed=TRUE)
     expect_match(miso_table_note(results$withinWithBlock$table, "method"),
-        "Blocking variable: block", fixed=TRUE)
+        "within blocks defined by block", fixed=TRUE)
 })
 
 
@@ -250,8 +250,8 @@ test_that("PERMANOVA table notes disclose non-default distance and series settin
     expect_match(note, "presence/absence distances", fixed=TRUE)
     expect_match(note, "Square-root distances", fixed=TRUE)
     expect_match(note, "Cailliez correction", fixed=TRUE)
-    expect_match(note, "Permutation restrictions: Series", fixed=TRUE)
-    expect_match(note, "Sequence order: Current data-row order", fixed=TRUE)
+    expect_match(note, "Series permutations", fixed=TRUE)
+    expect_match(note, "in data-row order", fixed=TRUE)
 })
 
 test_that("PERMANOVA output names and suffixes remain stable", {
@@ -1136,7 +1136,7 @@ test_that("PERMANOVA keeps interpretation settings in surviving table notes", {
         data=permanova_state_data(), vars=c("sp1", "sp2", "sp3"),
         factor="group", permN=19, seed=123)))
     expect_true(result$table$visible)
-    expect_match(miso_table_note(result$table, "method"), "Transformation|restriction|Permutation")
+    expect_match(miso_table_note(result$table, "method"), "transformation|permutations")
 })
 
 miso_permanova_cells <- function(table) {
@@ -1231,4 +1231,32 @@ test_that("PERMANOVA publication output omits routine prose", {
     expect_false(grepl("Random seed|Execution:|Disabled|Requested permutation restriction|R compares|not applicable to the Residual", note))
     expect_false(result$companionPcoaDescription$visible)
     expect_identical(result$companionPcoaDescription$content, "")
+})
+
+
+test_that("PERMANOVA notes report actual permutations for small subsets", {
+    data <- data.frame(y=c(1, 2, 4, 6, 8, 11),
+        group=factor(rep(c("A", "B", "C"), each=2)))
+    result <- suppressWarnings(suppressMessages(permanova(
+        data=data, vars="y", factor="group", distance="euclidean",
+        transform="none", permN=999, seed=123, permPairwise=TRUE)))
+    expect_identical(miso_table_note(result$table, "method"),
+        "Untransformed data; Euclidean dissimilarities. Sequential tests with 719 permutations.")
+    expect_identical(miso_table_note(result$table, "seed"), "Fixed seed: 123.")
+    expect_identical(miso_table_note(result$pairwise, "scope"),
+        "group comparisons. Holm correction across 3 contrasts. 23 permutations per contrast.")
+
+    unadjusted <- suppressWarnings(suppressMessages(permanova(
+        data=data, vars="y", factor="group", distance="euclidean",
+        permN=999, seed=123, permPairwise=TRUE, permAdjust="none")))
+    expect_match(miso_table_note(unadjusted$pairwise, "scope"),
+        "Unadjusted p-values.", fixed=TRUE)
+
+    # Unequal subset sizes must show a range rather than the requested count.
+    extra <- data.frame(y=13, group=factor("C", levels=levels(data$group)))
+    varied <- suppressWarnings(suppressMessages(permanova(
+        data=rbind(data, extra), vars="y", factor="group", distance="euclidean",
+        permN=999, seed=123, permPairwise=TRUE)))
+    expect_match(miso_table_note(varied$pairwise, "scope"),
+        "23–119 permutations per contrast.", fixed=TRUE)
 })

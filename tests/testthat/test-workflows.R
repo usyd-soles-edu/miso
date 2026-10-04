@@ -363,7 +363,7 @@ test_that("PERMANOVA returns stable numeric results", {
             0L)
     }
     expect_match(miso_table_note(res$table, "method"),
-        "Permutation restrictions: Free", fixed=TRUE)
+        "Sequential tests with 19 permutations.", fixed=TRUE)
     expect_false(grepl("NaN", res$asString(), fixed=TRUE))
 })
 

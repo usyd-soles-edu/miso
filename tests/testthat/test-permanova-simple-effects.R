@@ -131,7 +131,7 @@ test_that("conditional simple effects match independent manual oracles", {
 
     note <- miso_table_note(result$pairwise, "scope")
     expect_identical(note,
-        "Conditional comparisons of A within B. Holm adjustment across 6 planned comparisons.")
+        "A comparisons within each B level. Holm correction across 6 planned contrasts.")
 })
 
 test_that("conditional p-values reproduce the fixed seeded schedule", {
@@ -380,9 +380,9 @@ test_that("noninteraction pairwise workflows and seed notes are unchanged", {
     expect_equal(pairwise$padj,
         stats::p.adjust(pairwise$p, method="holm"), tolerance=1e-12)
     expect_match(miso_table_note(legacy$pairwise, "scope"),
-        "P-value adjustment: Holm across 3 available contrasts", fixed=TRUE)
+        "Holm correction across 3 contrasts", fixed=TRUE)
     expect_match(miso_table_note(legacy$table, "seed"),
-        "Random seed: 123 (fixed)", fixed=TRUE)
+        "Fixed seed: 123.", fixed=TRUE)
 })
 
 test_that("conditional results are deterministic and row-order invariant in F", {
@@ -398,4 +398,16 @@ test_that("conditional results are deterministic and row-order invariant in F", 
     expect_identical(result$pairwise$asDF$contrast, conditional_contrasts)
     expect_equal(result$pairwise$asDF$f, first$pairwise$asDF$f, tolerance=1e-9)
     expect_equal(nrow(result$pairwise$asDF), 6L)
+})
+
+
+test_that("conditional notes disclose subset enumeration counts", {
+    data <- data.frame(y=seq_len(12),
+        A=factor(rep(c("A1", "A2", "A3"), each=4)),
+        B=factor(rep(rep(c("B1", "B2"), each=2), 3)))
+    result <- run_conditional_effects(data=data, permN=999)
+    expect_identical(miso_table_note(result$pairwise, "scope"),
+        paste("A comparisons within each B level.",
+            "Holm correction across 6 planned contrasts.",
+            "23 permutations per contrast."))
 })
