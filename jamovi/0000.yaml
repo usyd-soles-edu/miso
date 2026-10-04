@@ -1,12 +1,12 @@
 ---
 title: Multivariate Inference, Similarity and Ordination (MISO)
 name: miso
-version: 1.1.0
+version: 1.2.0
 jms: '1.0'
 authors:
   - Januar Harianto
 maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
-date: '2026-10-02'
+date: '2026-10-04'
 type: R
 description: >-
   Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and cluster analysis

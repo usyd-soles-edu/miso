@@ -1,3 +1,27 @@
+# MISO 1.2.0
+
+Release date: 4 October 2026.
+
+## Added
+
+- PERMANOVA can compare Grouping levels within each level of one Additional factor when Model interactions is enabled. These conditional comparisons use subset-specific fits and Holm adjustment across the complete planned family, retaining comparisons that cannot be estimated. Supported settings are described in the README.
+
+## Changed
+
+- PERMANOVA now uses one variable selector for Feature Variables, the Grouping Variable, Additional Factors, the Blocking Variable and Continuous Covariates. Model interactions sits beneath Additional Factors; Permutation Restrictions and Test Type are in Analysis Choices.
+- Conditional pairwise results group contrasts by the Additional factor level instead of repeating that level in each contrast label.
+- PERMANOVA and pairwise notes are shorter. They report actual permutation counts and identify the seed as Random or Fixed; methodological details are in the README.
+
+## Installation
+
+Choose the `.jmo` file for your computer:
+
+- Apple Silicon Mac: `miso-1.2.0-macos-arm64.jmo`.
+- Intel Mac: `miso-1.2.0-macos-x64.jmo`.
+- Windows 64-bit: `miso-1.2.0-win-x64.jmo`.
+
+In jamovi, choose **Modules → Sideload Module** and select the file.
+
 # MISO 1.1.0
 
 Release date: 2 October 2026.

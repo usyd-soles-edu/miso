@@ -1,7 +1,7 @@
 Package: miso
 Type: Package
 Title: Multivariate Inference, Similarity and Ordination (MISO)
-Version: 1.1.0
+Version: 1.2.0
 Author: Januar Harianto
 Maintainer: Januar Harianto <januar.harianto@sydney.edu.au>
 Description: Provides PERMANOVA, PERMDISP, ANOSIM, SIMPER, nMDS, PCoA, and cluster
