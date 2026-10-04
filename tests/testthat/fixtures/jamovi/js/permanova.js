@@ -122,21 +122,11 @@ const updateControlStates = ui => {
 };
 
 const revealActiveSections = ui => {
-    const studyIsActive =
-        hasSelection(ui.permFactors.value()) ||
-        hasSelection(ui.strata.value()) ||
-        hasSelection(ui.covariates.value()) ||
-        ui.permInteractions.value() ||
-        ui.permBy.value() !== 'terms' ||
-        ui.permScheme.value() !== 'free';
-
     const reproducibilityIsActive =
         Number(ui.permN.value()) !== 999 ||
         ui.useFixedSeed.value() ||
         ui.useParallel.value();
 
-    if (studyIsActive)
-        ui.studyDesign.expand();
     if (reproducibilityIsActive)
         ui.reproducibility.expand();
     if (ui.showCompanionPcoa.value() ||

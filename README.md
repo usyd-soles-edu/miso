@@ -58,6 +58,14 @@ jmvtools::install(pkg = ".")
 | Binary distance | No | No | Yes |
 | Main plots | Ordination and Shepard | Dendrogram | Ordination |
 
+## PERMANOVA pairwise comparisons with interactions
+
+With **Model interactions** enabled, **Pairwise comparisons** tests each pair of Grouping levels within each level of one Additional factor. This mode requires **Marginal terms**, exactly one Additional factor retained in the fitted model, **Holm** adjustment, **Free** permutations, no Blocking variable or Continuous covariates, and either untransformed Euclidean or fourth-root Bray-Curtis distances. Binary distances, square-root distances and additive constants are not supported in this mode.
+
+Each comparison refits the Grouping variable on its subset, using that subset's residual variance. Holm adjustment covers the complete planned family, including comparisons marked “not estimated”. Each Grouping level needs at least two samples in a subset; subsets with zero distances or invalid fitted statistics are also marked “not estimated”.
+
+These tests assume independent observations and free permutations within each subset. They are conditional simple-effect tests, rather than full-model tests, Type III main effects or PRIMER pooled pairwise comparisons. The omnibus interaction test is separate from the adjusted pairwise family; comparisons are calculated regardless of its significance.
+
 ## License
 
 MISO is free software released under the **GNU General Public License v2 or later** ([GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html)). The full terms are in [`LICENSE`](LICENSE).

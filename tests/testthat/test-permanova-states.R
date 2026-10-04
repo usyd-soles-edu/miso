@@ -33,22 +33,24 @@ expect_result_visibility <- function(result, visible, hidden) {
         expect_false(result[[name]]$visible, info=paste(name, "should be hidden"))
 }
 
-test_that("PERMANOVA study design controls use the full option width", {
+test_that("PERMANOVA model variables share the main variable supplier", {
     ui <- yaml::read_yaml(
         miso_fixture_path("jamovi", "permanova.u.yaml"))
     rootNames <- vapply(
         ui$children,
         function(node) if (is.null(node$name)) "" else node$name,
         character(1))
-    studyDesign <- ui$children[[match("studyDesign", rootNames)]]
-
-    expect_false(is.null(studyDesign))
-    expect_identical(studyDesign$label, "Study Design and Model")
-    expect_true(studyDesign$collapsed)
-    expect_identical(studyDesign$children[[1L]]$name, "studyVariables")
-    expect_identical(
-        studyDesign$children[[1L]]$label,
-        "Optional Model Variables")
+    expect_false("studyDesign" %in% rootNames)
+    supplier <- ui$children[[1L]]
+    expect_identical(supplier$type, "VariableSupplier")
+    targets <- vapply(supplier$children, function(target)
+        target$children[[1L]]$name, character(1))
+    expect_identical(targets, c("vars", "factor", "permFactors", "strata", "covariates"))
+    expect_identical(supplier$children[[3L]]$children[[2L]]$name,
+        "permInteractions")
+    choices <- ui$children[[match("analysisChoices", rootNames)]]
+    expect_identical(vapply(choices$children[1:2], `[[`, character(1), "name"),
+        c("permScheme", "permBy"))
 })
 
 test_that("PERMANOVA narrative results use bounded HTML", {
@@ -947,28 +949,13 @@ test_that("PERMANOVA companion display assignment survives plot and model change
     plots <- ui$children[[match(
         "plots", vapply(ui$children, function(item)
             if (is.null(item$name)) "" else item$name, character(1)))]]
-    pairwise <- yaml::read_yaml(
-        miso_fixture_path("jamovi", "permanova.u.yaml"))$children[[3L]]$children[[6L]]
+    choices <- ui$children[[match("analysisChoices", vapply(ui$children,
+        function(item) if (is.null(item$name)) "" else item$name, character(1)))]]
+    pairwise <- choices$children[[match("permPairwise", vapply(choices$children,
+        `[[`, character(1), "name"))]]
     expect_identical(pairwise$name, "permPairwise")
     expect_identical(pairwise$children[[1L]]$name, "permAdjust")
     expect_identical(pairwise$children[[1L]]$enable, "(permPairwise)")
-    helper <- pairwise$children[[2L]]
-    expect_identical(helper$type, "LayoutBox")
-    expect_identical(helper$style, "list")
-    expect_identical(
-        vapply(helper$children, function(item) item$type, character(1L)),
-        rep("Label", length(helper$children)))
-    lines <- vapply(helper$children, function(item) item$label, character(1L))
-    expect_false(any(grepl("<", lines, fixed=TRUE)))
-    expect_lte(max(nchar(lines)), 60L)
-    expect_identical(paste(lines, collapse=" "),
-        paste("With Model interactions, Pairwise comparisons become",
-            "conditional simple-effect tests within",
-            "one Additional factor; they require Marginal terms,",
-            "Free permutations, Holm adjustment,",
-            "no Blocking variable or Continuous covariates,",
-            "and untransformed Euclidean or fourth-root",
-            "Bray-Curtis distances."))
     display <- plots$children[[match(
         "pcoaDisplayVariables",
         vapply(plots$children, function(item)

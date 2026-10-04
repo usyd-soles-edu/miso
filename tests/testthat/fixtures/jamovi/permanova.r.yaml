@@ -144,6 +144,11 @@ items:
     visible: false
     rows: 0
     columns:
+      - name: condition
+        title: Group
+        type: text
+        visible: false
+        combineBelow: true
       - name: contrast
         title: Contrast
         type: text

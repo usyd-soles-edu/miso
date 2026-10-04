@@ -500,6 +500,12 @@ permanovaResults <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                 rows=0,
                 columns=list(
                     list(
+                        `name`="condition",
+                        `title`="Group",
+                        `type`="text",
+                        `visible`=FALSE,
+                        `combineBelow`=TRUE),
+                    list(
                         `name`="contrast",
                         `title`="Contrast",
                         `type`="text"),

@@ -258,6 +258,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             miso_clear_table(self$results$companionPcoaSites)
             miso_clear_table(self$results$companionPcoaCentroids)
             miso_clear_table_values(self$results$pairwise)
+            self$results$pairwise$getColumn("condition")$setVisible(FALSE)
             self$results$pairwise$setNote(
                 key="scope",
                 note="",
@@ -929,12 +930,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             for (i in seq_len(familyN)) {
                 plan <- planned[[i]]
-                contrast <- sprintf("%s vs %s (%s: %s)",
-                    plan$a1, plan$a2, bVar, plan$b)
+                contrast <- sprintf("%s vs %s", plan$a1, plan$a2)
+                warningContrast <- sprintf("%s (%s: %s)", contrast, bVar, plan$b)
                 notEstimated <- function(reason) {
                     warnings <<- c(warnings, sprintf(
                         "Conditional comparison %s was not estimated: %s.",
-                        contrast, reason))
+                        warningContrast, reason))
                     rows[[i]] <<- list(
                         contrast=paste0(contrast, " (not estimated)"),
                         f=NA,
@@ -1000,29 +1001,20 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 list(
                     key=as.character(i),
                     values=list(
+                        condition=planned[[i]]$b,
                         contrast=rows[[i]]$contrast,
                         f=rows[[i]]$f,
                         p=rows[[i]]$p,
                         padj=if (is.na(adjusted[[i]])) NA else adjusted[[i]])))
+            self$results$pairwise$getColumn("condition")$setTitle(bVar)
+            self$results$pairwise$getColumn("condition")$setVisible(TRUE)
             miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
             self$results$pairwise$setNote(
                 key="scope",
-                note=paste0(
-                    sprintf(
-                        "Conditional simple-effect comparisons of %s within each level of %s.",
-                        aVar, bVar),
-                    " Each comparison refits the Grouping variable on that subset alone,",
-                    " so its residual variance is subset-specific.",
-                    sprintf(
-                        " P-values are Holm-adjusted across all %d planned comparisons,",
-                        familyN),
-                    " including any marked '(not estimated)'.",
-                    " Comparisons assume independent observations and Free permutations",
-                    " within each subset; they are not full-model tests, are not Type III",
-                    " main effects, and are not PRIMER pooled pairwise comparisons.",
-                    " The omnibus interaction test is separate and is not part of this",
-                    " adjusted family."),
+                note=sprintf(
+                    "Conditional comparisons of %s within %s. Holm adjustment across %d planned comparisons.",
+                    aVar, bVar, familyN),
                 init=FALSE)
 
             list(rows=familyN, warnings=warnings)

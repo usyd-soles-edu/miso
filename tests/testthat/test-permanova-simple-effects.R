@@ -86,8 +86,8 @@ scheduled_p <- function(x, z, seed=123, nperm=99) {
 }
 
 conditional_contrasts <- c(
-    "A1 vs A2 (B: B1)", "A1 vs A3 (B: B1)", "A2 vs A3 (B: B1)",
-    "A1 vs A2 (B: B2)", "A1 vs A3 (B: B2)", "A2 vs A3 (B: B2)")
+    "A1 vs A2", "A1 vs A3", "A2 vs A3",
+    "A1 vs A2", "A1 vs A3", "A2 vs A3")
 
 test_that("conditional simple effects match independent manual oracles", {
     expect_equal(pooled_f(c(1, 2, 3, 5), c(6, 8, 9, 12)),
@@ -108,6 +108,11 @@ test_that("conditional simple effects match independent manual oracles", {
     expect_true(result$pairwise$visible)
     expect_equal(nrow(pairwise), 6L)
     expect_identical(pairwise$contrast, conditional_contrasts)
+    expect_identical(pairwise$condition, rep(c("B1", "B2"), each=3L))
+    condition <- result$pairwise$getColumn("condition")
+    expect_identical(condition$title, "B")
+    expect_true(condition$visible)
+    expect_true(condition$combineBelow)
     expect_equal(pairwise$f[[1L]], 15.7090909090909, tolerance=1e-9)
     expect_equal(pairwise$f[[4L]], 12.65625, tolerance=1e-9)
 
@@ -125,16 +130,8 @@ test_that("conditional simple effects match independent manual oracles", {
     expect_equal(pairwise$padj, manual_holm(pairwise$p, 6L), tolerance=1e-12)
 
     note <- miso_table_note(result$pairwise, "scope")
-    expect_match(note,
-        "Conditional simple-effect comparisons of A within each level of B.",
-        fixed=TRUE)
-    expect_match(note, "Holm-adjusted across all 6 planned comparisons",
-        fixed=TRUE)
-    expect_match(note, "subset-specific", fixed=TRUE)
-    expect_match(note, "Free permutations", fixed=TRUE)
-    expect_match(note, "not Type III", fixed=TRUE)
-    expect_match(note, "not PRIMER pooled pairwise comparisons", fixed=TRUE)
-    expect_match(note, "omnibus interaction test is separate", fixed=TRUE)
+    expect_identical(note,
+        "Conditional comparisons of A within B. Holm adjustment across 6 planned comparisons.")
 })
 
 test_that("conditional p-values reproduce the fixed seeded schedule", {
@@ -174,7 +171,7 @@ test_that("scheduled permutation oracle permutes responses not labels", {
     result <- run_conditional_effects(data=data)
     pairwise <- result$pairwise$asDF
 
-    expect_identical(pairwise$contrast[[1L]], "A1 vs A2 (B: B1)")
+    expect_identical(pairwise$contrast[[1L]], "A1 vs A2")
     expect_equal(pairwise$p[[1L]], 0.38, tolerance=0)
     expect_equal(scheduled_p(data$y[1:4], data$y[5:8]), 0.38, tolerance=0)
 })
@@ -188,9 +185,9 @@ test_that("missing subsets keep planned rows with family-wide Holm", {
     expect_true(result$pairwise$visible)
     expect_equal(nrow(pairwise), 6L)
     expect_match(pairwise$contrast[[5L]],
-        "A1 vs A3 (B: B2) (not estimated)", fixed=TRUE)
+        "A1 vs A3 (not estimated)", fixed=TRUE)
     expect_match(pairwise$contrast[[6L]],
-        "A2 vs A3 (B: B2) (not estimated)", fixed=TRUE)
+        "A2 vs A3 (not estimated)", fixed=TRUE)
     expect_true(all(is.na(pairwise$f[c(5L, 6L)])))
     expect_true(all(is.na(pairwise$p[c(5L, 6L)])))
     expect_true(all(is.na(pairwise$padj[c(5L, 6L)])))
@@ -330,6 +327,17 @@ test_that("conditional state clears across valid, unsupported, and off runs", {
     expect_true(is.null(scopeNote) || !nzchar(scopeNote))
     expect_false(grepl("not estimated",
         miso_squish_result(analysis$results$warnings)))
+
+    # Returning to ordinary pairwise comparisons hides the conditional groups.
+    interactionsOption <- options$option("permInteractions")
+    interactionsOption$.__enclos_env__$private$.value <- FALSE
+    pairwiseOption$.__enclos_env__$private$.value <- TRUE
+    suppressWarnings(suppressMessages(analysis$run()))
+    expect_true(analysis$results$pairwise$visible)
+    expect_false(analysis$results$pairwise$getColumn("condition")$visible)
+    expect_equal(nrow(analysis$results$pairwise$asDF), 3L)
+    expect_identical(analysis$results$pairwise$asDF$contrast,
+        c("A1 vs A2", "A1 vs A3", "A2 vs A3"))
 })
 
 test_that("conditional comparisons do not depend on interaction significance", {
@@ -365,6 +373,7 @@ test_that("noninteraction pairwise workflows and seed notes are unchanged", {
         seed=123)))
     pairwise <- legacy$pairwise$asDF
 
+    expect_false(legacy$pairwise$getColumn("condition")$visible)
     expect_true(legacy$pairwise$visible)
     expect_equal(nrow(pairwise), 3L)
     expect_identical(pairwise$contrast, c("A1 vs A2", "A1 vs A3", "A2 vs A3"))
