@@ -340,7 +340,7 @@ test_that("result YAML references resolve to applicable citation records", {
 
 test_that("run-generated notes survive restored analyses and display-only updates", {
     data <- data.frame(sp1=c(1,2,1,7,8,7,3,4,3), sp2=c(2,1,2,8,7,8,4,3,4), sp3=c(1,1,2,6,7,6,3,3,2), group=factor(rep(c("A", "B", "C"), each=3)), block=factor(rep(1:3, times=3)))
-    note_text <- function(table) as.character(table$asString())
+    note_text <- miso_squish_result
     restore_analysis <- function(analysis) unserialize(serialize(analysis, NULL))
 
     permanovaOptionsValue <- permanovaOptions$new(vars=c("sp1", "sp2", "sp3"), factor="group", permN=19, seed=123, permPairwise=TRUE)

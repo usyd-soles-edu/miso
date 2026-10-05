@@ -329,6 +329,7 @@ test_that("reported seeds persist in saved jamovi results", {
         label <- seed_result_label(original, name)
         statePath <- tempfile()
         original$analysis$.setStatePathSource(function() statePath)
+        miso_attach_options_proto(original$analysis$options)
         original$analysis$.save()
         restored <- seed_analysis(name, useFixedSeed=FALSE)
         restored$analysis$.setStatePathSource(function() statePath)

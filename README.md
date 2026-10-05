@@ -80,6 +80,12 @@ To run the same R check locally, install the package's dependencies plus `pkgloa
 `Rscript .github/scripts/run-r-tests.R` from the repository root. Repository rules
 can require the two checks before merging once they have run successfully on GitHub.
 
+Some `jmvcore` binaries were built without saved-result support. CI rebuilds
+`jmvcore` from source when needed, after installing `RProtoBuf`, and caches the
+repaired package. If the local check reports this issue, reinstall it with
+`install.packages("jmvcore", repos="https://cloud.r-project.org", type="source")`
+after installing `RProtoBuf`.
+
 ## License
 
 MISO is free software released under the **GNU General Public License v2 or later** ([GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html)). The full terms are in [`LICENSE`](LICENSE).

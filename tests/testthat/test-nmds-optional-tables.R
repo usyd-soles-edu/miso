@@ -73,18 +73,10 @@ test_that("NMDS saved table selections restore with header-only data", {
         path <- tempfile()
         on.exit(unlink(path), add=TRUE)
         analysis$.setStatePathSource(function() path)
+        miso_attach_options_proto(analysis$options)
         analysis$.save()
-        # Standalone R options have no incoming UI protobuf. Round-trip the
-        # persisted table switches explicitly alongside the structural settings.
-        flags <- c("nmdsSiteTable", "nmdsFeatureTable")
-        optionPB <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOptions"))
-        optionPB$hasNames <- TRUE
-        optionPB$names <- flags
-        optionPB$options <- lapply(flags, function(name) {
-            value <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOption"))
-            value$o <- as.integer(shown)
-            value
-        })
+        # Reopening in jamovi supplies the full saved options message.
+        optionPB <- analysis$options$asProtoBuf()
         options <- nmdsOptions$new(vars=c("a", "b", "c"), seed=123,
             nmdsTrymax=3, nmdsSpecies=TRUE)
         options$fromProtoBuf(RProtoBuf::read(

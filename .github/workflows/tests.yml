@@ -45,11 +45,26 @@ jobs:
       - name: Install and cache R dependencies
         uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
         with:
+          cache-version: '2' # Start a cache containing the protobuf-enabled runtime.
           extra-packages: |
             any::pkgload
             any::testthat
             any::RProtoBuf
           install-quarto: false
+
+      - name: Ensure jmvcore has saved-result support
+        run: |
+          Rscript -e '
+            stopifnot(requireNamespace("RProtoBuf", quietly=TRUE))
+            helpers <- c("RProtoBuf_new", "RProtoBuf_read", "RProtoBuf_serialize")
+            runtime <- asNamespace("jmvcore")
+            available <- vapply(helpers, function(name)
+              is.function(get0(name, envir=runtime, inherits=FALSE)), logical(1))
+            # Binary packages can retain NULL helpers from a build without RProtoBuf.
+            # A source rebuild binds them now that RProtoBuf is installed.
+            if (!all(available))
+              install.packages("jmvcore", repos="https://cloud.r-project.org", type="source")
+          '
 
       - name: Run all R and controller tests without skips
         run: Rscript .github/scripts/run-r-tests.R

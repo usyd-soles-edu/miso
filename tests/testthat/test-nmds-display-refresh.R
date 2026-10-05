@@ -46,6 +46,7 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
         options=do.call(nmdsOptions$new, options),
         data=data,
         analysisId=1L)
+    miso_attach_options_proto(original$options)
     suppressMessages(original$run())
     originalPrivate <- original$.__enclos_env__$private
     originalFit <- originalPrivate$.state$fit
@@ -69,6 +70,8 @@ test_that("NMDS serialized fit cache restores tables and display changes", {
         data=data,
         analysisId=1L)
     beforeInitLoad$.setStatePathSource(function() statePath)
+    expect_identical(beforeInitLoad$options$compProtoBuf(original$options$asProtoBuf()),
+        "nmdsHull")
     beforeInitLoad$init()
     beforeInitLoad$.load()
     beforeInitLoad$postInit()

@@ -7,6 +7,41 @@ miso_squish_result <- function(result) {
     gsub("&amp;", "&", text, fixed=TRUE)
 }
 
+# Saved analyses in jamovi receive an options message before they run. Direct R
+# constructors do not, so serialization fixtures must supply the same input.
+miso_attach_options_proto <- function(options) {
+    encode <- function(value) {
+        pb <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOption"))
+        if (is.null(value))
+            pb$o <- 2L
+        else if (is.list(value) || length(value) != 1L) {
+            collection <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOptions"))
+            collection$hasNames <- !is.null(names(value))
+            if (!is.null(names(value)))
+                collection$names <- names(value)
+            collection$options <- lapply(value, encode)
+            pb$c <- collection
+        }
+        else if (is.logical(value))
+            pb$o <- as.integer(value)
+        else if (is.integer(value))
+            pb$i <- value
+        else if (is.numeric(value))
+            pb$d <- value
+        else if (is.character(value))
+            pb$s <- value
+        else
+            stop("Unsupported value in the options protobuf fixture.")
+        pb
+    }
+    packet <- RProtoBuf::new(RProtoBuf::P("jamovi.coms.AnalysisOptions"))
+    packet$hasNames <- TRUE
+    packet$names <- options$names
+    packet$options <- lapply(options$options, function(option) encode(option$value))
+    options$fromProtoBuf(packet)
+    invisible(options)
+}
+
 # jmvcore Table cells are reference objects: rebuilding a table replaces its
 # Cell objects, while in-place value refreshes keep them. Comparing a cell
 # captured before a rerun with the cell after it detects structural rebuilds.
