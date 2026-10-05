@@ -46,6 +46,7 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     self$options$useFixedSeed, self$options$seed),
                 extraVars=self$options$permFactors,
                 strata=self$options$strata,
+                strataActive=!identical(self$options$permScheme, "free"),
                 covariates=self$options$covariates,
                 distBinary=self$options$distBinary)
             if (isTRUE(prep$error)) {
@@ -582,8 +583,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .permutationState = function(prep) {
             scheme <- self$options$permScheme
-            hasBlock <- length(prep$strata) > 0L
-            blockName <- if (hasBlock) prep$strata[[1L]] else NULL
+            hasBlock <- length(prep$assignedStrata) > 0L
+            blockName <- if (hasBlock) prep$assignedStrata[[1L]] else NULL
             labels <- c(
                 free="Free",
                 stratified="Within blocks",

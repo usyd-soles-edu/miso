@@ -372,7 +372,10 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(FALSE)
             }
 
-            labels <- names(pt$pairwise$permuted)
+            # vegan returns pairwise statistics in combn(groups, 2) order;
+            # its hyphen-joined names cannot identify arbitrary group labels.
+            pairs <- utils::combn(pt$groups, 2L, simplify=FALSE)
+            labels <- vapply(pairs, miso_contrast_label, character(1))
             tstat <- as.numeric(pt$statistic[-1L])
             pperm <- as.numeric(pt$pairwise$permuted)
             padj <- if (identical(self$options$dispAdjust, "none"))
@@ -396,7 +399,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pairwiseRows[[shown]] <- list(
                     key=as.character(shown),
                     values=list(
-                        contrast=gsub("-", " vs ", label, fixed=TRUE),
+                        contrast=label,
                         statistic=miso_num_or_na(tstat[[i]]),
                         p=miso_num_or_na(pperm[[i]]),
                         padj=miso_num_or_na(padj[[i]])))

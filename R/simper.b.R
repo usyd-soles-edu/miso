@@ -282,7 +282,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             fit <- tryCatch(
                 vegan::simper(
                     prep$transformed,
-                    prep$group,
+                    private$.simperGroup(prep$group),
                     permutations=0L),
                 error=function(e) e)
             if (inherits(fit, "error")) {
@@ -339,7 +339,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 if (is.na(crossing))
                     crossing <- nrow(tab)
                 displayN <- min(topN, crossing, nrow(tab))
-                contrastTotals[[label]] <- nrow(tab)
+                contrastTotals[[as.character(index)]] <- nrow(tab)
 
                 contrastRows[[length(contrastRows) + 1L]] <- list(
                     contrast=label,
@@ -412,25 +412,27 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             private$.state$plotData <- do.call(
                 rbind,
                 lapply(descriptive$displayRows, as.data.frame, stringsAsFactors=FALSE))
-            private$.state$contrastLabels <- unique(private$.state$plotData$contrast)
+            indices <- !duplicated(private$.state$plotData$contrastIndex)
+            private$.state$contrastLabels <- private$.state$plotData$contrast[indices]
             private$.state$contrastTotals <- descriptive$contrastTotals
         },
 
         .populateContributionPlots = function(descriptive) {
-            for (contrast in private$.state$contrastLabels) {
-                item <- self$results$contributionPlots$addItem(contrast)
+            for (index in unique(private$.state$plotData$contrastIndex)) {
+                rows <- private$.state$plotData[
+                    private$.state$plotData$contrastIndex == index, , drop=FALSE]
+                contrast <- rows$contrast[[1L]]
+                item <- self$results$contributionPlots$addItem(as.character(index))
                 item$setTitle(contrast)
                 item$plot$setSize(580, 430)
                 item$description$setContent(
                     private$.plotDescription(contrast))
                 item$description$setVisible(FALSE)
-                rows <- private$.state$plotData[
-                    private$.state$plotData$contrast == contrast, , drop=FALSE]
                 item$plot$setState(list(
                     rows=rows,
                     simperTop=self$options$simperTop,
                     simperCum=self$options$simperCum,
-                    isFiltered=nrow(rows) < descriptive$contrastTotals[[contrast]]))
+                    isFiltered=nrow(rows) < descriptive$contrastTotals[[as.character(index)]]))
             }
         },
 
@@ -440,7 +442,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             fit <- tryCatch(
                 vegan::simper(
                     prep$transformed,
-                    prep$group,
+                    private$.simperGroup(prep$group),
                     permutations=private$.state$requestedPermutations),
                 error=function(e) e)
             if (inherits(fit, "error")) {
@@ -701,13 +703,14 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(dat) || nrow(dat) == 0L)
                 return(NULL)
             features <- unique(dat$feature)
-            contrasts <- private$.state$contrastLabels
+            contrasts <- unique(dat$contrastIndex)
             grid <- expand.grid(
                 feature=features,
-                contrast=contrasts,
+                contrastIndex=contrasts,
                 stringsAsFactors=FALSE)
-            key <- paste(dat$feature, dat$contrast, sep="\r")
-            gridKey <- paste(grid$feature, grid$contrast, sep="\r")
+            grid$contrast <- dat$contrast[match(grid$contrastIndex, dat$contrastIndex)]
+            key <- paste(match(dat$feature, features), dat$contrastIndex, sep=":")
+            gridKey <- paste(match(grid$feature, features), grid$contrastIndex, sep=":")
             matched <- match(gridKey, key)
             grid$contribution <- dat$contribution[matched]
             grid$missing <- is.na(matched)
@@ -743,7 +746,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             labelWidth <- max(0L, nchar(unlist(lines), type="width"))
             depth <- max(1L, lengths(lines))
             list(labels=labels,
-                width=max(600L, 80L + 8L * labelWidth + 32L * length(unique(dat$contrast))),
+                width=max(600L, 80L + 8L * labelWidth + 32L * length(unique(
+                    if (is.null(dat$contrastIndex)) dat$contrast else dat$contrastIndex))),
                 height=max(500L, 230L + length(features) * max(22L, 18L * depth + 6L)))
         },
 
@@ -760,13 +764,20 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         {
             if (is.null(dat))
                 return(NULL)
+            # Older saved image states used display labels as the x coordinate.
+            if (is.null(dat$contrastIndex))
+                dat$contrastIndex <- match(dat$contrast, unique(dat$contrast))
             dat$feature <- factor(dat$feature, levels = unique(dat$feature))
             dat$contrast <- factor(dat$contrast, levels = unique(dat$contrast))
+            dat$contrastIndex <- factor(dat$contrastIndex, levels = unique(dat$contrastIndex))
             featureLabels <- private$.heatmapLayout(dat)$labels
-            contrastLabels <- .misoUniqueShortLabels(levels(dat$contrast), width = 24L)
-            grid <- dat[, c("feature", "contrast", "missing"), drop = FALSE]
+            firstRows <- !duplicated(dat$contrastIndex)
+            contrastLabels <- stats::setNames(
+                .misoUniqueShortLabels(as.character(dat$contrast[firstRows]), width = 24L),
+                as.character(dat$contrastIndex[firstRows]))
+            grid <- dat[, c("feature", "contrast", "contrastIndex", "missing"), drop = FALSE]
             selected <- dat[!dat$missing, , drop = FALSE]
-            ggplot2::ggplot(grid, ggplot2::aes(x = contrast, y = feature)) + ggplot2::geom_tile(fill = "#D9D9D9",
+            ggplot2::ggplot(grid, ggplot2::aes(x = contrastIndex, y = feature)) + ggplot2::geom_tile(fill = "#D9D9D9",
                 colour = "white", linewidth = 0.35) + ggplot2::geom_tile(data = selected, ggplot2::aes(fill = contribution),
                 colour = "white", linewidth = 0.35) + ggplot2::scale_fill_viridis_c(option = "C", direction = -1,
                 na.value = "#D9D9D9", name = "Contribution (%)") + ggplot2::scale_x_discrete(labels = contrastLabels) +
@@ -792,12 +803,15 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             utils::combn(observed, 2L, simplify=FALSE)
         },
 
+        .simperGroup = function(group) {
+            # vegan keys contrasts by joining group names with an underscore.
+            # First-observed integer codes keep those keys unique and preserve
+            # contrast order, including the order of permutation draws.
+            match(group, unique(group))
+        },
+
         .contrastLabel = function(pair) {
-            quote <- any(grepl("\\bvs\\b", pair, ignore.case=TRUE))
-            if (quote)
-                paste0("\u201c", pair[[1L]], "\u201d vs \u201c", pair[[2L]], "\u201d")
-            else
-                paste(pair, collapse=" vs ")
+            miso_contrast_label(pair)
         },
 
         .hasValue = function(x) {

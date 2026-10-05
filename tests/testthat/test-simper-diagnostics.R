@@ -155,7 +155,7 @@ test_that("detail presentation preserves numerical tables plots p-values and RNG
     expect_match(miso_table_note(simper_test_detail_table(analysis$results),"meaning"),"SD is zero",fixed=TRUE)
     expected <- suppressMessages(original(simper_diagnostic_data()[c("x","y","z")],
         simper_diagnostic_data()$group,permutations=0L))
-    expect_identical(fit,expected)
+    expect_identical(unname(fit),unname(expected))
     # A positive mean / zero SD may retain a finite p, whereas 0/0 is missing.
     set.seed(123)
     assessment <- suppressMessages(original(simper_diagnostic_data()[c("x","y","z")],

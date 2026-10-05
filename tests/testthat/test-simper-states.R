@@ -617,7 +617,7 @@ test_that("contribution plots and heatmap render from serialized Image state", {
         image <- item$plot
         state <- image$state
         expect_false(is.null(state), info=image$key)
-        expect_true(all(state$rows$contrast == image$key), info=image$key)
+        expect_true(all(state$rows$contrastIndex == as.integer(image$key)), info=image$key)
         expect_true(all(state$rows$feature %in% vars), info=image$key)
         expect_equal(state$simperTop, 3, info=image$key)
         expect_equal(state$simperCum, 100, info=image$key)

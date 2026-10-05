@@ -53,7 +53,8 @@ anosimOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "nominal",
                     "ordinal"),
                 permitted=list(
-                    "factor"),
+                    "factor",
+                    "numeric"),
                 default=NULL)
             private$..transform <- jmvcore::OptionList$new(
                 "transform",
@@ -450,7 +451,6 @@ anosim <- function(
             `if`( ! missing(strata), strata, NULL))
 
     for (v in factor) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
-    for (v in strata) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
 
     options <- anosimOptions$new(
         vars = vars,

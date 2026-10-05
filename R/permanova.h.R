@@ -70,7 +70,8 @@ permanovaOptions <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
                     "nominal",
                     "ordinal"),
                 permitted=list(
-                    "factor"),
+                    "factor",
+                    "numeric"),
                 default=NULL)
             private$..covariates <- jmvcore::OptionVariables$new(
                 "covariates",
@@ -652,7 +653,6 @@ permanova <- function(
 
     for (v in factor) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
     for (v in permFactors) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
-    for (v in strata) if (v %in% names(data)) data[[v]] <- as.factor(data[[v]])
 
     options <- permanovaOptions$new(
         vars = vars,

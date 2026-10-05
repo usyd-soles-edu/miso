@@ -49,6 +49,7 @@ options:
       - ordinal
     permitted:
       - factor
+      - numeric
     default: null
 
   - name: transform

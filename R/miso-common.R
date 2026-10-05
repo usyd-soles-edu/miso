@@ -65,6 +65,21 @@ miso_is_missing_var <- function(x) {
     is.null(x) || length(x) == 0 || all(is.na(x) | x == "")
 }
 
+# Labels are presentation only; callers use pair indices for contrast identity.
+miso_contrast_label <- function(pair) {
+    pair <- as.character(pair)
+    quote <- any(grepl("\\bvs\\b", pair, ignore.case=TRUE)) ||
+        any(grepl('["\\\\\u201c\u201d[:cntrl:]]', pair))
+    if (!quote)
+        return(paste(pair, collapse=" vs "))
+
+    escaped <- encodeString(pair, quote='"')
+    escaped <- substring(escaped, 2L, nchar(escaped) - 1L)
+    escaped <- gsub("\u201c", "\\u201c", escaped, fixed=TRUE)
+    escaped <- gsub("\u201d", "\\u201d", escaped, fixed=TRUE)
+    paste0("\u201c", escaped, "\u201d", collapse=" vs ")
+}
+
 miso_transform_community <- function(x, transform) {
     switch(transform,
         none = x,
@@ -111,7 +126,7 @@ miso_normalize_feature_columns <- function(comm) {
     out
 }
 
-miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE) {
+miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distance, seed=0, extraVars=NULL, strata=NULL, requireFactor=TRUE, covariates=NULL, distBinary=FALSE, strataActive=TRUE) {
     warnings <- character()
 
     if (length(vars) == 0)
@@ -125,6 +140,11 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
     extra <- setdiff(extra, c(primary, species))
     strata <- miso_clean_vars(strata)
     strata <- setdiff(strata, c(species, primary, extra))
+    # Keep the assignment for notices. Only active blocks filter samples or
+    # take precedence over the same variable's covariate role.
+    assignedStrata <- strata
+    if (!isTRUE(strataActive))
+        strata <- character()
     covs <- miso_clean_vars(covariates)
     covs <- setdiff(covs, c(species, primary, extra, strata))
     selected <- unique(c(species, primary, extra, strata, covs))
@@ -236,6 +256,7 @@ miso_prepare_resemblance <- function(data, vars, factor=NULL, transform, distanc
         group=group,
         primary=primary,
         extra=extra,
+        assignedStrata=assignedStrata,
         strata=strata,
         covariates=covDF,
         covariateNames=covs,

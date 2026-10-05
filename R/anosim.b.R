@@ -75,6 +75,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     distance=self$options$distance,
                     seed=effectiveSeed,
                     strata=self$options$strata,
+                    strataActive=!identical(private$.requestedRestriction(), "free"),
                     distBinary=self$options$distBinary),
                 error=function(e) e)
             if (inherits(prep, "error")) {
@@ -193,19 +194,25 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$warnings$setVisible(TRUE)
         },
 
+        .requestedRestriction = function() {
+            if (identical(self$options$permRestriction, "free"))
+                self$options$permScheme
+            else
+                self$options$permRestriction
+        },
+
         .restrictionState = function(prep) {
             current <- self$options$permRestriction
             legacy <- self$options$permScheme
-            hasBlock <- length(prep$strata) > 0L
-            blockName <- if (hasBlock) prep$strata[[1L]] else NULL
-            requestedCode <- current
-            effectiveCode <- current
+            hasBlock <- length(prep$assignedStrata) > 0L
+            blockName <- if (hasBlock) prep$assignedStrata[[1L]] else NULL
+            requestedCode <- private$.requestedRestriction()
+            effectiveCode <- requestedCode
             usedLegacy <- FALSE
             warnings <- character()
 
             if (identical(current, "free") && ! identical(legacy, "free")) {
                 usedLegacy <- TRUE
-                requestedCode <- legacy
                 if (identical(legacy, "stratified") && ! hasBlock) {
                     effectiveCode <- "free"
                     warnings <- c(
@@ -213,9 +220,6 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         paste(
                             "Saved Stratified permutations without a blocking variable",
                             "are implemented as Free permutations."))
-                }
-                else {
-                    effectiveCode <- legacy
                 }
             }
 
@@ -247,7 +251,7 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         "Blocking variable '%s' is assigned but not used with Free permutations.",
                         blockName))
 
-            if (hasBlock)
+            if (state$blockUsed)
                 state$blockVector <- droplevels(
                     as.factor(prep$data[[blockName]]))
 
@@ -541,10 +545,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             successful <- list()
             failed <- character()
 
-            for (pair in pairs) {
+            for (pairIndex in seq_along(pairs)) {
+                pair <- pairs[[pairIndex]]
                 idx <- prep$group %in% pair
                 subGroup <- droplevels(prep$group[idx])
-                contrast <- paste(pair, collapse=" vs ")
+                contrast <- miso_contrast_label(pair)
                 if (any(table(subGroup) < 2L)) {
                     failed <- c(failed, contrast)
                     next
@@ -578,11 +583,11 @@ anosimClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     failed <- c(failed, contrast)
                     next
                 }
-                successful[[contrast]] <- list(
+                successful[[length(successful) + 1L]] <- list(
                     contrast=contrast,
                     r=miso_num_or_na(fit$statistic),
                     p=miso_num_or_na(fit$signif))
-                private$.state$pairwisePermutations[[contrast]] <-
+                private$.state$pairwisePermutations[[as.character(pairIndex)]] <-
                     as.integer(fit$permutations)
             }
 
