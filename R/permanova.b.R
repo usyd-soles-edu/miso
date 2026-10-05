@@ -814,11 +814,11 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             })
             miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
-            retained <- c(prep$extra, prep$covariateNames)
-            comparisons <- if (length(retained) == 0L)
-                sprintf("%s comparisons.", prep$primary)
-            else sprintf("%s comparisons, adjusted for %s.",
-                prep$primary, paste(retained, collapse=", "))
+            comparisons <- if (identical(self$options$permBy, "terms"))
+                sprintf("Sequential comparisons of %s, tested first in each pairwise model.",
+                    prep$primary)
+            else sprintf("Marginal comparisons of %s in each pairwise model.",
+                prep$primary)
             adjustment <- if (identical(method, "none")) "Unadjusted p-values."
             else sprintf("%s correction across %d contrasts.",
                 private$.adjustmentLabel(method), length(pvals))

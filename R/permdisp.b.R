@@ -106,6 +106,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             outcome <- private$.runDispersion(prep)
             if (! isTRUE(outcome$success)) {
                 private$.discardKeyedRows()
+                private$.setWarnings(private$.state$warnings)
                 return()
             }
             private$.setWarnings(private$.state$warnings)
@@ -244,8 +245,14 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .runDispersion = function(prep) {
             miso_set_seed(prep)
+            if (nrow(prep$data) <= nlevels(prep$group)) {
+                private$.showGuidance(paste(
+                    "PERMDISP requires residual degrees of freedom to test dispersion.",
+                    "Add replicate samples to at least one group."))
+                return(list(success=FALSE, pairwiseShown=FALSE))
+            }
             fit <- tryCatch(
-                vegan::betadisper(
+                private$.captureWarnings(vegan::betadisper(
                     prep$dist,
                     prep$group,
                     type=self$options$dispType,
@@ -254,7 +261,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     add=if (identical(self$options$distAdd, "none"))
                         FALSE
                     else
-                        self$options$distAdd),
+                        self$options$distAdd), "Distance fit"),
                 error=function(e) e)
             if (inherits(fit, "error")) {
                 private$.showGuidance(paste(
@@ -263,39 +270,23 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(list(success=FALSE, pairwiseShown=FALSE))
             }
 
-            private$.state$fit <- fit
-            private$.state$distances <- data.frame(
-                group=fit$group,
-                distance=fit$distances,
-                check.names=FALSE)
-            private$.state$distanceDiagnostic <-
-                .preparePermdispDistanceDiagnostic(
-                    fit, centre=self$options$dispType)
-            self$results$plot$setState(private$.state$distanceDiagnostic)
-            if (is.null(private$.state$distanceDiagnostic)) {
+            diagnostic <- .preparePermdispDistanceDiagnostic(
+                fit, centre=self$options$dispType)
+            if (is.null(diagnostic)) {
                 private$.showGuidance(paste(
                     "PERMDISP could not produce finite distances to group centres.",
                     "Check that each group contains usable, non-identical samples."))
                 return(list(success=FALSE, pairwiseShown=FALSE))
             }
-            private$.populateDistanceSummary(
-                private$.state$distanceDiagnostic$summaries)
-            private$.populateDistanceDescription()
-
-            private$.state$ordination <- .preparePermdispOrdination(
-                fit, rowIndex=prep$rowIndex)
-            self$results$ordinationPlot$setState(private$.state$ordination)
-            private$.populateOrdination()
-
             restriction <- private$.state$restriction$effectiveCode
             perm <- tryCatch(
-                vegan::permutest(
+                private$.captureWarnings(vegan::permutest(
                     fit,
                     permutations=miso_permutation(
                         self$options$permN,
                         restriction,
                         NULL),
-                    parallel=private$.state$cl),
+                    parallel=private$.state$cl), "Permutation test"),
                 error=function(e) e)
             if (inherits(perm, "error")) {
                 private$.showGuidance(paste(
@@ -306,6 +297,32 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             atab <- as.data.frame(perm$tab)
             rn <- rownames(atab)
+            tested <- atab[trimws(rn) == "Groups", c("F", "Pr(>F)"), drop=FALSE]
+            residualDf <- atab[trimws(rn) %in% c("Residual", "Residuals"), "Df"]
+            if (nrow(tested) != 1L || !all(is.finite(as.matrix(tested))) ||
+                    length(residualDf) != 1L || !is.finite(residualDf) ||
+                    residualDf <= 0) {
+                private$.showGuidance(paste(
+                    "PERMDISP could not produce a finite test statistic and p-value",
+                    "with residual degrees of freedom.",
+                    "Check for zero within-group variation or add replicate samples."))
+                return(list(success=FALSE, pairwiseShown=FALSE))
+            }
+
+            # Publish diagnostic state only after inference succeeds, so a
+            # display-only rerun cannot revive a rejected fit.
+            private$.state$fit <- fit
+            private$.state$distances <- data.frame(
+                group=fit$group, distance=fit$distances, check.names=FALSE)
+            private$.state$distanceDiagnostic <- diagnostic
+            self$results$plot$setState(diagnostic)
+            private$.populateDistanceSummary(diagnostic$summaries)
+            private$.populateDistanceDescription()
+            private$.state$ordination <- .preparePermdispOrdination(
+                fit, rowIndex=prep$rowIndex)
+            self$results$ordinationPlot$setState(private$.state$ordination)
+            private$.populateOrdination()
+
             anovaRows <- list()
             for (i in seq_len(nrow(atab))) {
                 source <- trimws(rn[[i]])
@@ -346,16 +363,24 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             list(success=TRUE, pairwiseShown=pairwiseShown)
         },
 
+        .captureWarnings = function(expr, stage) {
+            withCallingHandlers(expr, warning=function(w) {
+                private$.state$warnings <- c(private$.state$warnings,
+                    paste0(stage, " warning: ", conditionMessage(w)))
+                invokeRestart("muffleWarning")
+            })
+        },
+
         .runPairwise = function(fit, restriction) {
             pt <- tryCatch(
-                vegan::permutest(
+                private$.captureWarnings(vegan::permutest(
                     fit,
                     permutations=miso_permutation(
                         self$options$permN,
                         restriction,
                         NULL),
                     pairwise=TRUE,
-                    parallel=private$.state$cl),
+                    parallel=private$.state$cl), "Pairwise dispersion test"),
                 error=function(e) e)
             if (inherits(pt, "error")) {
                 private$.state$warnings <- c(

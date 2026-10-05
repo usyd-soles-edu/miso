@@ -182,11 +182,12 @@ test_that("PERMDISP preparation failure hides every result shell", {
         hidden=c("warnings", "pairwise", "plot", "plotDescription", "ordinationPlot", "ordinationDescription", "ordinationScores"))
 })
 
-test_that("successful PERMDISP hides guidance warnings and pairwise shells", {
+test_that("successful PERMDISP without warnings hides guidance and pairwise shells", {
     result <- suppressWarnings(suppressMessages(permdisp(
         data=permdisp_state_data(),
         vars=c("sp1", "sp2", "sp3"),
         factor="group",
+        distance="euclidean",
         permN=19,
         seed=123
     )))

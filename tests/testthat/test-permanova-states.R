@@ -1244,7 +1244,8 @@ test_that("PERMANOVA notes report actual permutations for small subsets", {
         "Untransformed data; Euclidean dissimilarities. Sequential tests with 719 permutations.")
     expect_identical(miso_table_note(result$table, "seed"), "Fixed seed: 123.")
     expect_identical(miso_table_note(result$pairwise, "scope"),
-        "group comparisons. Holm correction across 3 contrasts. 23 permutations per contrast.")
+        paste("Sequential comparisons of group, tested first in each pairwise model.",
+            "Holm correction across 3 contrasts. 23 permutations per contrast."))
 
     unadjusted <- suppressWarnings(suppressMessages(permanova(
         data=data, vars="y", factor="group", distance="euclidean",
