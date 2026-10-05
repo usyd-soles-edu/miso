@@ -497,7 +497,7 @@ permdispBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param showDistancePlot .
 #' @param showOrdinationPlot .
 #' @param useFixedSeed Use a positive fixed seed for reproducible permutation
-#'   results; unchecked analyses use the random RNG stream.
+#'   results; unchecked analyses generate and retain an automatic seed.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr

@@ -1,16 +1,42 @@
+# MISO 1.2.1
+
+Release date: 5 October 2026.
+
+## Changed
+
+- Changing plots, labels and optional tables now reuses fitted results across more analyses, avoiding unnecessary recalculation.
+
+## Fixed
+
+- ANOSIM, PERMDISP and SIMPER keep comparisons distinct when group names contain contrast separators or other special characters.
+- PERMANOVA and ANOSIM no longer drop samples because of missing values in an assigned Blocking variable when Free permutations are selected.
+- PERMANOVA pairwise notes now distinguish sequential comparisons, which test the Grouping variable first, from marginal comparisons, which account for the other model terms.
+- PERMDISP reports unavailable test statistics and p-values without presenting them as valid inference, and retains warnings raised during pairwise tests.
+- Cluster analysis keeps generated sample labels unique when they overlap with labels already in the data.
+
+## Installation
+
+Choose the `.jmo` file for your computer:
+
+- Apple Silicon Mac: `miso-1.2.1-macos-arm64.jmo`.
+- Intel Mac: `miso-1.2.1-macos-x64.jmo`.
+- Windows 64-bit: `miso-1.2.1-win-x64.jmo`.
+
+In jamovi, choose **Modules → Sideload Module** and select the file.
+
 # MISO 1.2.0
 
 Release date: 4 October 2026.
 
 ## Added
 
-- PERMANOVA can compare Grouping levels within each level of one Additional factor when Model interactions is enabled. These conditional comparisons use subset-specific fits and Holm adjustment across the complete planned family, retaining comparisons that cannot be estimated. Supported settings are described in the README.
+- PERMANOVA now supports pairwise comparisons between groups within each level of one additional factor when interactions are enabled. Each comparison uses a separate fit for its subset, with Holm adjustment across all planned comparisons. Comparisons that cannot be estimated remain in the results. See the README for supported settings.
 
 ## Changed
 
-- PERMANOVA now uses one variable selector for Feature Variables, the Grouping Variable, Additional Factors, the Blocking Variable and Continuous Covariates. Model interactions sits beneath Additional Factors; Permutation Restrictions and Test Type are in Analysis Choices.
-- Conditional pairwise results group contrasts by the Additional factor level instead of repeating that level in each contrast label.
-- PERMANOVA and pairwise notes are shorter. They report actual permutation counts and identify the seed as Random or Fixed; methodological details are in the README.
+- All PERMANOVA variables can now be assigned in one place: feature variables, the grouping variable, additional factors, a blocking variable and continuous covariates. The interaction option sits beneath additional factors, while permutation restrictions and test type are under analysis choices.
+- Conditional pairwise results are grouped by the levels of the additional factor, keeping contrast labels shorter.
+- PERMANOVA and pairwise notes are shorter and show the number of permutations used. Seeds are labelled as random or fixed, and methodological details are in the README.
 
 ## Installation
 

@@ -27,7 +27,8 @@ permanova(
   showCompanionPcoa = FALSE,
   pcoaDisplayFactor = NULL,
   pcoaCentroids = FALSE,
-  pcoaSpiders = FALSE
+  pcoaSpiders = FALSE,
+  useFixedSeed = TRUE
 )
 }
 \arguments{
@@ -81,10 +82,14 @@ companion PCoA.}
 
 \item{pcoaSpiders}{Whether to connect displayed sites to their group
 centroid; spiders also show centroids.}
+
+\item{useFixedSeed}{Use a positive fixed seed for reproducible permutation
+results; unchecked analyses generate and retain an automatic seed.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
+  \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$table} \tab \tab \tab \tab \tab a table \cr

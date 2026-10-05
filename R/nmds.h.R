@@ -601,8 +601,8 @@ nmdsBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param nmdsSiteTable .
 #' @param nmdsFeatureTable .
 #' @param useFixedSeed Use a positive fixed seed for reproducible ordination
-#'   and environmental-fit results; unchecked analyses use the random RNG
-#'   stream.
+#'   and environmental-fit results; unchecked analyses generate and retain an
+#'   automatic seed.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr

@@ -23,7 +23,8 @@ permdisp(
   dispPairwise = FALSE,
   dispAdjust = "holm",
   showDistancePlot = TRUE,
-  showOrdinationPlot = FALSE
+  showOrdinationPlot = FALSE,
+  useFixedSeed = TRUE
 )
 }
 \arguments{
@@ -64,10 +65,14 @@ permdisp(
 \item{showDistancePlot}{.}
 
 \item{showOrdinationPlot}{.}
+
+\item{useFixedSeed}{Use a positive fixed seed for reproducible permutation
+results; unchecked analyses generate and retain an automatic seed.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
+  \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$anova} \tab \tab \tab \tab \tab a table \cr

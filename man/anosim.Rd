@@ -19,7 +19,8 @@ anosim(
   useParallel = FALSE,
   anosimPairwise = FALSE,
   anosimAdjust = "holm",
-  showRankPlot = TRUE
+  showRankPlot = TRUE,
+  useFixedSeed = TRUE
 )
 }
 \arguments{
@@ -52,10 +53,14 @@ anosim(
 \item{anosimAdjust}{.}
 
 \item{showRankPlot}{.}
+
+\item{useFixedSeed}{Use a positive fixed seed for reproducible permutation
+results; unchecked analyses generate and retain an automatic seed.}
 }
 \value{
 A results object containing:
 \tabular{llllll}{
+  \code{results$seedState} \tab \tab \tab \tab \tab a html \cr
   \code{results$guidance} \tab \tab \tab \tab \tab a html \cr
   \code{results$warnings} \tab \tab \tab \tab \tab a html \cr
   \code{results$global} \tab \tab \tab \tab \tab a table \cr

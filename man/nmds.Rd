@@ -70,8 +70,8 @@ nmds(
 \item{nmdsFeatureTable}{.}
 
 \item{useFixedSeed}{Use a positive fixed seed for reproducible ordination
-and environmental-fit results; unchecked analyses use the random RNG
-stream.}
+and environmental-fit results; unchecked analyses generate and retain an
+automatic seed.}
 }
 \value{
 A results object containing:

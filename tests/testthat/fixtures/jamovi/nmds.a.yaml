@@ -205,6 +205,6 @@ options:
     title: Use fixed seed
     type: Bool
     default: true
-    description: Use a positive fixed seed for reproducible ordination and environmental-fit results; unchecked analyses use the random RNG stream.
+    description: Use a positive fixed seed for reproducible ordination and environmental-fit results; unchecked analyses generate and retain an automatic seed.
 
 ...

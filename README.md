@@ -25,7 +25,9 @@ package reference:
 
 ## Installation
 
-MISO is being prepared for submission to the jamovi module library. Until it is listed, clone this repository and run the following from the module repository directory:
+Download the `.jmo` file for your computer from the [latest GitHub release](https://github.com/usyd-soles-edu/miso/releases/latest): **macos-arm64** for Apple Silicon Macs, **macos-x64** for Intel Macs, or **win-x64** for 64-bit Windows. In jamovi, choose **Modules → Sideload Module** and select the downloaded file.
+
+MISO is being prepared for submission to the jamovi module library. To build from source, clone this repository and run the following from the module repository directory:
 
 ```r
 install.packages("jmvtools") # first time only
@@ -58,13 +60,25 @@ jmvtools::install(pkg = ".")
 | Binary distance | No | No | Yes |
 | Main plots | Ordination and Shepard | Dendrogram | Ordination |
 
-## PERMANOVA pairwise comparisons with interactions
+## Permutation restrictions and retained samples
 
-With **Model interactions** enabled, **Pairwise comparisons** tests each pair of Grouping levels within each level of one Additional factor. This mode requires **Marginal terms**, exactly one Additional factor retained in the fitted model, **Holm** adjustment, **Free** permutations, no Blocking variable or Continuous covariates, and either untransformed Euclidean or fourth-root Bray-Curtis distances. Binary distances, square-root distances and additive constants are not supported in this mode.
+In PERMANOVA and ANOSIM, assigning a Blocking variable restricts permutations only when a restriction that uses it is selected. With **Free** permutations, the Blocking variable is inactive: its missing values do not remove samples from the analysis. Other assigned analysis variables still determine which samples are retained.
+
+## PERMANOVA pairwise comparisons
+
+Without interactions, each comparison refits the selected model on a pair of Grouping levels. With **Sequential terms**, the Grouping variable is tested first, before Additional factors and Continuous covariates. With **Marginal terms**, it is tested after accounting for the other model terms. Active permutation restrictions are retained in each subset. Pairwise comparisons are unavailable with **Omnibus** tests.
+
+### Comparisons with interactions
+
+With **Model interactions** enabled, **Pairwise comparisons** tests each pair of Grouping levels within each level of one Additional factor. This mode requires **Marginal terms**, exactly one selected Additional factor retained in the fitted model, **Holm** adjustment, **Free** permutations, no Blocking variable or Continuous covariates, and either untransformed Euclidean or fourth-root Bray-Curtis distances. Binary distances, square-root distances and additive constants are not supported in this mode.
 
 Each comparison refits the Grouping variable on its subset, using that subset's residual variance. Holm adjustment covers the complete planned family, including comparisons marked “not estimated”. Each Grouping level needs at least two samples in a subset; subsets with zero distances or invalid fitted statistics are also marked “not estimated”.
 
 These tests assume independent observations and free permutations within each subset. They are conditional simple-effect tests, rather than full-model tests, Type III main effects or PRIMER pooled pairwise comparisons. The omnibus interaction test is separate from the adjusted pairwise family; comparisons are calculated regardless of its significance.
+
+## Reusing fitted results
+
+Changing plots, labels or optional tables reuses fitted results when those options affect presentation only. Changing the data, model, distance settings, permutation settings or effective seed recalculates the fit. Automatically generated seeds are retained through refits and saved-file reloads; the results report the seed used.
 
 ## Automated tests
 

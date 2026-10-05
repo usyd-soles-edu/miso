@@ -16,7 +16,7 @@
 miso_display_name <- "Multivariate Inference, Similarity and Ordination (MISO)"
 miso_technical_name <- "miso"
 miso_ribbon_group <- "Multivariate"
-miso_identity_version <- "1.2.0"
+miso_identity_version <- "1.2.1"
 miso_analysis_names <- c(
     "permanova", "anosim", "permdisp", "nmds", "pcoa", "cluster", "simper")
 
@@ -86,7 +86,7 @@ miso_retired_identifier_occurrences <- function(files) {
     occurrences
 }
 
-test_that("package metadata declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.2.0", {
+test_that("package metadata declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.2.1", {
     fields <- read.dcf(
         file.path(miso_repo_root(), "DESCRIPTION"),
         fields=c("Package", "Title", "Version"))
@@ -95,7 +95,7 @@ test_that("package metadata declares the Multivariate Inference, Similarity and 
     expect_identical(unname(fields[[1L, "Version"]]), miso_identity_version)
 })
 
-test_that("module manifest declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.2.0", {
+test_that("module manifest declares the Multivariate Inference, Similarity and Ordination (MISO) identity, exact title, and version 1.2.1", {
     miso_skip_outside_development_checkout()
     module <- yaml::read_yaml(file.path(miso_repo_root(), "jamovi", "0000.yaml"))
     expect_identical(as.character(module$name), miso_technical_name)

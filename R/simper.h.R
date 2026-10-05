@@ -437,7 +437,7 @@ simperBase <- if (requireNamespace("jmvcore", quietly=TRUE)) R6::R6Class(
 #' @param simperAdjust .
 #' @param simperDetails .
 #' @param useFixedSeed Use a positive fixed seed for reproducible permutation
-#'   assessment; unchecked analyses use the random RNG stream.
+#'   assessment; unchecked analyses generate and retain an automatic seed.
 #' @return A results object containing:
 #' \tabular{llllll}{
 #'   \code{results$seedState} \tab \tab \tab \tab \tab a html \cr

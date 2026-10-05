@@ -55,7 +55,7 @@ simper(
 \item{simperDetails}{.}
 
 \item{useFixedSeed}{Use a positive fixed seed for reproducible permutation
-assessment; unchecked analyses use the random RNG stream.}
+assessment; unchecked analyses generate and retain an automatic seed.}
 }
 \value{
 A results object containing:
