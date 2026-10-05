@@ -3,7 +3,7 @@
 #
 # CI-only helper. Performs, in order:
 #   1. existence and size-floor check on the built .jmo
-#   2. structural checks against the `7z l` archive listing (fixed items plus
+#   2. exact-path checks against the `7z l -slt` archive listing (fixed items plus
 #      every dataset and analysis declared in jamovi/0000.yaml)
 #   3. content checks on the metadata extracted with `7z e`
 #      (exact `name:`/`version:` and `Package:`/`Version:` lines)
@@ -63,12 +63,22 @@ echo "${JMO} is ${SIZE} bytes"
 
 # --- 2. structural checks against the archive listing -----------------------
 LISTING="${TEMPDIR}/jmo-listing.txt"
-7z l "${JMO}" > "${LISTING}"
-# 7-Zip on Windows lists entry paths with backslash separators (miso\x.yaml);
-# normalise to forward slashes so the fixed-item checks below match either way
-sed -i.bak 's|\\|/|g' "${LISTING}" && rm -f "${LISTING}.bak"
+MEMBERS="${TEMPDIR}/jmo-members.txt"
+7z l -slt "${JMO}" > "${LISTING}"
+# Technical listings contain an archive-header Path before the separator.
+# Only member paths count; retain spaces, strip Windows CRs and normalise
+# Windows path separators before comparing complete paths.
+awk '
+  { sub(/\r$/, "") }
+  /^----------$/ { members=1; next }
+  members && /^Path = / {
+    path=substr($0, 8)
+    gsub(/\\/, "/", path)
+    print path
+  }
+' "${LISTING}" > "${MEMBERS}"
 check_in_jmo() {
-  grep -Fq "$1" "${LISTING}" || { echo "::error::missing from ${JMO}: $1" >&2; exit 1; }
+  grep -Fxq -- "$1" "${MEMBERS}" || { echo "::error::missing from ${JMO}: $1" >&2; exit 1; }
 }
 # fixed items: module manifest, the miso R package, and the external
 # dependencies jamovi does not bundle itself (ggplot2/R6/jmvcore ship with

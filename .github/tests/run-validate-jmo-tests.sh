@@ -7,8 +7,10 @@
 # LIMITATIONS (read before trusting results):
 #   * 7z is faked: a stub on PATH serves a fixture listing for `7z l` and
 #     copies fixture files for `7z e`. The real 7z binary's listing format
-#     and extraction behaviour are exercised only on a GitHub runner. The
-#     fake faithfully models the flag surface the helper uses (l; e -y -o).
+#     and extraction behaviour are also exercised with synthetic archives
+#     when a real 7z or 7zz binary is available. The
+#     fake models the technical-listing flag and metadata extraction
+#     surface the helper uses (l -slt; e -y -o).
 #   * The bundled js-yaml parser is taken from the jmvtools tarball whose
 #     SHA-256 is asserted against the workflow pin first (no new dependency
 #     is installed). Provide the tarball via JMVTOOLS_TARBALL (default
@@ -24,6 +26,7 @@ WF="$ROOT/.github/workflows/build-jmo.yml"
 HELPER="$ROOT/.github/scripts/validate-jmo.sh"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/pr3-validate-tests.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
+NATIVE_7Z=$(command -v 7z || command -v 7zz || true)
 
 pass=0; fail=0; skip=0
 ok()  { printf 'PASS %s\n' "$1"; pass=$((pass+1)); }
@@ -52,7 +55,7 @@ ok "T00a tarball hash equals workflow pin (parser provenance)"
 PARSER="$WORK/jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml/index.js"
 tar xzf "$TARBALL" -C "$WORK" "jmvtools/inst/node_modules/jamovi-compiler/node_modules/js-yaml"
 
-# fake 7z: `l` cats <stem>.listing; `e -y -oDIR <jmo> <members...>` copies
+# fake 7z: `l -slt` cats <stem>.listing; `e -y -oDIR <jmo> <members...>` copies
 # <stem>.extracted/<member> to DIR/<basename>. Fails like real 7z when a
 # requested member is absent from the fixture.
 mkdir -p "$WORK/bin"
@@ -60,7 +63,16 @@ cat > "$WORK/bin/7z" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 case "$1" in
-  l) cat "${2}.listing" ;;
+  l) shift; technical=0; archive=""
+     while [ $# -gt 0 ]; do
+       case "$1" in
+         -slt) technical=1 ;;
+         -*) echo "fake7z: unsupported listing flag: $1" >&2; exit 9 ;;
+         *) archive="$1" ;;
+       esac; shift
+     done
+     [ "$technical" -eq 1 ] || { echo "fake7z: expected -slt" >&2; exit 9; }
+     cat "${archive}.listing" ;;
   e) shift; out=""; pos=()
      while [ $# -gt 0 ]; do
        case "$1" in
@@ -93,7 +105,15 @@ mkfix() {
   local dir="$1" manifest="$2" items="$3"
   mkdir -p "$dir/miso_1.0.0.jmo.extracted/miso/R/miso"
   dd if=/dev/zero of="$dir/miso_1.0.0.jmo" bs=1024 count=1200 status=none
-  { echo "$FIX_ITEMS"; cat "$items"; } > "$dir/miso_1.0.0.jmo.listing"
+  {
+    printf '7-Zip fixture\n\n--\nPath = miso_1.0.0.jmo\nType = zip\n\n----------\n'
+    for item in $FIX_ITEMS; do
+      printf 'Path = %s\nFolder = -\nSize = 1\n\n' "$item"
+    done
+    while IFS= read -r item; do
+      printf 'Path = %s\nFolder = -\nSize = 1\n\n' "$item"
+    done < "$items"
+  } > "$dir/miso_1.0.0.jmo.listing"
   printf 'name: miso\nversion: 1.0.0\n' > "$dir/miso_1.0.0.jmo.extracted/miso/jamovi.yaml"
   printf 'Package: miso\nVersion: 1.0.0\n' > "$dir/miso_1.0.0.jmo.extracted/miso/R/miso/DESCRIPTION"
   cp "$manifest" "$dir/manifest.yaml"
@@ -248,6 +268,46 @@ printf 'miso/ui/permanova.js\n' > "$WORK/items-spaced-miss.txt"
 D="$WORK/t5-miss"; mkfix "$D" "$WORK/manifest-spaced.yaml" "$WORK/items-spaced-miss.txt"
 expect_err "T5b absent spaced path fails with the exact unsplit path" "::error::missing from miso_1.0.0.jmo: miso/data/teaching data.csv" "$D"
 
+# === T5c-T5h: substrings and non-member metadata cannot satisfy checks =========
+for decoy in "miso/ui/nmds.js.bak" "backup/miso/ui/nmds.js"; do
+  grep -v 'ui/nmds.js' "$GOOD_FILE" > "$WORK/items-decoy.txt"
+  printf '%s\n' "$decoy" >> "$WORK/items-decoy.txt"
+  D="$WORK/t5c-${decoy##*/}"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$WORK/items-decoy.txt"
+  expect_err "T5c analysis decoy '$decoy' is rejected" \
+    "::error::missing from miso_1.0.0.jmo: miso/ui/nmds.js" "$D"
+  if [ ! -f "$D/github-env" ] && [ -f "$D/miso_1.0.0.jmo" ]; then
+    ok "T5c rejection preserves the archive and writes no JMO_OUT"
+  else
+    bad "T5c rejection renamed or exported the archive"
+  fi
+done
+
+printf 'miso/ui/permanova.js\nmiso/data/teaching data.csv.bak\n' > "$WORK/items-spaced-decoy.txt"
+D="$WORK/t5d"; mkfix "$D" "$WORK/manifest-spaced.yaml" "$WORK/items-spaced-decoy.txt"
+expect_err "T5d spaced dataset backup does not satisfy the exact path" \
+  "::error::missing from miso_1.0.0.jmo: miso/data/teaching data.csv" "$D"
+
+D="$WORK/t5e"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$GOOD_FILE"
+sed -i.bak 's|^Path = miso/R/vegan/DESCRIPTION$|Path = miso/R/vegan/DESCRIPTION.bak|' "$D/miso_1.0.0.jmo.listing"
+expect_err "T5e dependency DESCRIPTION backup does not satisfy a fixed item" \
+  "::error::missing from miso_1.0.0.jmo: miso/R/vegan/DESCRIPTION" "$D"
+
+grep -v 'ui/nmds.js' "$GOOD_FILE" > "$WORK/items-header-decoy.txt"
+D="$WORK/t5f"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$WORK/items-header-decoy.txt"
+sed -i.bak 's|^Path = miso_1.0.0.jmo$|Path = miso/ui/nmds.js|' "$D/miso_1.0.0.jmo.listing"
+expect_err "T5f the archive-header Path cannot count as a member" \
+  "::error::missing from miso_1.0.0.jmo: miso/ui/nmds.js" "$D"
+
+D="$WORK/t5g"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$WORK/items-header-decoy.txt"
+printf 'Comment = miso/ui/nmds.js\n' >> "$D/miso_1.0.0.jmo.listing"
+expect_err "T5g other metadata cannot count as a member" \
+  "::error::missing from miso_1.0.0.jmo: miso/ui/nmds.js" "$D"
+
+D="$WORK/t5h"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$GOOD_FILE"
+printf 'table listing without technical member paths\n' > "$D/miso_1.0.0.jmo.listing"
+expect_err "T5h unsupported listing format fails closed" \
+  "::error::missing from miso_1.0.0.jmo: miso/jamovi.yaml" "$D"
+
 # === T6-T8: field validity, through the full helper ===========================
 mkvar() { # inserts entry lines at the END of the analyses block, immediately
 # before the next top-level key (the manifest has keys after analyses:, so
@@ -320,9 +380,11 @@ rc=0; out=$(bash "$HELPER" --manifest x --parser y --version 1 --module m --suff
 # must normalise them before the forward-slash fixed-item checks.
 D="$WORK/t12b"; mkfix "$D" "$ROOT/jamovi/0000.yaml" "$GOOD_FILE"
 sed -i.bak 's|/|\\|g' "$D/miso_1.0.0.jmo.listing" && rm -f "$D/miso_1.0.0.jmo.listing.bak"
+awk '{ printf "%s\r\n", $0 }' "$D/miso_1.0.0.jmo.listing" > "$D/listing-crlf"
+mv "$D/listing-crlf" "$D/miso_1.0.0.jmo.listing"
 out=$(run_helper "$D") && rc=0 || rc=$?
 if [ "$rc" -eq 0 ] && [ -f "$D/miso-1.0.0-win-x64.jmo" ]; then
-  ok "T12b backslash (Windows 7z) listing normalised; helper succeeds"
+  ok "T12b backslash and CRLF (Windows 7z) listing normalised; helper succeeds"
 else
   bad "T12b backslash listing failed (rc=$rc; tail: $(printf '%s' "$out" | tail -2 | tr '\n' '|'))"
 fi
@@ -362,7 +424,53 @@ if PATH="${PATH#"$WORK/bin:"}" command -v 7z >/dev/null 2>&1 && [ -n "${MISO_REA
   out=$( cd "$D" && PATH="${PATH#"$WORK/bin:"}" bash "$HELPER" --jmo miso_1.0.0.jmo --manifest "$D/manifest.yaml" --parser "$PARSER" --version 1.0.0 --module miso --suffix win-x64 --tempdir "$D/tmp" --github-env "$D/github-env" 2>&1 )
   printf '%s' "$out" | grep -Fxq "checked analyses (7): $ANALYSES7" && ok "T16 real 7z + real .jmo validate end-to-end" || bad "T16: $out"
 else
-  skipd "T16 real-archive test: 7z binary and/or MISO_REAL_JMO not available on this host (fake-7z fixtures above cover helper logic; real binary behaviour is runner-only)"
+  skipd "T16 external real-artifact test: 7z and/or MISO_REAL_JMO unavailable (native synthetic coverage is reported separately)"
+fi
+
+# === T17: native technical listings, spaces and archive-header decoys ==========
+if [ -n "$NATIVE_7Z" ]; then
+  mkdir -p "$WORK/native-bin" "$WORK/native-input"
+  ln -s "$NATIVE_7Z" "$WORK/native-bin/7z"
+  NATIVE_PATH="$WORK/native-bin:${PATH#"$WORK/bin:"}"
+  for item in $FIX_ITEMS "miso/ui/permanova.js" "miso/data/teaching data.csv"; do
+    mkdir -p "$WORK/native-input/$(dirname "$item")"
+    printf 'fixture\n' > "$WORK/native-input/$item"
+  done
+  printf 'name: miso\nversion: 1.0.0\n' > "$WORK/native-input/miso/jamovi.yaml"
+  printf 'Package: miso\nVersion: 1.0.0\n' > "$WORK/native-input/miso/R/miso/DESCRIPTION"
+  dd if=/dev/zero of="$WORK/native-input/padding.bin" bs=1024 count=1200 status=none
+  native_archive() {
+    ( cd "$WORK/native-input" && "$NATIVE_7Z" a -tzip -mx=0 "$1" miso padding.bin >/dev/null )
+  }
+  native_helper() {
+    local dir="$1" archive="$2"
+    ( cd "$dir" && PATH="$NATIVE_PATH" bash "$HELPER" \
+        --jmo "$archive" --manifest "$WORK/manifest-spaced.yaml" --parser "$PARSER" \
+        --version 1.0.0 --module miso --suffix win-x64 \
+        --tempdir "$dir/tmp" --github-env "$dir/github-env" )
+  }
+
+  D="$WORK/t17-good"; mkdir -p "$D"
+  native_archive "$D/miso_1.0.0.jmo"
+  if native_helper "$D" miso_1.0.0.jmo >/dev/null && [ -f "$D/miso-1.0.0-win-x64.jmo" ]; then
+    ok "T17a real 7-Zip accepts exact member paths, including spaces"
+  else
+    bad "T17a real 7-Zip positive fixture failed"
+  fi
+
+  mv "$WORK/native-input/miso/ui/permanova.js" "$WORK/native-input/miso/ui/permanova.js.bak"
+  D="$WORK/t17-decoy"; mkdir -p "$D/miso/ui"
+  native_archive "$D/miso/ui/permanova.js"
+  rc=0; out=$(native_helper "$D" miso/ui/permanova.js 2>&1) || rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -Fq \
+      "::error::missing from miso/ui/permanova.js: miso/ui/permanova.js" \
+      && [ ! -f "$D/github-env" ] && [ -f "$D/miso/ui/permanova.js" ]; then
+    ok "T17b real 7-Zip rejects both a backup member and a matching archive-header Path"
+  else
+    bad "T17b real 7-Zip decoy accepted or incorrect failure: $out"
+  fi
+else
+  skipd "T17 native synthetic archives: 7z or 7zz is unavailable"
 fi
 
 printf '\nRESULT: pass=%d fail=%d skip=%d\n' "$pass" "$fail" "$skip"
