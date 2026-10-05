@@ -677,6 +677,61 @@ test_that("missing and duplicate labels never change clustering", {
     expect_true("Row 4" %in% labelled_private$.state$labels)
 })
 
+test_that("generated row labels cannot collide with supplied suffix-like labels", {
+    for (filtered in c(FALSE, TRUE)) {
+        data <- cluster_state_data(16L)
+        raw <- as.character(data$sample)
+        raw[seq_len(8L)] <- c("A", "A", "A [row 1]", "A [row 2]",
+            "A [row 1].1", NA_character_, "Row 6", "Row 6 [row 6]")
+        data$sample <- factor(raw)
+        if (filtered) {
+            data$feature_01[[10L]] <- NA_real_
+            data[16L, paste0("feature_0", 1:4)] <- 0
+        }
+        settings <- list(vars=paste0("feature_0", 1:4),
+            showSampleOrder=TRUE, showMergeHistory=TRUE,
+            defineClusters=TRUE, numberClusters=3L, sampleLabels="show")
+        analysis <- do.call(run_cluster_private,
+            c(list(data=data, labels="sample"), settings))
+        baseline <- do.call(run_cluster_private, c(list(data=data), settings))
+        private <- cluster_private(analysis)
+        labels <- private$.state$labels
+        rows <- private$.state$prep$rowIndex
+        fit <- private$.state$fit
+        expect_equal(anyDuplicated(labels), 0L)
+        expect_length(labels, length(rows))
+        # Existing numeric suffixes are reserved before creating new ones.
+        expect_identical(labels[[5L]], "A [row 1].1")
+        expect_match(miso_squish_result(analysis$results$warnings),
+            "additional unique suffixes", fixed=TRUE)
+        expect_identical(fit$merge, cluster_private(baseline)$.state$fit$merge)
+        expect_identical(fit$height, cluster_private(baseline)$.state$fit$height)
+        expect_identical(unname(private$.state$membership),
+            unname(cluster_private(baseline)$.state$membership))
+        expect_identical(unlist(analysis$results$membership$rowKeys, use.names=FALSE),
+            as.character(rows))
+        expect_identical(analysis$results$membership$asDF$sample, labels)
+        expect_identical(analysis$results$sampleOrder$asDF$sample, labels[fit$order])
+        leaves <- private$.dendrogramData(fit, labels, private$.state$membership)$leaf
+        expect_identical(leaves$fullLabel, labels[fit$order])
+        expect_equal(anyDuplicated(leaves$plotLabel), 0L)
+        child <- function(value) if (value < 0L)
+            paste0("Sample: ", labels[[-value]]) else paste0("Merge ", value)
+        merges <- analysis$results$mergeHistory$asDF
+        expect_identical(merges$first, vapply(fit$merge[, 1L], child, character(1)))
+        expect_identical(merges$second, vapply(fit$merge[, 2L], child, character(1)))
+
+        # Editing only the label column refreshes output and clears the warning.
+        private$.data$sample <- factor(paste0("Unique ", seq_len(nrow(data))))
+        suppressWarnings(suppressMessages(analysis$run()))
+        expect_identical(private$.state$labels, paste0("Unique ", rows))
+        expect_identical(private$.state$fit$merge, fit$merge)
+        expect_identical(private$.state$fit$height, fit$height)
+        expect_false(grepl("Duplicate sample labels",
+            miso_squish_result(analysis$results$warnings), fixed=TRUE))
+    }
+})
+
 test_that("more than 64 defined clusters use the disclosed fallback", {
     analysis <- run_cluster_private(
         cluster_state_data(70L),

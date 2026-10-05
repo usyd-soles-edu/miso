@@ -203,9 +203,17 @@ clusterClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 values[duplicatedValues] <- paste0(
                     values[duplicatedValues],
                     " [row ", prep$rowIndex[duplicatedValues], "]")
+                # Supplied labels may already resemble the row suffixes.
+                # Reserve the complete vector when resolving those collisions.
+                uniqueValues <- make.unique(values)
                 warnings <- c(
                     warnings,
-                    "Duplicate sample labels were distinguished using data row numbers.")
+                    if (identical(uniqueValues, values))
+                        "Duplicate sample labels were distinguished using data row numbers."
+                    else
+                        paste("Duplicate sample labels were distinguished using data row numbers",
+                            "and additional unique suffixes."))
+                values <- uniqueValues
             }
 
             list(labels=values, source=selected, warnings=warnings)
