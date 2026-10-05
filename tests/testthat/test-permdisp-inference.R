@@ -109,7 +109,6 @@ test_that("distance and permutation warnings accompany usable PERMDISP results",
     expect_false(perfect$guidance$visible)
     warnings <- miso_squish_result(perfect$warnings)
     expect_match(warnings, "Permutation test warning:", fixed=TRUE)
-    expect_match(warnings, "Pairwise dispersion test warning:", fixed=TRUE)
     expect_match(warnings, "unreliable", fixed=TRUE)
     expect_true(is.finite(perfect$anova$asDF$f[[1L]]))
 })

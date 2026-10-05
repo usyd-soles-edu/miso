@@ -36,7 +36,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("simperDetails", "simperPlots", "simperHeatmap",
-                    "seed", "useFixedSeed"),
+                    "simperTop", "simperCum", "seed", "useFixedSeed"),
                 data=self$data,
                 extra=list(effectiveSeed=effectiveSeed))
             if (!is.null(private$.lastStructuralKey) &&
@@ -59,6 +59,8 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 heatmapReady=FALSE,
                 heatmapDataReady=FALSE,
                 heatmapData=NULL,
+                selectionSettings=NULL,
+                assessmentValues=NULL,
                 descriptive=NULL)
             private$.clearResults()
 
@@ -139,8 +141,10 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.discardKeyedRows()
                 return()
             }
+            descriptive$displayRows <- private$.selectDisplayRows(descriptive$fullRows)
             private$.state$descriptive <- descriptive
             private$.populateDescriptive(descriptive)
+            private$.state$selectionSettings <- c(self$options$simperTop, self$options$simperCum)
 
             assessmentShown <- FALSE
             if (isTRUE(self$options$simperAssess)) {
@@ -151,7 +155,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 miso_clear_table(self$results$assessment)
 
             private$.state$assessmentShown <- assessmentShown
-            private$.state$assessmentSeedNote <- if (assessmentShown)
+            private$.state$assessmentSeedNote <- if (!is.null(private$.state$assessmentValues))
                 paste0("Random seed: ", miso_seed_label(prep), ".") else NULL
             private$.refreshDisplayOnly()
         },
@@ -161,6 +165,23 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             if (is.null(descriptive)) {
                 private$.showEmptyTables()
                 return()
+            }
+            selection <- c(self$options$simperTop, self$options$simperCum)
+            if (!identical(private$.state$selectionSettings, selection)) {
+                descriptive$displayRows <- private$.selectDisplayRows(descriptive$fullRows)
+                private$.state$descriptive <- descriptive
+                private$.populateDescriptive(descriptive)
+                if (!is.null(private$.state$assessmentValues))
+                    private$.state$assessmentShown <- private$.populateAssessment(
+                        descriptive$displayRows, private$.state$assessmentValues)
+                private$.state$detailsReady <- FALSE
+                private$.state$contributionPlotsReady <- FALSE
+                private$.state$heatmapReady <- FALSE
+                private$.state$heatmapDataReady <- FALSE
+                self$results$heatmap$.setPath(NULL)
+                for (item in self$results$contributionPlots$items)
+                    item$plot$.setPath(NULL)
+                private$.state$selectionSettings <- selection
             }
             details <- isTRUE(self$options$simperDetails)
             plots <- isTRUE(self$options$simperPlots)
@@ -212,7 +233,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             indices <- unique(vapply(rows, function(row) row$contrastIndex, integer(1)))
             for (index in indices) {
                 selected <- Filter(function(row) row$contrastIndex == index, rows)
-                table <- self$results$detailsByContrast$addItem(as.character(index))
+                key <- as.character(index)
+                table <- if (key %in% unlist(self$results$detailsByContrast$itemKeys))
+                    self$results$detailsByContrast$get(key=key)
+                else
+                    self$results$detailsByContrast$addItem(key)
                 table$setTitle(selected[[1L]]$contrast)
                 table$getColumn("meanFirst")$setTitle(paste0(selected[[1L]]$firstGroup, " mean"))
                 table$getColumn("meanSecond")$setTitle(paste0(selected[[1L]]$secondGroup, " mean"))
@@ -299,10 +324,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             }
 
             summaries <- summary(fit)
-            topN <- as.integer(self$options$simperTop)
-            threshold <- as.numeric(self$options$simperCum) / 100
             contrastRows <- list()
-            displayRows <- list()
             fullRows <- list()
             contrastTotals <- integer()
             diagnostics <- list()
@@ -335,10 +357,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 tab$cumulative <- cumsum(tab$contribution)
                 diagnostics <- c(diagnostics,
                     private$.classifyDetailDiagnostics(tab, prep, pair, index))
-                crossing <- which(tab$cumulative >= threshold)[1L]
-                if (is.na(crossing))
-                    crossing <- nrow(tab)
-                displayN <- min(topN, crossing, nrow(tab))
                 contrastTotals[[as.character(index)]] <- nrow(tab)
 
                 contrastRows[[length(contrastRows) + 1L]] <- list(
@@ -363,9 +381,6 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         cumulative=100 * tab$cumulative[[row]])
                 })
                 fullRows <- c(fullRows, contrastFeatureRows)
-                displayRows <- c(
-                    displayRows,
-                    contrastFeatureRows[seq_len(displayN)])
             }
 
             if (length(failed) > 0L)
@@ -374,7 +389,7 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     paste0(
                         "No usable descriptive contributions were returned for: ",
                         paste(failed, collapse=", "), "."))
-            if (length(displayRows) == 0L) {
+            if (length(fullRows) == 0L) {
                 private$.showGuidance(paste(
                     "SIMPER could not calculate non-missing feature contributions for these data.",
                     "Check that groups contain usable, non-identical samples."))
@@ -386,11 +401,24 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 pairs=pairs,
                 contrastRows=contrastRows,
                 fullRows=fullRows,
-                displayRows=displayRows,
                 contrastTotals=contrastTotals,
                 diagnostics=diagnostics)
         },
 
+        .selectDisplayRows = function(rows) {
+            indices <- unique(vapply(rows, function(row) row$contrastIndex, integer(1)))
+            selected <- list()
+            for (index in indices) {
+                contrast <- Filter(function(row) row$contrastIndex == index, rows)
+                cumulative <- vapply(contrast, function(row) row$cumulative, numeric(1))
+                crossing <- which(cumulative >= self$options$simperCum)[1L]
+                if (is.na(crossing))
+                    crossing <- length(contrast)
+                count <- min(as.integer(self$options$simperTop), crossing, length(contrast))
+                selected <- c(selected, contrast[seq_len(count)])
+            }
+            selected
+        },
 
         .populateDescriptive = function(descriptive) {
             contrastRows <- lapply(seq_along(descriptive$contrastRows), function(index)
@@ -422,7 +450,11 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 rows <- private$.state$plotData[
                     private$.state$plotData$contrastIndex == index, , drop=FALSE]
                 contrast <- rows$contrast[[1L]]
-                item <- self$results$contributionPlots$addItem(as.character(index))
+                key <- as.character(index)
+                item <- if (key %in% unlist(self$results$contributionPlots$itemKeys))
+                    self$results$contributionPlots$get(key=key)
+                else
+                    self$results$contributionPlots$addItem(key)
                 item$setTitle(contrast)
                 item$plot$setSize(580, 430)
                 item$description$setContent(
@@ -489,7 +521,17 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 adjusted[[index]] <- cbind(p=p, padj=padj)
             }
 
-            row <- 1L
+            private$.state$assessmentValues <- adjusted
+            if (length(missingContrasts) > 0L)
+                private$.state$operationalWarnings <- c(
+                    private$.state$operationalWarnings,
+                    paste0(
+                        "Permutation values were unavailable for: ",
+                        paste(missingContrasts, collapse=", "), "."))
+            private$.populateAssessment(displayRows, adjusted)
+        },
+
+        .populateAssessment = function(displayRows, adjusted) {
             assessmentRows <- list()
             for (values in displayRows) {
                 result <- adjusted[[values$contrastIndex]]
@@ -506,23 +548,9 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         feature=values$feature,
                         p=p,
                         padj=padj))
-                row <- row + 1L
             }
             private$.populateRows(self$results$assessment, assessmentRows)
-
-            if (length(missingContrasts) > 0L)
-                private$.state$operationalWarnings <- c(
-                    private$.state$operationalWarnings,
-                    paste0(
-                        "Permutation values were unavailable for: ",
-                        paste(missingContrasts, collapse=", "), "."))
-            if (row == 1L) {
-                private$.state$operationalWarnings <- c(
-                    private$.state$operationalWarnings,
-                    "No usable permutation p-values were available; descriptive SIMPER output is retained.")
-                return(FALSE)
-            }
-            TRUE
+            length(assessmentRows) > 0L
         },
 
         .classifyDetailDiagnostics = function(tab, prep, pair, contrastIndex) {
@@ -588,6 +616,10 @@ simperClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
         .refreshPresentation = function() {
             warnings <- private$.state$operationalWarnings
+            if (!is.null(private$.state$assessmentValues) &&
+                    !isTRUE(private$.state$assessmentShown))
+                warnings <- c(warnings,
+                    "No usable permutation p-values were available; descriptive SIMPER output is retained.")
             if (isTRUE(self$options$simperDetails)) {
                 diagnostics <- private$.detailDiagnostics()
                 singlePairs <- Filter(function(issue)

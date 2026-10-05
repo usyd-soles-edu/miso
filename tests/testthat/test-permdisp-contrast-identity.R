@@ -35,8 +35,6 @@ test_that("PERMDISP preserves pair identities and numerical order for arbitrary 
         set.seed(123)
         fit <- vegan::betadisper(stats::dist(data[c("sp1", "sp2", "sp3")]),
             droplevels(data$group), type="median")
-        # Retain the existing separate global and pairwise permutation draws.
-        global <- vegan::permutest(fit, permutations=permute::how(nperm=99))
         pairwise <- vegan::permutest(fit, permutations=permute::how(nperm=99),
             pairwise=TRUE)
         expected_rng <- .Random.seed
@@ -51,7 +49,7 @@ test_that("PERMDISP preserves pair identities and numerical order for arbitrary 
         expect_equal(actual$padj,
             unname(stats::p.adjust(pairwise$pairwise$permuted, method="holm")),
             info=name)
-        expect_equal(result$anova$asDF$p[[1L]], global$tab[1L, "Pr(>F)"],
+        expect_equal(result$anova$asDF$p[[1L]], pairwise$tab[1L, "Pr(>F)"],
             info=name)
         expect_identical(actual_rng, expected_rng, info=name)
     }

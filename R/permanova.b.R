@@ -116,6 +116,8 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 init=FALSE)
 
             private$.runCompanionPcoa(prep, main$model)
+            private$.state$baseWarnings <- private$.state$warnings
+            private$.state$pairwiseAdjustment <- self$options$permAdjust
 
             pairwiseShown <- FALSE
             if (isTRUE(self$options$permPairwise)) {
@@ -166,11 +168,12 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             structuralKey <- miso_options_signature(
                 self$options,
                 excluded=c("showCompanionPcoa", "pcoaDisplayFactor",
-                    "pcoaCentroids", "pcoaSpiders", "seed", "useFixedSeed"),
+                    "pcoaCentroids", "pcoaSpiders", "permAdjust", "seed", "useFixedSeed"),
                 data=self$data,
                 extra=list(effectiveSeed=effectiveSeed))
             if (!is.null(private$.lastStructuralKey) &&
                     identical(private$.lastStructuralKey, structuralKey)) {
+                private$.refreshPairwiseAdjustment()
                 private$.refreshDisplayOnly()
                 return()
             }
@@ -243,6 +246,52 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$companionPcoaCentroids$setVisible(FALSE)
             private$.state$companion$warnings <- character()
             private$.setWarnings(private$.state$warnings)
+        },
+
+        .refreshPairwiseAdjustment = function() {
+            if (identical(private$.state$pairwiseAdjustment, self$options$permAdjust) ||
+                    is.null(private$.state$companion$prep))
+                return()
+            private$.state$pairwiseAdjustment <- self$options$permAdjust
+            if (!isTRUE(self$options$permPairwise))
+                return()
+            if (!isTRUE(self$options$permInteractions)) {
+                if (!is.null(private$.state$pairwiseStatistics))
+                    private$.populatePairwiseStatistics(private$.state$pairwiseStatistics)
+                return()
+            }
+
+            # Conditional comparisons retain their Holm-only eligibility rule.
+            # Keep their fitted rows so changing away and back never refits them.
+            prep <- private$.state$companion$prep
+            model <- private$.state$companion$model
+            eligibility <- private$.conditionalPairwiseEligibility(prep, model)
+            warnings <- private$.state$baseWarnings
+            shown <- FALSE
+            if (isTRUE(eligibility$eligible)) {
+                if (is.null(private$.state$conditionalPairwise)) {
+                    private$.state$cl <- miso_parallel(self$options$useParallel)
+                    on.exit(miso_parallel_stop(private$.state$cl), add=TRUE)
+                    private$.runConditionalPairwisePermanova(prep, list(model=model))
+                }
+                cached <- private$.state$conditionalPairwise
+                if (!is.null(cached)) {
+                    miso_reconcile_table_rows(self$results$pairwise, cached$rows)
+                    self$results$pairwise$getColumn("condition")$setTitle(prep$extra[[1L]])
+                    self$results$pairwise$getColumn("condition")$setVisible(TRUE)
+                    self$results$pairwise$setNote(key="scope", note=cached$scope, init=FALSE)
+                    warnings <- c(warnings, cached$warnings)
+                    shown <- length(cached$rows) > 0L
+                }
+            }
+            else
+                warnings <- c(warnings, eligibility$message)
+            if (!shown) {
+                miso_clear_table(self$results$pairwise)
+                self$results$pairwise$setNote(key="scope", note=NULL, init=FALSE)
+            }
+            self$results$pairwise$setVisible(shown)
+            private$.state$warnings <- warnings
         },
 
         .clearResults = function() {
@@ -801,6 +850,19 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 return(list(rows=0L, warnings=warnings))
             }
 
+            comparisons <- if (identical(self$options$permBy, "terms"))
+                sprintf("Sequential comparisons of %s, tested first in each pairwise model.",
+                    prep$primary)
+            else sprintf("Marginal comparisons of %s in each pairwise model.",
+                prep$primary)
+            private$.state$pairwiseStatistics <- list(rows=rows,
+                comparisons=comparisons, permutationCounts=permutationCounts)
+            private$.populatePairwiseStatistics(private$.state$pairwiseStatistics)
+            list(rows=length(rows), warnings=warnings)
+        },
+
+        .populatePairwiseStatistics = function(statistics) {
+            rows <- statistics$rows
             pvals <- vapply(rows, `[[`, numeric(1), "p")
             method <- self$options$permAdjust
             adjusted <- if (identical(method, "none"))
@@ -814,21 +876,14 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             })
             miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
-            comparisons <- if (identical(self$options$permBy, "terms"))
-                sprintf("Sequential comparisons of %s, tested first in each pairwise model.",
-                    prep$primary)
-            else sprintf("Marginal comparisons of %s in each pairwise model.",
-                prep$primary)
             adjustment <- if (identical(method, "none")) "Unadjusted p-values."
             else sprintf("%s correction across %d contrasts.",
                 private$.adjustmentLabel(method), length(pvals))
             self$results$pairwise$setNote(
                 key="scope",
-                note=paste0(comparisons, " ", adjustment,
-                    private$.pairwisePermutationNote(permutationCounts)),
+                note=paste0(statistics$comparisons, " ", adjustment,
+                    private$.pairwisePermutationNote(statistics$permutationCounts)),
                 init=FALSE)
-
-            list(rows=length(rows), warnings=warnings)
         },
 
 
@@ -1010,13 +1065,13 @@ permanovaClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             self$results$pairwise$getColumn("condition")$setVisible(TRUE)
             miso_reconcile_table_rows(self$results$pairwise, pairwiseRows)
 
-            self$results$pairwise$setNote(
-                key="scope",
-                note=paste0(sprintf(
+            scope <- paste0(sprintf(
                     "%s comparisons within each %s level. Holm correction across %d planned contrasts.",
                     aVar, bVar, familyN),
-                    private$.pairwisePermutationNote(permutationCounts)),
-                init=FALSE)
+                    private$.pairwisePermutationNote(permutationCounts))
+            self$results$pairwise$setNote(key="scope", note=scope, init=FALSE)
+            private$.state$conditionalPairwise <- list(
+                rows=pairwiseRows, scope=scope, warnings=warnings)
 
             list(rows=familyN, warnings=warnings)
         },

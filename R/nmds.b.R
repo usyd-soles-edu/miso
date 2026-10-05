@@ -229,6 +229,7 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
         },
 
         .fitNmds = function(prep) {
+            warningCount <- length(private$.state$warnings)
             prep <- miso_record_seed(prep, self$results$seedState)
             private$.state$prep <- prep
             private$.state$fitArguments <- list(
@@ -302,6 +303,9 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                     paste(
                         "The retained optimization reached the maximum iterations;",
                         "consider increasing Maximum iterations per start."))
+            private$.state$fitWarnings <- private$.state$warnings[
+                seq_along(private$.state$warnings) > warningCount]
+            private$.state$fitKey <- private$.fitKey()
             list(success=TRUE)
         },
 
@@ -347,6 +351,10 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                 private$.saveAnalysisCache()
                 return()
             }
+            # Grouping and environmental annotations do not change metaMDS.
+            previous <- private$.state
+            reuseFit <- !is.null(previous$fit) &&
+                identical(previous$fitKey, private$.fitKey())
             private$.clearAnalysisCache()
             private$.lastStructuralKey <- NULL
             private$.rowCursors <- list()
@@ -356,9 +364,21 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             prep <- private$.prepareNmds()
             if (is.null(prep))
                 return()
-            fit <- private$.fitNmds(prep)
-            if (!isTRUE(fit$success))
-                return()
+            if (reuseFit) {
+                for (name in c("fit", "sites", "features", "fitArguments",
+                        "postFitRng", "fitKey", "fitWarnings"))
+                    private$.state[[name]] <- previous[[name]]
+                prep$actualSeed <- previous$prep$actualSeed
+                prep$seedSource <- previous$prep$seedSource
+                private$.state$prep <- prep
+                private$.state$warnings <- c(private$.state$warnings,
+                    previous$fitWarnings)
+            }
+            else {
+                fit <- private$.fitNmds(prep)
+                if (!isTRUE(fit$success))
+                    return()
+            }
             private$.assembleNmdsResults(prep)
             private$.lastStructuralKey <- structuralKey
             private$.saveAnalysisCache()
@@ -550,6 +570,14 @@ nmdsClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             serialize(c(
                 private$.structuralOptions(),
                 list(dataSignature=miso_data_signature(self$data))), NULL)
+        },
+
+        .fitKey = function() {
+            options <- private$.structuralOptions()
+            options[c("factor", "nmdsEnv", "nmdsEnvPerm")] <- NULL
+            vars <- intersect(miso_clean_vars(self$options$vars), names(self$data))
+            serialize(c(options, list(dataSignature=miso_data_signature(
+                self$data[, vars, drop=FALSE]))), NULL)
         },
 
         .refreshDisplayOnly = function() {

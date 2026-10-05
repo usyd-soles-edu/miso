@@ -286,6 +286,8 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
                         self$options$permN,
                         restriction,
                         NULL),
+                    pairwise=isTRUE(self$options$dispPairwise) &&
+                        nlevels(prep$group) >= 3L,
                     parallel=private$.state$cl), "Permutation test"),
                 error=function(e) e)
             if (inherits(perm, "error")) {
@@ -356,7 +358,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
 
             pairwiseShown <- FALSE
             if (isTRUE(self$options$dispPairwise) && nlevels(prep$group) >= 3L)
-                pairwiseShown <- private$.runPairwise(fit, restriction)
+                pairwiseShown <- private$.runPairwise(perm)
             if (! pairwiseShown)
                 miso_clear_table(self$results$pairwise)
 
@@ -371,25 +373,7 @@ permdispClass <- if (requireNamespace('jmvcore', quietly=TRUE)) R6::R6Class(
             })
         },
 
-        .runPairwise = function(fit, restriction) {
-            pt <- tryCatch(
-                private$.captureWarnings(vegan::permutest(
-                    fit,
-                    permutations=miso_permutation(
-                        self$options$permN,
-                        restriction,
-                        NULL),
-                    pairwise=TRUE,
-                    parallel=private$.state$cl), "Pairwise dispersion test"),
-                error=function(e) e)
-            if (inherits(pt, "error")) {
-                private$.state$warnings <- c(
-                    private$.state$warnings,
-                    paste(
-                        "Pairwise dispersion comparisons could not run:",
-                        pt$message))
-                return(FALSE)
-            }
+        .runPairwise = function(pt) {
             if (is.null(pt$pairwise) || length(pt$pairwise$permuted) == 0L) {
                 private$.state$warnings <- c(
                     private$.state$warnings,
