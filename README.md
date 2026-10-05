@@ -66,6 +66,20 @@ Each comparison refits the Grouping variable on its subset, using that subset's 
 
 These tests assume independent observations and free permutations within each subset. They are conditional simple-effect tests, rather than full-model tests, Type III main effects or PRIMER pooled pairwise comparisons. The omnibus interaction test is separate from the adjusted pairwise family; comparisons are calculated regardless of its significance.
 
+## Automated tests
+
+Pull requests and pushes to `main` run two Linux checks: **R tests** and
+**Archive validation**. The R check includes numerical, saved-result, cache,
+parallel-worker and JavaScript controller tests. It installs `RProtoBuf` and
+fails if any test is skipped. The archive check runs the validator's adversarial
+fixtures and native 7-Zip tests using the build workflow's checksum-pinned parser.
+Full platform builds remain available through the manual build and release workflows.
+
+To run the same R check locally, install the package's dependencies plus `pkgload`,
+`testthat` and `RProtoBuf`, ensure Node.js is available, then run
+`Rscript .github/scripts/run-r-tests.R` from the repository root. Repository rules
+can require the two checks before merging once they have run successfully on GitHub.
+
 ## License
 
 MISO is free software released under the **GNU General Public License v2 or later** ([GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html)). The full terms are in [`LICENSE`](LICENSE).

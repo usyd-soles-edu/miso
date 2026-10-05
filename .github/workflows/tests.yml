@@ -1,0 +1,102 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  r-tests:
+    name: R tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Install Protocol Buffers libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libprotobuf-dev libprotoc-dev protobuf-compiler
+
+      - name: Install and cache R dependencies
+        uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          extra-packages: |
+            any::pkgload
+            any::testthat
+            any::RProtoBuf
+          install-quarto: false
+
+      - name: Run all R and controller tests without skips
+        run: Rscript .github/scripts/run-r-tests.R
+
+  archive-tests:
+    name: Archive validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install archive and shell tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends p7zip-full shellcheck
+
+      - name: Check shell scripts
+        run: |
+          bash -n .github/scripts/validate-jmo.sh .github/tests/run-validate-jmo-tests.sh
+          shellcheck .github/scripts/validate-jmo.sh
+          shellcheck --severity=warning .github/tests/run-validate-jmo-tests.sh
+
+      - name: Fetch the build workflow's pinned jmvtools parser
+        env:
+          JMVTOOLS_TARBALL: ${{ runner.temp }}/jmvtools.tar.gz
+        run: |
+          set -euo pipefail
+          workflow=.github/workflows/build-jmo.yml
+          version=$(awk -F"'" '/^[[:space:]]*JMVTOOLS_VERSION:/ {print $2}' "$workflow")
+          checksum=$(awk -F"'" '/^[[:space:]]*JMVTOOLS_SHA256:/ {print $2}' "$workflow")
+          test -n "$version" && test -n "$checksum"
+          curl -fsSL --retry 3 --max-time 120 \
+            -o "$JMVTOOLS_TARBALL" "https://repo.jamovi.org/src/contrib/jmvtools_${version}.tar.gz"
+          printf '%s  %s\n' "$checksum" "$JMVTOOLS_TARBALL" | sha256sum -c -
+
+      - name: Run adversarial and native archive tests
+        env:
+          JMVTOOLS_TARBALL: ${{ runner.temp }}/jmvtools.tar.gz
+        run: |
+          command -v 7z
+          bash .github/tests/run-validate-jmo-tests.sh
